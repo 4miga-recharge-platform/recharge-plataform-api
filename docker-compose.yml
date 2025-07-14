@@ -3,7 +3,7 @@ version: '3.8'
 services:
   api:
     build: .
-    container_name: nestjs-api
+    container_name: recharge-plataform-api
     ports:
       - "3333:3333"
     volumes:
@@ -12,3 +12,13 @@ services:
     command: npm run start:dev
     environment:
       - NODE_ENV=development
+      - DATABASE_URL=postgresql://docker:docker@db:5432/recharge
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: docker
+      POSTGRES_DB: recharge
+    ports:
+      - "5432:5432"
