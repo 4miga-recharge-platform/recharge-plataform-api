@@ -6,6 +6,8 @@ export type UserType = {
   password: string;
   documentType: 'cpf' | 'cnpj';
   documentValue: string;
+  storeId?: string | null;
+  role: 'MASTER_ADMIN' | 'ADMIN' | 'USER';
   createdAt: string;
   updatedAt: string;
 };

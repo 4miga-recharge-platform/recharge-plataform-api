@@ -15,6 +15,8 @@ WORKDIR /app
 COPY package.json .
 RUN npm install
 
+COPY prisma ./prisma/
+
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3333

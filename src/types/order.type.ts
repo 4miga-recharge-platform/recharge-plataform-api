@@ -5,6 +5,7 @@ export interface OrderType {
   orderNumber: string;
   price: number;
   orderStatus: OrderStatus;
+  storeId: string;
   createdAt: string;
   payment: {
     name: string;

@@ -8,6 +8,8 @@ export type PackageType = {
   isOffer: boolean;
   basePrice: number;
   paymentMethods: PaymentMethodsType[];
+  productId: string;
+  storeId: string;
   createdAt: string;
   updatedAt: string;
 };

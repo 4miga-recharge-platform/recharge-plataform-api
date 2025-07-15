@@ -35,6 +35,7 @@ model User {
   password      String
   documentType  IndividualType
   documentValue String
+  role          UserRole       @default(USER)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -134,6 +135,12 @@ model PackageInfo {
   userIdForRecharge String
   imgCardUrl        String
   orderItem         OrderItem?
+}
+
+enum UserRole {
+  MASTER_ADMIN
+  ADMIN
+  USER
 }
 
 enum OrderStatus {
