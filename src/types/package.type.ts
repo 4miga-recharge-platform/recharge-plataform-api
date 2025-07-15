@@ -6,6 +6,8 @@ export type PackageType = {
   amountCredits: number;
   imgCardUrl: string;
   isOffer: boolean;
-  baseCost: number;
+  basePrice: number;
   paymentMethods: PaymentMethodsType[];
+  createdAt: string;
+  updatedAt: string;
 };

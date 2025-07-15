@@ -1,7 +1,7 @@
 import { OrderStatus, PaymentStatus, RechargeStatus } from './status.type';
 
 export interface OrderType {
-  orderId: string;
+  id: string;
   orderNumber: string;
   totalAmount: number;
   orderStatus: OrderStatus;

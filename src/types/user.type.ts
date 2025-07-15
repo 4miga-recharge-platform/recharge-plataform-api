@@ -4,10 +4,8 @@ export type UserType = {
   email: string;
   phone: string;
   password: string;
-  individualIdentification: IndividualIdentificationType;
-};
-
-export type IndividualIdentificationType = {
-  type: 'cpf' | 'cnpj';
-  value: string;
+  documentType: 'cpf' | 'cnpj';
+  documentValue: string;
+  createdAt: string;
+  updatedAt: string;
 };
