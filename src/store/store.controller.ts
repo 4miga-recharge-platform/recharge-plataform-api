@@ -1,16 +1,16 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
 } from '@nestjs/common';
-import { StoreService } from './store.service';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { StoreService } from './store.service';
 
 @ApiTags('store')
 @Controller('store')
@@ -23,16 +23,16 @@ export class StoreController {
     return this.storeService.findAll();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a store by id' })
-  findOne(@Param('id') id: string) {
-    return this.storeService.findOne(id);
-  }
-
   @Post()
   @ApiOperation({ summary: 'Create a store' })
   create(@Body() createStoreDto: CreateStoreDto) {
     return this.storeService.create(createStoreDto);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a store by id' })
+  findOne(@Param('id') id: string) {
+    return this.storeService.findOne(id);
   }
 
   @Patch(':id')
