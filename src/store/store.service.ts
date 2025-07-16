@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { StoreType } from 'src/types/store.type';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { Store } from './entities/store.entity';
+import { validateRequiredFields } from 'src/utils/validation.util';
 
 @Injectable()
 export class StoreService {
@@ -21,48 +22,74 @@ export class StoreService {
     orders: false,
   };
 
-  // acesso somente ao master admin
-  async findAll(): Promise<any> {
-    const data = await this.prisma.store.findMany({ select: this.storeSelect });
-
-    return data
-  }
-
-  async findOne(id: string) {
-    const data = await this.prisma.store.findUnique({
-      where: { id },
-      select: this.storeSelect,
-    });
-
-    if (!data) {
-      throw new BadRequestException('Store not found');
+  // master admin only access
+  async findAll(): Promise<Store[]> {
+    try {
+      const data = await this.prisma.store.findMany({ select: this.storeSelect });
+      return data;
+    } catch (error) {
+      throw new BadRequestException('Failed to fetch stores');
     }
-    return data;
   }
 
-  async create(dto: CreateStoreDto) {
-    if (dto.password !== dto.confirmPassword) {
-      throw new BadRequestException('Passwords do not match');
+  async findOne(id: string): Promise<Store> {
+    try {
+      const data = await this.prisma.store.findUnique({
+        where: { id },
+        select: this.storeSelect,
+      });
+      if (!data) {
+        throw new BadRequestException('Store not found');
+      }
+      return data;
+    } catch (error) {
+      throw new BadRequestException('Failed to fetch store');
     }
-    const data = { ...dto, password: await bcrypt.hash(dto.password, 10) };
-    return await this.prisma.store.create({ data, select: this.storeSelect });
   }
 
-  async update(id: string, dto: UpdateStoreDto) {
-    await this.findOne(id);
-    const data = { ...dto };
-    return await this.prisma.store.update({
-      where: { id },
-      data,
-      select: this.storeSelect,
-    });
+  async create(dto: CreateStoreDto): Promise<Store> {
+    try {
+      if (dto.password !== dto.confirmPassword) {
+        throw new BadRequestException('Passwords do not match');
+      }
+      const { confirmPassword, ...rest } = dto;
+      validateRequiredFields(rest, ['name', 'email', 'password']);
+      const data = { ...rest, password: await bcrypt.hash(dto.password, 10) };
+      return await this.prisma.store.create({ data, select: this.storeSelect });
+    } catch (error) {
+      throw new BadRequestException('Failed to create store');
+    }
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    return await this.prisma.store.delete({
-      where: { id },
-      select: this.storeSelect,
-    });
+  async update(id: string, dto: UpdateStoreDto): Promise<Store> {
+    try {
+      await this.findOne(id);
+      const { confirmPassword, ...rest } = dto;
+      Object.entries(rest).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim() === '') {
+          throw new BadRequestException(`Field '${key}' cannot be empty`);
+        }
+      });
+      const data = { ...rest };
+      return await this.prisma.store.update({
+        where: { id },
+        data,
+        select: this.storeSelect,
+      });
+    } catch (error) {
+      throw new BadRequestException('Failed to update store');
+    }
+  }
+
+  async remove(id: string): Promise<Store> {
+    try {
+      await this.findOne(id);
+      return await this.prisma.store.delete({
+        where: { id },
+        select: this.storeSelect,
+      });
+    } catch (error) {
+      throw new BadRequestException('Failed to remove store');
+    }
   }
 }
