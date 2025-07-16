@@ -5,18 +5,25 @@ services:
     ports:
       - "3333:3333"
     volumes:
-      - .:/app
-      # - /app/node_modules
-    command: npm run start:dev
+        - .:/app
+    command: sh -c "npx prisma generate && npm run start:dev"
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://docker:docker@db:5432/recharge
+    depends_on:
+      - db
 
   db:
     image: postgres:16
+    container_name: recharge-db
     environment:
       POSTGRES_USER: docker
       POSTGRES_PASSWORD: docker
       POSTGRES_DB: recharge
     ports:
       - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
