@@ -76,7 +76,7 @@ model PaymentMethod {
   name      PaymentMethodName
   price     Decimal           @db.Decimal(10, 2)
   packageId String
-  package   Package           @relation(fields: [packageId], references: [id])
+  package   Package           @relation(fields: [packageId], references: [id], onDelete: Cascade)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
 }

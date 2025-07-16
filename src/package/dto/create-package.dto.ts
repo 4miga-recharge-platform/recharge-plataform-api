@@ -5,7 +5,27 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class PaymentMethodDto {
+  @IsString()
+  @ApiProperty({
+    description: 'Payment method name',
+    enum: ['pix', 'mercado_pago', 'picpay', 'paypal', 'boleto', 'transferencia'],
+    example: 'pix',
+  })
+  name: 'pix' | 'mercado_pago' | 'picpay' | 'paypal' | 'boleto' | 'transferencia';
+
+  @IsNumber()
+  @ApiProperty({
+    description: 'Price for this payment method',
+    example: 19.99,
+  })
+  price: number;
+}
 
 export class CreatePackageDto {
   @IsString()
@@ -58,4 +78,15 @@ export class CreatePackageDto {
     example: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
   })
   storeId: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PaymentMethodDto)
+  @ApiProperty({
+    description: 'Payment methods for this package',
+    type: [PaymentMethodDto],
+    required: false,
+  })
+  paymentMethods?: PaymentMethodDto[];
 }

@@ -35,8 +35,27 @@ export class ProductService {
               productId: product.id,
               storeId: storeId,
             },
-            include: {
-              paymentMethods: true,
+            select: {
+              id: true,
+              name: true,
+              amountCredits: true,
+              imgCardUrl: true,
+              isOffer: true,
+              basePrice: true,
+              productId: true,
+              storeId: true,
+              createdAt: false,
+              updatedAt: false,
+              paymentMethods: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  packageId: true,
+                  createdAt: false,
+                  updatedAt: false,
+                },
+              },
             },
           });
           return { ...product, packages };

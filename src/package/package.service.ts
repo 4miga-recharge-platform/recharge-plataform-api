@@ -58,24 +58,91 @@ export class PackageService {
         'productId',
         'storeId'
       ]);
-      console.log(dto.amountCredits);
-      return await this.prisma.package.create({ data: dto, select: this.packageSelect });
+
+      // Separar paymentMethods do resto dos dados
+      const { paymentMethods, ...packageData } = dto;
+
+      // Criar package com payment methods se fornecidos
+      const createData: any = {
+        ...packageData,
+        ...(paymentMethods && paymentMethods.length > 0 && {
+          paymentMethods: {
+            create: paymentMethods.map(pm => ({
+              name: pm.name,
+              price: pm.price,
+            }))
+          }
+        })
+      };
+
+      return await this.prisma.package.create({
+        data: createData,
+        select: this.packageSelect
+      });
     } catch (error) {
-      throw new BadRequestException('Failed to create package', error.message);
+      throw new BadRequestException('Failed to create package');
     }
   }
 
   async update(id: string, dto: UpdatePackageDto): Promise<any> {
     try {
       await this.findOne(id);
+
+      // Validar campos vazios de forma mais robusta
       Object.entries(dto).forEach(([key, value]) => {
+        // Para strings
         if (typeof value === 'string' && value.trim() === '') {
           throw new BadRequestException(`Field '${key}' cannot be empty`);
         }
+        // Para números (verificar se não é null/undefined)
+        if (typeof value === 'number' && (value === null || value === undefined)) {
+          throw new BadRequestException(`Field '${key}' cannot be empty`);
+        }
+        // Para boolean (verificar se não é null/undefined)
+        if (typeof value === 'boolean' && (value === null || value === undefined)) {
+          throw new BadRequestException(`Field '${key}' cannot be empty`);
+        }
       });
+
+      // Validar foreign keys se estiverem sendo atualizadas
+      if (dto.productId) {
+        const product = await this.prisma.product.findUnique({
+          where: { id: dto.productId },
+        });
+        if (!product) {
+          throw new BadRequestException('Product not found');
+        }
+      }
+
+      if (dto.storeId) {
+        const store = await this.prisma.store.findUnique({
+          where: { id: dto.storeId },
+        });
+        if (!store) {
+          throw new BadRequestException('Store not found');
+        }
+      }
+
+      // Separar paymentMethods do resto dos dados
+      const { paymentMethods, ...packageData } = dto;
+
+      // Preparar dados para atualização
+      const updateData: any = {
+        ...packageData,
+        ...(paymentMethods && paymentMethods.length > 0 && {
+          paymentMethods: {
+            deleteMany: {}, // Remove todos os payment methods existentes
+            create: paymentMethods.map(pm => ({
+              name: pm.name,
+              price: pm.price,
+            }))
+          }
+        })
+      };
+
       return await this.prisma.package.update({
         where: { id },
-        data: dto,
+        data: updateData,
         select: this.packageSelect,
       });
     } catch (error) {
