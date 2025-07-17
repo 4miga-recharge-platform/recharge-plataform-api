@@ -17,6 +17,14 @@ async function bootstrap() {
     .setTitle('Recharge-Plataform_API')
     .setDescription('API created by 4migaGames')
     .setVersion('1.0')
+    .addBearerAuth()
+    .addTag('status')
+    .addTag('auth')
+    .addTag('user')
+    .addTag('store')
+    .addTag('product')
+    .addTag('package')
+    .addTag('transaction')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
