@@ -25,8 +25,20 @@ export class AuthController {
     summary: 'Return auth user',
   })
   profile(@LoggedUser() user: User) {
+    // Filtrar apenas os campos necessários, excluindo dados sensíveis
+    const filteredUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      documentType: user.documentType,
+      documentValue: user.documentValue,
+      role: user.role,
+      storeId: user.storeId,
+    };
+
     return {
-      user,
+      user: filteredUser,
     };
   }
 }
