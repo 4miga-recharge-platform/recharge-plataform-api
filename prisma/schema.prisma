@@ -14,10 +14,15 @@ datasource db {
 }
 
 model Store {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  logoUrl     String?
+  miniLogoUrl String?
+  faviconUrl  String?
+  bannersUrl  String[]
+  onSaleUrlImg   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -39,7 +44,7 @@ model User {
   updatedAt     DateTime       @updatedAt
 
   storeId String
-  store   Store  @relation(fields: [storeId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
   orders  Order[]
 }
 
@@ -102,7 +107,7 @@ model Order {
 
 model Payment {
   id                  String        @id @default(uuid())
-  name                String        // Keeping as String for now
+  name                String // Keeping as String for now
   status              PaymentStatus
   statusUpdatedAt     DateTime?
   qrCode              String?

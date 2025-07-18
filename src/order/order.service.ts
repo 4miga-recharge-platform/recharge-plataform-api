@@ -9,9 +9,9 @@ import { validateRequiredFields } from 'src/utils/validation.util';
 export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(storeId: string, userId: string) {
+  async findAll(storeId: string, userId: string, page = 1, limit = 6) {
     try {
-      // Verifica se o usuário pertence à loja
+      // Check if the user belongs to the store
       const user = await this.prisma.user.findFirst({
         where: {
           id: userId,
@@ -23,24 +23,43 @@ export class OrderService {
         throw new ForbiddenException('User does not belong to this store');
       }
 
-      return await this.prisma.order.findMany({
-        where: {
-          storeId: user.storeId,
-          userId, // Filtra apenas pedidos do usuário
-        },
-        include: {
-          payment: true,
-          orderItem: {
-            include: {
-              recharge: true,
-              package: true,
+      const [data, totalOrders] = await Promise.all([
+        this.prisma.order.findMany({
+          where: {
+            storeId: user.storeId,
+            userId, // Filter only the user's orders
+          },
+          include: {
+            payment: true,
+            orderItem: {
+              include: {
+                recharge: true,
+                package: true,
+              },
             },
           },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.order.count({
+          where: {
+            storeId: user.storeId,
+            userId,
+          },
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalOrders / limit);
+
+      return {
+        data,
+        totalOrders,
+        page,
+        totalPages,
+      };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         throw new BadRequestException(error.message);

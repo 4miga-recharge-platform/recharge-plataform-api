@@ -30,17 +30,22 @@ export class OrderController {
 
   @Get()
   @ApiOperation({ summary: 'Get all orders for a store' })
-  // @ApiQuery({
-  //   name: 'storeId',
-  //   required: true,
-  //   description: 'Store ID to filter orders',
-  // })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 6 })
   @ApiResponse({
     status: 200,
-    description: 'List of orders returned successfully.',
+    description: 'Paginated list of orders returned successfully.',
+    schema: {
+      example: {
+        data: [/* orders */],
+        totalOrders: 42,
+        page: 1,
+        totalPages: 7
+      }
+    }
   })
-  findAll(@Request() req) {
-    return this.orderService.findAll(req.user.storeId, req.user.id);
+  findAll(@Request() req, @Query('page') page = 1, @Query('limit') limit = 6) {
+    return this.orderService.findAll(req.user.storeId, req.user.id, Number(page), Number(limit));
   }
 
   @Get(':id')
