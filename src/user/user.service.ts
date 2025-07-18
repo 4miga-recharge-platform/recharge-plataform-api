@@ -73,6 +73,9 @@ export class UserService {
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     try {
       await this.findOne(id);
+      if (dto.password !== dto.confirmPassword) {
+        throw new BadRequestException('Passwords do not match');
+      }
       const { confirmPassword, ...rest } = dto;
       Object.entries(rest).forEach(([key, value]) => {
         if (typeof value === 'string' && value.trim() === '') {
@@ -82,7 +85,10 @@ export class UserService {
       const data = { ...rest };
       return await this.prisma.user.update({
         where: { id },
-        data,
+        data: {
+          ...data,
+          ...(dto.password && { password: await bcrypt.hash(dto.password, 10) }),
+        },
         select: this.userSelect,
       });
     } catch (error) {

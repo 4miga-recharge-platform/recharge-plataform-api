@@ -40,6 +40,7 @@ model User {
 
   storeId String
   store   Store  @relation(fields: [storeId], references: [id])
+  orders  Order[]
 }
 
 model Product {
@@ -62,7 +63,7 @@ model Package {
   isOffer        Boolean         @default(false)
   basePrice      Decimal         @db.Decimal(10, 2)
   productId      String
-  product        Product         @relation(fields: [productId], references: [id])
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   paymentMethods PaymentMethod[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -95,11 +96,13 @@ model Order {
 
   storeId String
   store   Store  @relation(fields: [storeId], references: [id])
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
 }
 
 model Payment {
   id                  String        @id @default(uuid())
-  name                String
+  name                String        // Keeping as String for now
   status              PaymentStatus
   statusUpdatedAt     DateTime?
   qrCode              String?
