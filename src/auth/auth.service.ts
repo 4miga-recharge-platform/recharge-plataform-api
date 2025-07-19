@@ -200,7 +200,43 @@ export class AuthService {
       },
     });
 
-    return { message: 'Password updated successfully' };
+    // Buscar usuário atualizado
+    const updatedUser = await this.prisma.user.findUnique({
+      where: { email },
+      select: this.authUser,
+    });
+    if (!updatedUser) {
+      throw new BadRequestException('User not found after password reset');
+    }
+
+    // Montar dados do usuário (igual login)
+    const data = {
+      id: updatedUser.id,
+      storeId: updatedUser.storeId,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      documentType: updatedUser.documentType,
+      documentValue: updatedUser.documentValue,
+      name: updatedUser.name,
+      role: updatedUser.role,
+    };
+
+    const accessToken = await this.jwtService.signAsync(data, {
+      expiresIn: '10m',
+    });
+    const refreshToken = await this.jwtService.signAsync(data, {
+      expiresIn: '7d',
+    });
+    const expiresIn = 10 * 60;
+
+    return {
+      access: {
+        accessToken,
+        refreshToken,
+        expiresIn,
+      },
+      user: data,
+    };
   }
 
   async verifyEmail(email: string, code: string) {
