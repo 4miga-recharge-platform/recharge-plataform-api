@@ -2,7 +2,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { join } from 'path';
 import { AppModule } from './app.module';
 import { env } from './env';
 
@@ -11,7 +10,6 @@ async function bootstrap() {
     cors: true,
   });
   app.useGlobalPipes(new ValidationPipe());
-  app.useStaticAssets(join(__dirname, '..', 'client'));
 
   const config = new DocumentBuilder()
     .setTitle('Recharge-Plataform_API')

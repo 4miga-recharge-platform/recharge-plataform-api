@@ -3,7 +3,10 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "npm run start:prod"
-healthcheckPath = "/api"
+healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+
+[deploy.hooks]
+postdeploy = "npm run prisma:seed"
