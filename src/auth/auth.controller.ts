@@ -10,15 +10,24 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { User } from 'src/user/entities/user.entity';
+import { EmailService } from '../email/email.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
-import { LoggedUser } from './logged-user.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyCodeDto } from './dto/verify-code.dto';
+import { LoggedUser } from './logged-user.decorator';
 
 @Controller('auth')
 @ApiTags('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly emailService: EmailService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -32,6 +41,26 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   async refresh(@Body() body: RefreshTokenDto) {
     return this.authService.refreshAccessToken(body.refreshToken);
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request password reset code by email' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Post('verify-code')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify password reset code' })
+  async verifyCode(@Body() dto: VerifyCodeDto) {
+    return this.authService.verifyCode(dto);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with code' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Get('token')

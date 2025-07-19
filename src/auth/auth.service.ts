@@ -1,14 +1,19 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { VerifyCodeDto } from './dto/verify-code.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { EmailService } from '../email/email.service';
+import { getPasswordResetTemplate } from '../email/templates/password-reset.template';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   private authUser = {
@@ -96,5 +101,99 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+  }
+
+  async forgotPassword(email: string) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Save code and expiration (10min) in user table
+    await this.prisma.user.update({
+      where: { email },
+      data: {
+        resetPasswordCode: code,
+        resetPasswordExpires: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+    const html = getPasswordResetTemplate(code);
+
+    await this.emailService.sendEmail(
+      email,
+      'Confirmação de E-mail',
+      html
+    );
+    return { message: 'Password reset code sent to email' };
+  }
+
+  async verifyCode(verifyCodeDto: VerifyCodeDto) {
+    const { email, code } = verifyCodeDto;
+
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+
+    // Check if code exists and is not expired
+    if (!user.resetPasswordCode || !user.resetPasswordExpires) {
+      throw new BadRequestException('No reset code found or code has expired');
+    }
+
+    if (user.resetPasswordCode !== code) {
+      throw new BadRequestException('Invalid reset code');
+    }
+
+    if (new Date() > user.resetPasswordExpires) {
+      throw new BadRequestException('Reset code has expired');
+    }
+
+    return { message: 'Code is valid', valid: true };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const { email, code, password, confirmPassword } = resetPasswordDto;
+
+    // Validate password confirmation
+    if (password !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+
+    // Check if code exists and is not expired
+    if (!user.resetPasswordCode || !user.resetPasswordExpires) {
+      throw new BadRequestException('No reset code found or code has expired');
+    }
+
+    if (user.resetPasswordCode !== code) {
+      throw new BadRequestException('Invalid reset code');
+    }
+
+    if (new Date() > user.resetPasswordExpires) {
+      throw new BadRequestException('Reset code has expired');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update password and clear reset code
+    await this.prisma.user.update({
+      where: { email },
+      data: {
+        password: hashedPassword,
+        resetPasswordCode: null,
+        resetPasswordExpires: null,
+      },
+    });
+
+    return { message: 'Password updated successfully' };
   }
 }

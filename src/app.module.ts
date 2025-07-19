@@ -8,9 +8,11 @@ import { ProductModule } from './product/product.module';
 import { PackageModule } from './package/package.module';
 import { AuthModule } from './auth/auth.module';
 import { OrderModule } from './order/order.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
+    EmailModule,
     PrismaModule,
     StoreModule,
     UserModule,

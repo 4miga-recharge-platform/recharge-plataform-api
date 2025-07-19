@@ -14,17 +14,17 @@ datasource db {
 }
 
 model Store {
-  id          String   @id @default(uuid())
-  name        String
-  email       String   @unique
-  password    String
-  logoUrl     String?
-  miniLogoUrl String?
-  faviconUrl  String?
-  bannersUrl  String[]
-  onSaleUrlImg   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  password     String
+  logoUrl      String?
+  miniLogoUrl  String?
+  faviconUrl   String?
+  bannersUrl   String[]
+  onSaleUrlImg String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   users    User[]
   packages Package[]
@@ -32,16 +32,18 @@ model Store {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  name          String
-  email         String         @unique
-  phone         String
-  password      String
-  documentType  IndividualType
-  documentValue String
-  role          UserRole       @default(USER)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                   String         @id @default(uuid())
+  name                 String
+  email                String         @unique
+  phone                String
+  password             String
+  documentType         IndividualType
+  documentValue        String
+  role                 UserRole       @default(USER)
+  resetPasswordCode    String?
+  resetPasswordExpires DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
   storeId String
   store   Store   @relation(fields: [storeId], references: [id])
