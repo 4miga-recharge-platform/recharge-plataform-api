@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
+    "start:railway": "npx ts-node src/main.ts",
     "postinstall": "npx prisma generate",
     "prisma:seed": "npx prisma db seed",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
