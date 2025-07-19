@@ -97,3 +97,11 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+# Recharge Platform API
+
+API para plataforma de recarga desenvolvida com NestJS.
+
+## Deploy
+
+Aplicação deployada no Railway com seed automático.
