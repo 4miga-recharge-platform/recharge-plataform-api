@@ -12,4 +12,13 @@ export class AppController {
   getAppStatus(): string {
     return this.appService.getAppStatus();
   }
+
+  @Get('health')
+  health() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    };
+  }
 }
