@@ -36,6 +36,8 @@ export class UserController {
     return this.userService.create(createUserDto);
   }
 
+
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user by id' })
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {

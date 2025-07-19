@@ -25,6 +25,7 @@ export class AuthService {
     phone: true,
     documentType: true,
     documentValue: true,
+    emailVerified: true,
     password: true,
     createdAt: false,
     updatedAt: false,
@@ -42,6 +43,11 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('User or password invalid');
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      throw new UnauthorizedException('Email not verified');
     }
 
     const data = {
@@ -195,5 +201,87 @@ export class AuthService {
     });
 
     return { message: 'Password updated successfully' };
+  }
+
+  async verifyEmail(email: string, code: string) {
+    // Check if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        storeId: true,
+        phone: true,
+        documentType: true,
+        documentValue: true,
+        emailVerified: true,
+        emailConfirmationCode: true,
+        emailConfirmationExpires: true,
+      }
+    });
+
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+
+    // Check if email is already verified
+    if (user.emailVerified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    // Check if code exists and is not expired
+    if (!user.emailConfirmationCode || !user.emailConfirmationExpires) {
+      throw new BadRequestException('No confirmation code found or code has expired');
+    }
+
+    if (user.emailConfirmationCode !== code) {
+      throw new BadRequestException('Invalid confirmation code');
+    }
+
+    if (new Date() > user.emailConfirmationExpires) {
+      throw new BadRequestException('Confirmation code has expired');
+    }
+
+    // Update user to verified
+    await this.prisma.user.update({
+      where: { email },
+      data: {
+        emailVerified: true,
+        emailConfirmationCode: null,
+        emailConfirmationExpires: null,
+      },
+    });
+
+    // Generate tokens (same as login)
+    const userData = {
+      id: user.id,
+      storeId: user.storeId,
+      email: user.email,
+      phone: user.phone,
+      documentType: user.documentType,
+      documentValue: user.documentValue,
+      name: user.name,
+      role: user.role,
+    };
+
+    const accessToken = await this.jwtService.signAsync(userData, {
+      expiresIn: '10m',
+    });
+    const refreshToken = await this.jwtService.signAsync(userData, {
+      expiresIn: '7d',
+    });
+
+    const expiresIn = 10 * 60;
+
+    return {
+      access: {
+        accessToken,
+        refreshToken,
+        expiresIn,
+      },
+      user: userData,
+    };
   }
 }

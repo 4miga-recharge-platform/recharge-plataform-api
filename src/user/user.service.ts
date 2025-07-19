@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { EmailService } from '../email/email.service';
+import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
 import { validateRequiredFields } from 'src/utils/validation.util';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -8,7 +10,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   private userSelect = {
     id: true,
@@ -63,12 +68,36 @@ export class UserService {
         'documentValue',
         'storeId',
       ]);
-      const data = { ...rest, password: await bcrypt.hash(dto.password, 10) };
-      return await this.prisma.user.create({ data, select: this.userSelect });
+
+      // Generate email confirmation code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
+
+      const data = {
+        ...rest,
+        password: await bcrypt.hash(dto.password, 10),
+        emailConfirmationCode: code,
+        emailConfirmationExpires: expiresAt,
+        emailVerified: false,
+      };
+
+      const user = await this.prisma.user.create({ data, select: this.userSelect });
+
+      // Send confirmation email
+      const html = getEmailConfirmationTemplate(code, dto.name);
+      await this.emailService.sendEmail(
+        dto.email,
+        'Confirme seu cadastro',
+        html
+      );
+
+      return user;
     } catch (error) {
       throw new BadRequestException('Failed to create user');
     }
   }
+
+
 
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     try {
