@@ -1,0 +1,4 @@
+# Force Railway to rebuild
+node_modules
+.git
+.env
