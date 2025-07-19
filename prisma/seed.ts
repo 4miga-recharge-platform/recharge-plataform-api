@@ -103,7 +103,9 @@ async function main() {
       documentType: 'cpf',
       documentValue: '123.456.789-00',
       role: 'USER',
-      emailVerified: true,
+      emailVerified: true, // Já verificado para não enviar email
+      emailConfirmationCode: null, // Sem código de confirmação
+      emailConfirmationExpires: null, // Sem expiração
       storeId: store.id,
     },
   });
@@ -172,7 +174,7 @@ async function main() {
     });
   }
 
-  console.log('Seed finalizado!');
+  console.log('Finished!');
 }
 
 main()
