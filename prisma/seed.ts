@@ -103,6 +103,7 @@ async function main() {
       documentType: 'cpf',
       documentValue: '123.456.789-00',
       role: 'USER',
+      emailVerified: true,
       storeId: store.id,
     },
   });

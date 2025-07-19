@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { validateRequiredFields } from 'src/utils/validation.util';
 import { EmailService } from '../email/email.service';
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
-import { validateRequiredFields } from 'src/utils/validation.util';
-import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './entities/user.entity';
 
 @Injectable()
 export class UserService {
@@ -55,10 +55,7 @@ export class UserService {
 
   async create(dto: CreateUserDto): Promise<User> {
     try {
-      if (dto.password !== dto.confirmPassword) {
-        throw new BadRequestException('Passwords do not match');
-      }
-      const { confirmPassword, ...rest } = dto;
+      const { ...rest } = dto;
       validateRequiredFields(rest, [
         'name',
         'email',
@@ -81,14 +78,17 @@ export class UserService {
         emailVerified: false,
       };
 
-      const user = await this.prisma.user.create({ data, select: this.userSelect });
+      const user = await this.prisma.user.create({
+        data,
+        select: this.userSelect,
+      });
 
       // Send confirmation email
       const html = getEmailConfirmationTemplate(code, dto.name);
       await this.emailService.sendEmail(
         dto.email,
         'Confirme seu cadastro',
-        html
+        html,
       );
 
       return user;
@@ -97,15 +97,10 @@ export class UserService {
     }
   }
 
-
-
   async update(id: string, dto: UpdateUserDto): Promise<User> {
     try {
       await this.findOne(id);
-      if (dto.password !== dto.confirmPassword) {
-        throw new BadRequestException('Passwords do not match');
-      }
-      const { confirmPassword, ...rest } = dto;
+      const { ...rest } = dto;
       Object.entries(rest).forEach(([key, value]) => {
         if (typeof value === 'string' && value.trim() === '') {
           throw new BadRequestException(`Field '${key}' cannot be empty`);
@@ -116,7 +111,9 @@ export class UserService {
         where: { id },
         data: {
           ...data,
-          ...(dto.password && { password: await bcrypt.hash(dto.password, 10) }),
+          ...(dto.password && {
+            password: await bcrypt.hash(dto.password, 10),
+          }),
         },
         select: this.userSelect,
       });

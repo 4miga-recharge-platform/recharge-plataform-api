@@ -36,15 +36,6 @@ export class CreateUserDto {
   })
   password: string;
 
-  @IsString()
-  @MinLength(6)
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Password confirmation (must match password)',
-    example: 'strongPassword123',
-  })
-  confirmPassword: string;
-
   @IsEnum(['cpf', 'cnpj'])
   @ApiProperty({
     description: 'Document type: cpf or cnpj',
