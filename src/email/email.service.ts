@@ -15,8 +15,7 @@ export class EmailService {
 
     console.log('Inicializando Resend com API key:', apiKey.substring(0, 10) + '...');
     this.resend = new Resend(apiKey);
-    // Tentar usar um domínio de teste do Resend
-    this.fromEmail = 'noreply@resend.dev';
+    this.fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@4miga.games';
   }
 
   async sendEmail(to: string, subject: string, html: string) {

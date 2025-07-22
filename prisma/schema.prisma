@@ -38,7 +38,7 @@ model User {
   phone                    String
   password                 String
   documentType             IndividualType
-  documentValue            String
+  documentValue            String         @unique
   role                     UserRole       @default(USER)
   emailVerified            Boolean        @default(false)
   emailConfirmationCode    String?
