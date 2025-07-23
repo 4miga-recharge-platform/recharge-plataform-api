@@ -1,34 +1,27 @@
-FROM node:18-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm install --ignore-scripts
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
 COPY . .
 
-# Generate Prisma client
 RUN npx prisma generate
-
-# Build the application
 RUN npm run build
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nestjs
+FROM node:20-alpine
 
-# Change ownership of the app directory
-RUN chown -R nestjs:nodejs /app
+WORKDIR /app
 
-USER nestjs
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm install --omit=dev --ignore-scripts
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 3333
-
-ENV NODE_ENV=production
-ENV PORT=3333
 
 CMD ["node", "dist/main.js"]

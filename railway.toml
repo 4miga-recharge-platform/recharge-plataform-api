@@ -1,9 +1,12 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
 
 [deploy]
-startCommand = "npx prisma migrate deploy && npm run start:railway"
-healthcheckPath = "/health"
+startCommand = "npx prisma migrate deploy && node dist/main.js"
+healthcheckPath = "/ping"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+
+[[services]]
+internal_port = 3333
