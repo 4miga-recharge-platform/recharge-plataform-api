@@ -254,7 +254,6 @@ export class AuthService {
         documentValue: true,
         emailVerified: true,
         emailConfirmationCode: true,
-        emailConfirmationExpires: true,
       }
     });
 
@@ -267,17 +266,13 @@ export class AuthService {
       throw new BadRequestException('Email is already verified');
     }
 
-    // Check if code exists and is not expired
-    if (!user.emailConfirmationCode || !user.emailConfirmationExpires) {
-      throw new BadRequestException('No confirmation code found or code has expired');
+    // Check if code exists
+    if (!user.emailConfirmationCode) {
+      throw new BadRequestException('No confirmation code found');
     }
 
     if (user.emailConfirmationCode !== code) {
       throw new BadRequestException('Invalid confirmation code');
-    }
-
-    if (new Date() > user.emailConfirmationExpires) {
-      throw new BadRequestException('Confirmation code has expired');
     }
 
     // Update user to verified
@@ -286,7 +281,6 @@ export class AuthService {
       data: {
         emailVerified: true,
         emailConfirmationCode: null,
-        emailConfirmationExpires: null,
       },
     });
 

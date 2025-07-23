@@ -42,7 +42,6 @@ model User {
   role                     UserRole       @default(USER)
   emailVerified            Boolean        @default(false)
   emailConfirmationCode    String?
-  emailConfirmationExpires DateTime?
   resetPasswordCode        String?
   resetPasswordExpires     DateTime?
   createdAt                DateTime       @default(now())

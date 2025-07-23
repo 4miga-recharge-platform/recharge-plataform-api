@@ -68,13 +68,11 @@ export class UserService {
 
       // Generate email confirmation code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
 
       const data = {
         ...rest,
         password: await bcrypt.hash(dto.password, 10),
         emailConfirmationCode: code,
-        emailConfirmationExpires: expiresAt,
         emailVerified: false,
       };
 
