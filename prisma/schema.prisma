@@ -17,7 +17,10 @@ model Store {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
-  password     String
+  wppNumber    String?  @unique
+  instagramUrl String?
+  facebookUrl  String?
+  tiktokUrl    String?
   logoUrl      String?
   miniLogoUrl  String?
   faviconUrl   String?

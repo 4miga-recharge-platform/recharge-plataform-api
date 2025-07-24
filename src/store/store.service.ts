@@ -14,7 +14,15 @@ export class StoreService {
     id: true,
     name: true,
     email: true,
-    password: false,
+    wppNumber: true,
+    instagramUrl: true,
+    facebookUrl: true,
+    tiktokUrl: true,
+    logoUrl: true,
+    miniLogoUrl: true,
+    faviconUrl: true,
+    bannersUrl: true,
+    onSaleUrlImg: true,
     createdAt: false,
     updatedAt: false,
     users: false,
@@ -66,7 +74,7 @@ export class StoreService {
       await this.findOne(id);
       const { confirmPassword, ...rest } = dto;
       Object.entries(rest).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.trim() === '') {
+        if (value !== undefined && typeof value === 'string' && value.trim() === '') {
           throw new BadRequestException(`Field '${key}' cannot be empty`);
         }
       });

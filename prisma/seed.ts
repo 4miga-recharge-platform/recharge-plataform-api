@@ -3,12 +3,26 @@ const prisma = new PrismaClient()
 import * as bcrypt from 'bcrypt';
 
 async function main() {
-  // 1. Cria a Store
-  const store = await prisma.store.create({
+  // 1. Cria as Stores
+  const store1 = await prisma.store.create({
     data: {
-      name: 'Loja Exemplo',
-      email: 'loja@exemplo.com',
-      password: 'senhaSuperSecreta',
+      name: 'Loja Exemplo 1',
+      email: 'loja1@exemplo.com',
+      wppNumber: '11999999999',
+      instagramUrl: 'https://www.instagram.com/lojaexemplo1',
+      facebookUrl: 'https://www.facebook.com/lojaexemplo1',
+      tiktokUrl: 'https://www.tiktok.com/@lojaexemplo1',
+    },
+  });
+
+  const store2 = await prisma.store.create({
+    data: {
+      name: 'Loja Exemplo 2',
+      email: 'loja2@exemplo.com',
+      wppNumber: '11888888888',
+      instagramUrl: 'https://www.instagram.com/lojaexemplo2',
+      facebookUrl: 'https://www.facebook.com/lojaexemplo2',
+      tiktokUrl: 'https://www.tiktok.com/@lojaexemplo2',
     },
   });
 
@@ -60,44 +74,49 @@ async function main() {
     { amountCredits: 1400000, name: "1.400.000 Coins Poppo", imgCardUrl: "https://i.imgur.com/NPIiDId.png", isOffer: true, basePrice: 22.5 },
   ];
 
-  // Create packages for Bigo Live
-  if (bigoProduct) {
-    for (const pkg of bigoPackages) {
-      await prisma.package.create({
-        data: {
-          ...pkg,
-          productId: bigoProduct.id,
-          storeId: store.id,
-          paymentMethods: {
-            create: [{ name: 'pix', price: pkg.basePrice }],
+  // Create packages for both stores
+  const stores = [store1, store2];
+
+  for (const store of stores) {
+    // Create packages for Bigo Live
+    if (bigoProduct) {
+      for (const pkg of bigoPackages) {
+        await prisma.package.create({
+          data: {
+            ...pkg,
+            productId: bigoProduct.id,
+            storeId: store.id,
+            paymentMethods: {
+              create: [{ name: 'pix', price: pkg.basePrice }],
+            },
           },
-        },
-      });
+        });
+      }
+    }
+
+    // Create packages for Poppo Live
+    if (poppoProduct) {
+      for (const pkg of poppoPackages) {
+        await prisma.package.create({
+          data: {
+            ...pkg,
+            productId: poppoProduct.id,
+            storeId: store.id,
+            paymentMethods: {
+              create: [{ name: 'pix', price: pkg.basePrice }],
+            },
+          },
+        });
+      }
     }
   }
 
-  // Create packages for Poppo Live
-  if (poppoProduct) {
-    for (const pkg of poppoPackages) {
-      await prisma.package.create({
-        data: {
-          ...pkg,
-          productId: poppoProduct.id,
-          storeId: store.id,
-          paymentMethods: {
-            create: [{ name: 'pix', price: pkg.basePrice }],
-          },
-        },
-      });
-    }
-  }
-
-  // 4. Cria 1 usuário
+  // 4. Cria usuários para ambas as lojas
   const password = await bcrypt.hash('Babebi22*', 10)
-  const user = await prisma.user.create({
+  const user1 = await prisma.user.create({
     data: {
-      name: 'Cliente Exemplo',
-      email: 'cliente@exemplo.com',
+      name: 'Cliente Exemplo 1',
+      email: 'cliente1@exemplo.com',
       phone: '11999999999',
       password: password,
       documentType: 'cpf',
@@ -105,72 +124,96 @@ async function main() {
       role: 'USER',
       emailVerified: true,
       emailConfirmationCode: null,
-      storeId: store.id,
+      storeId: store1.id,
     },
   });
 
-  // 5. Cria 10 Orders para esse usuário, cada uma com Product e Package aleatórios
-  for (let i = 0; i < 10; i++) {
-    const randomProduct = products[Math.floor(Math.random() * products.length)];
-    const pkgsForProduct = await prisma.package.findMany({
-      where: {
-        productId: randomProduct.id,
-      },
-    });
-    const randomPackage =
-      pkgsForProduct[Math.floor(Math.random() * pkgsForProduct.length)];
+  const user2 = await prisma.user.create({
+    data: {
+      name: 'Cliente Exemplo 2',
+      email: 'cliente2@exemplo.com',
+      phone: '11888888888',
+      password: password,
+      documentType: 'cpf',
+      documentValue: '987.654.321-00',
+      role: 'USER',
+      emailVerified: true,
+      emailConfirmationCode: null,
+      storeId: store2.id,
+    },
+  });
 
-    // Cria Payment
-    const payment = await prisma.payment.create({
-      data: {
-        name: 'pix',
-        status: 'PAYMENT_APPROVED',
-        statusUpdatedAt: new Date(),
-        qrCode: `qrcode${i}`,
-        qrCodetextCopyPaste: `qrcode-copypaste${i}`,
-      },
-    });
+  // 5. Cria 10 Orders para cada usuário, cada uma com Product e Package aleatórios
+  const users = [user1, user2];
+  const storesForOrders = [store1, store2];
 
-    // Cria OrderItem, Recharge, PackageInfo
-    const recharge = await prisma.recharge.create({
-      data: {
-        userIdForRecharge: user.id,
-        status: 'RECHARGE_APPROVED',
-        amountCredits: randomPackage.amountCredits,
-        statusUpdatedAt: new Date(),
-      },
-    });
+  for (let userIndex = 0; userIndex < users.length; userIndex++) {
+    const currentUser = users[userIndex];
+    const currentStore = storesForOrders[userIndex];
 
-    const packageInfo = await prisma.packageInfo.create({
-      data: {
-        packageId: randomPackage.id,
-        name: randomPackage.name,
-        userIdForRecharge: user.id,
-        imgCardUrl: randomPackage.imgCardUrl,
-      },
-    });
+    for (let i = 0; i < 10; i++) {
+      const randomProduct = products[Math.floor(Math.random() * products.length)];
+      const pkgsForProduct = await prisma.package.findMany({
+        where: {
+          productId: randomProduct.id,
+          storeId: currentStore.id,
+        },
+      });
+      const randomPackage =
+        pkgsForProduct[Math.floor(Math.random() * pkgsForProduct.length)];
 
-    const orderItem = await prisma.orderItem.create({
-      data: {
-        productId: randomProduct.id,
-        productName: randomProduct.name,
-        rechargeId: recharge.id,
-        packageId: packageInfo.id,
-      },
-    });
+      // Cria Payment
+      const payment = await prisma.payment.create({
+        data: {
+          name: 'pix',
+          status: 'PAYMENT_APPROVED',
+          statusUpdatedAt: new Date(),
+          qrCode: `qrcode-${userIndex + 1}-${i + 1}`,
+          qrCodetextCopyPaste: `qrcode-copypaste-${userIndex + 1}-${i + 1}`,
+        },
+      });
 
-    // Cria Order
-    await prisma.order.create({
-      data: {
-        orderNumber: `ORDER-${i + 1}`,
-        price: randomPackage.basePrice,
-        orderStatus: 'COMPLETED',
-        paymentId: payment.id,
-        orderItemId: orderItem.id,
-        storeId: store.id,
-        userId: user.id,
-      },
-    });
+      // Cria OrderItem, Recharge, PackageInfo
+      const recharge = await prisma.recharge.create({
+        data: {
+          userIdForRecharge: currentUser.id,
+          status: 'RECHARGE_APPROVED',
+          amountCredits: randomPackage.amountCredits,
+          statusUpdatedAt: new Date(),
+        },
+      });
+
+      const packageInfo = await prisma.packageInfo.create({
+        data: {
+          packageId: randomPackage.id,
+          name: randomPackage.name,
+          userIdForRecharge: currentUser.id,
+          imgCardUrl: randomPackage.imgCardUrl,
+        },
+      });
+
+      const orderItem = await prisma.orderItem.create({
+        data: {
+          productId: randomProduct.id,
+          productName: randomProduct.name,
+          rechargeId: recharge.id,
+          packageId: packageInfo.id,
+        },
+      });
+
+      // Cria Order
+      await prisma.order.create({
+        data: {
+          orderNumber: `ORDER-${userIndex + 1}-${i + 1}`,
+          price: randomPackage.basePrice,
+          orderStatus: 'COMPLETED',
+          paymentId: payment.id,
+          orderItemId: orderItem.id,
+          storeId: currentStore.id,
+          userId: currentUser.id,
+        },
+      });
+    }
   }
 
   console.log('Finished!');
