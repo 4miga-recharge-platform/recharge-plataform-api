@@ -19,3 +19,6 @@
 
 ## DELETE /user/:id
 - Failed to remove user
+
+## POST /user/cleanup-unverified
+- (No specific BadRequestException - returns success message)

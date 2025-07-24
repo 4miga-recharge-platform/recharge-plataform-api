@@ -19,6 +19,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendEmailConfirmationDto } from './dto/resend-email-confirmation.dto';
 import { LoggedUser } from './logged-user.decorator';
 
 @Controller('auth')
@@ -69,6 +70,12 @@ export class AuthController {
   @ApiOperation({ summary: 'Verify user email with confirmation code' })
   async verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.authService.verifyEmail(dto.email, dto.code);
+  }
+
+  @Post('resend-email-confirmation')
+  @ApiOperation({ summary: 'Resend email confirmation code' })
+  async resendEmailConfirmation(@Body() dto: ResendEmailConfirmationDto) {
+    return this.authService.resendEmailConfirmation(dto.email);
   }
 
   @Get('token')

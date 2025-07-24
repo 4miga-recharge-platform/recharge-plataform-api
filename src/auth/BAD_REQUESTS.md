@@ -27,6 +27,10 @@
 ## POST /auth/verify-email
 - User with this email does not exist
 - Email is already verified
-- No confirmation code found or code has expired
+- No confirmation code found
 - Invalid confirmation code
 - Confirmation code has expired
+
+## POST /auth/resend-email-confirmation
+- User with this email does not exist
+- Email is already verified

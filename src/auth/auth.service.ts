@@ -7,6 +7,7 @@ import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailService } from '../email/email.service';
 import { getPasswordResetTemplate } from '../email/templates/password-reset.template';
+import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
 
 @Injectable()
 export class AuthService {
@@ -275,12 +276,26 @@ export class AuthService {
       throw new BadRequestException('Invalid confirmation code');
     }
 
+    // Check if code has expired
+    const userWithExpiration = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        emailConfirmationExpires: true,
+      }
+    });
+
+    if (userWithExpiration?.emailConfirmationExpires &&
+        new Date() > userWithExpiration.emailConfirmationExpires) {
+      throw new BadRequestException('Confirmation code has expired');
+    }
+
     // Update user to verified
     await this.prisma.user.update({
       where: { email },
       data: {
         emailVerified: true,
         emailConfirmationCode: null,
+        emailConfirmationExpires: null,
       },
     });
 
@@ -312,6 +327,55 @@ export class AuthService {
         expiresIn,
       },
       user: userData,
+    };
+  }
+
+  async resendEmailConfirmation(email: string) {
+    // Check if user exists and is not verified
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailVerified: true,
+      }
+    });
+
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    // Generate new confirmation code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Set new expiration time to 24 hours from now
+    const emailConfirmationExpires = new Date();
+    emailConfirmationExpires.setHours(emailConfirmationExpires.getHours() + 24);
+
+    // Update user with new code and expiration
+    await this.prisma.user.update({
+      where: { email },
+      data: {
+        emailConfirmationCode: code,
+        emailConfirmationExpires,
+      },
+    });
+
+    // Send new confirmation email
+    const html = getEmailConfirmationTemplate(code, user.name);
+    await this.emailService.sendEmail(
+      email,
+      'Confirme seu cadastro - Novo código',
+      html,
+    );
+
+    return {
+      message: 'New confirmation code sent successfully',
     };
   }
 }
