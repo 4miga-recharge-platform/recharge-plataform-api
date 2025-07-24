@@ -25,9 +25,12 @@ export class PackageService {
   };
 
   // master admin only access
-  async findAll(): Promise<any[]> {
+  async findAll(storeId: string): Promise<any[]> {
     try {
-      return await this.prisma.package.findMany({ select: this.packageSelect });
+      return await this.prisma.package.findMany({
+        where: { storeId },
+        select: this.packageSelect
+      });
     } catch (error) {
       throw new BadRequestException('Failed to fetch packages');
     }

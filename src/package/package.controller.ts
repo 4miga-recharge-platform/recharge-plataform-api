@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PackageService } from './package.service';
@@ -19,9 +20,9 @@ export class PackageController {
   constructor(private readonly packageService: PackageService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all packages' })
-  findAll() {
-    return this.packageService.findAll();
+  @ApiOperation({ summary: 'Get all packages from a specific store' })
+  findAll(@Query('storeId') storeId: string) {
+    return this.packageService.findAll(storeId);
   }
 
   @Post()

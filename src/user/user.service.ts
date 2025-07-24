@@ -29,9 +29,12 @@ export class UserService {
     storeId: true,
   };
 
-  async findAll(): Promise<User[]> {
+  async findAll(storeId: string): Promise<User[]> {
     try {
-      const data = await this.prisma.user.findMany({ select: this.userSelect });
+      const data = await this.prisma.user.findMany({
+        where: { storeId },
+        select: this.userSelect
+      });
       return data;
     } catch (error) {
       throw new BadRequestException('Failed to fetch users');
