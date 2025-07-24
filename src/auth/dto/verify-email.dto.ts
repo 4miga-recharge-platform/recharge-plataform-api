@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Length } from 'class-validator';
+import { IsEmail, IsString, Length, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class VerifyEmailDto {
@@ -16,4 +16,12 @@ export class VerifyEmailDto {
   @IsString()
   @Length(6, 6)
   code: string;
+
+  @IsString()
+  @IsUUID()
+  @ApiProperty({
+    description: 'store id',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  storeId: string;
 }
