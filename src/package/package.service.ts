@@ -90,22 +90,8 @@ export class PackageService {
   async update(id: string, dto: UpdatePackageDto): Promise<any> {
     try {
       await this.findOne(id);
-
-      // Validate empty fields more robustly
-      Object.entries(dto).forEach(([key, value]) => {
-        // For strings
-        if (typeof value === 'string' && value.trim() === '') {
-          throw new BadRequestException(`Field '${key}' cannot be empty`);
-        }
-        // For numbers (check if not null/undefined)
-        if (typeof value === 'number' && (value === null || value === undefined)) {
-          throw new BadRequestException(`Field '${key}' cannot be empty`);
-        }
-        // For boolean (check if not null/undefined)
-        if (typeof value === 'boolean' && (value === null || value === undefined)) {
-          throw new BadRequestException(`Field '${key}' cannot be empty`);
-        }
-      });
+      const fieldsToValidate = Object.keys(dto).filter(key => dto[key] !== undefined);
+      validateRequiredFields(dto, fieldsToValidate);
 
       if (dto.productId) {
         const product = await this.prisma.product.findUnique({

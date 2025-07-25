@@ -120,11 +120,8 @@ export class ProductService {
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     try {
       await this.findOne(id, '');
-      Object.entries(dto).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.trim() === '') {
-          throw new BadRequestException(`Field '${key}' cannot be empty`);
-        }
-      });
+      const fieldsToValidate = Object.keys(dto).filter(key => dto[key] !== undefined);
+      validateRequiredFields(dto, fieldsToValidate);
       return await this.prisma.product.update({
         where: { id },
         data: dto,

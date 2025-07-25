@@ -107,11 +107,8 @@ export class UserService {
     try {
       await this.findOne(id);
       const { ...rest } = dto;
-      Object.entries(rest).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.trim() === '') {
-          throw new BadRequestException(`Field '${key}' cannot be empty`);
-        }
-      });
+      const fieldsToValidate = Object.keys(rest).filter(key => rest[key] !== undefined);
+      validateRequiredFields(rest, fieldsToValidate);
       const data = { ...rest };
       return await this.prisma.user.update({
         where: { id },

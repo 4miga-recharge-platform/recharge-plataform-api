@@ -73,11 +73,8 @@ export class StoreService {
     try {
       await this.findOne(id);
       const { confirmPassword, ...rest } = dto;
-      Object.entries(rest).forEach(([key, value]) => {
-        if (value !== undefined && typeof value === 'string' && value.trim() === '') {
-          throw new BadRequestException(`Field '${key}' cannot be empty`);
-        }
-      });
+      const fieldsToValidate = Object.keys(rest).filter(key => rest[key] !== undefined);
+      validateRequiredFields(rest, fieldsToValidate);
       const data = { ...rest };
       return await this.prisma.store.update({
         where: { id },
