@@ -10,7 +10,7 @@
 ## POST /store
 - Passwords do not match
 - Failed to create store
-- Field '{field}' is required and cannot be empty (validação util)
+- Field '{field}' cannot be empty
 
 ## PATCH /store/:id
 - Failed to update store

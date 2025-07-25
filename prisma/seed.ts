@@ -3,7 +3,16 @@ const prisma = new PrismaClient()
 import * as bcrypt from 'bcrypt';
 
 async function main() {
-  // 1. Cria as Stores
+  // 0. Clear all existing data
+  console.log('🧹 Limpando dados existentes...');
+  await prisma.order.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.package.deleteMany();
+  await prisma.store.deleteMany();
+  await prisma.product.deleteMany();
+  console.log('✅ Dados limpos!');
+
+  // 1. Stores
   const store1 = await prisma.store.create({
     data: {
       name: 'Loja Exemplo 1',
@@ -26,7 +35,7 @@ async function main() {
     },
   });
 
-  // 2. Cria 2 Products específicos
+  // 2. Create 2 specific Products
   const products = [
     await prisma.product.create({
       data: {
@@ -111,7 +120,7 @@ async function main() {
     }
   }
 
-  // 4. Cria usuários para ambas as lojas
+  // 4. Create users for both stores
   const password = await bcrypt.hash('Babebi22*', 10)
   const user1 = await prisma.user.create({
     data: {
@@ -143,7 +152,7 @@ async function main() {
     },
   });
 
-  // 5. Cria 10 Orders para cada usuário, cada uma com Product e Package aleatórios
+  // 5. Create 10 Orders for each user, each with random Product and Package
   const users = [user1, user2];
   const storesForOrders = [store1, store2];
 
@@ -162,7 +171,7 @@ async function main() {
       const randomPackage =
         pkgsForProduct[Math.floor(Math.random() * pkgsForProduct.length)];
 
-      // Cria Payment
+      // Payment
       const payment = await prisma.payment.create({
         data: {
           name: 'pix',
@@ -173,7 +182,7 @@ async function main() {
         },
       });
 
-      // Cria OrderItem, Recharge, PackageInfo
+      // OrderItem, Recharge, PackageInfo
       const recharge = await prisma.recharge.create({
         data: {
           userIdForRecharge: currentUser.id,
@@ -201,7 +210,7 @@ async function main() {
         },
       });
 
-      // Cria Order
+      // Order
       await prisma.order.create({
         data: {
           orderNumber: `ORDER-${userIndex + 1}-${i + 1}`,

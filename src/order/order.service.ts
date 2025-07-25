@@ -27,7 +27,7 @@ export class OrderService {
         this.prisma.order.findMany({
           where: {
             storeId: user.storeId,
-            userId, // Filter only the user's orders
+            userId
           },
           include: {
             payment: true,
@@ -73,7 +73,7 @@ export class OrderService {
       const order = await this.prisma.order.findFirst({
         where: {
           id,
-          userId, // Garante que o usuário só veja seus próprios pedidos
+          userId, // Ensures user only sees their own orders
         },
         include: {
           payment: true,
@@ -100,7 +100,6 @@ export class OrderService {
   }
 
   async create(createOrderDto: CreateOrderDto, userId: string) {
-    // Validação dos campos obrigatórios
     validateRequiredFields(createOrderDto, [
       'storeId',
       'packageId',
@@ -110,7 +109,7 @@ export class OrderService {
     const { storeId, packageId, paymentMethodId, userIdForRecharge } = createOrderDto;
 
     try {
-      // Verifica se o usuário pertence à loja
+      // Check if user belongs to the store
       const user = await this.prisma.user.findFirst({
         where: {
           id: userId,
@@ -122,7 +121,7 @@ export class OrderService {
         throw new ForbiddenException('User does not belong to this store');
       }
 
-      // Busca o pacote e o método de pagamento
+      // Fetch package and payment method
       const packageData = await this.prisma.package.findUnique({
         where: { id: packageId },
         include: {
@@ -139,7 +138,7 @@ export class OrderService {
         throw new NotFoundException('Package not found');
       }
 
-      // Verifica se o pacote pertence à loja
+      // Check if package belongs to the store
       if (packageData.storeId !== storeId) {
         throw new BadRequestException('Package does not belong to this store');
       }
@@ -152,9 +151,9 @@ export class OrderService {
 
       const paymentMethod = packageData.paymentMethods[0];
 
-      // Executa todas as operações em uma única transação
+      // Execute all operations in a single transaction
       return await this.prisma.$transaction(async (tx) => {
-        // 1. Cria PackageInfo (snapshot do pacote)
+        // 1. Create PackageInfo (package snapshot)
         const packageInfo = await tx.packageInfo.create({
           data: {
             packageId: packageData.id,
@@ -164,7 +163,7 @@ export class OrderService {
           },
         });
 
-        // 2. Cria Recharge
+        // 2. Recharge
         const recharge = await tx.recharge.create({
           data: {
             userIdForRecharge,
@@ -174,7 +173,7 @@ export class OrderService {
           },
         });
 
-        // 3. Cria OrderItem
+        // 3. OrderItem
         const orderItem = await tx.orderItem.create({
           data: {
             productId: packageData.productId,
@@ -184,7 +183,7 @@ export class OrderService {
           },
         });
 
-        // 4. Cria Payment
+        // 4. Payment
         const payment = await tx.payment.create({
           data: {
             name: paymentMethod.name,
@@ -198,22 +197,22 @@ export class OrderService {
         let orderNumber;
         let existingOrder;
         do {
-          // Gera um número aleatório de 12 dígitos
-          orderNumber = this.generateOrderNumber();
-          // Verifica se já existe
+        // Generate a random 12-digit number
+        orderNumber = this.generateOrderNumber();
+        // Check if it already exists
           existingOrder = await tx.order.findUnique({
             where: { orderNumber },
           });
-        } while (existingOrder); // Repete se já existir
+        } while (existingOrder); // Repeat if it already exists
 
-        // 5. Finalmente, cria Order
+        // 5. Create Order
         const order = await tx.order.create({
           data: {
             orderNumber,
             price: paymentMethod.price,
             orderStatus: OrderStatus.CREATED,
             storeId,
-            userId, // Adiciona o ID do usuário que criou o pedido
+            userId,
             paymentId: payment.id,
             orderItemId: orderItem.id,
           },
@@ -232,7 +231,7 @@ export class OrderService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // Trata erros específicos do Prisma
+        // Handle specific Prisma errors
         if (error.code === 'P2002') {
           throw new BadRequestException('Unique constraint violation');
         }
@@ -246,19 +245,29 @@ export class OrderService {
   }
 
   private generateOrderNumber(): string {
-    // Gera um número aleatório de 12 dígitos
-    const min = 100000000000; // 12 dígitos (começando com 1)
-    const max = 999999999999; // 12 dígitos (todos 9)
+  // Generate a random 12-digit number
+  const min = 100000000000; // 12 digits (starting with 1)
+  const max = 999999999999; // 12 digits (all 9s)
     return randomInt(min, max).toString();
   }
 
   private async generatePixQRCode(amount: number): Promise<string> {
-    // Aqui você implementaria a lógica real de geração do QR Code
+    // Here you would implement the real QR Code generation logic
     return `qrcode${amount}`;
   }
 
   private async generatePixCopyPaste(amount: number): Promise<string> {
-    // Aqui você implementaria a lógica real de geração do código PIX Copia e Cola
+    //
+    //
+    //
+    //
+    //
+    // Here you would implement the real PIX Copy and Paste code generation logic
+    //
+    //
+    //
+    //
+    //
     return `qrcode-copypaste${amount}`;
   }
 }

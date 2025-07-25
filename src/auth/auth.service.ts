@@ -225,7 +225,7 @@ export class AuthService {
       },
     });
 
-    // Buscar usuário atualizado
+    // Fetch updated user
     const updatedUser = await this.prisma.user.findFirst({
       where: {
         email,
@@ -237,7 +237,7 @@ export class AuthService {
       throw new BadRequestException('User not found after password reset');
     }
 
-    // Montar dados do usuário (igual login)
+    // Build user data (same as login)
     const data = {
       id: updatedUser.id,
       storeId: updatedUser.storeId,
@@ -268,7 +268,6 @@ export class AuthService {
   }
 
   async verifyEmail(email: string, code: string, storeId: string) {
-    // Check if user exists
     const user = await this.prisma.user.findFirst({
       where: {
         email,

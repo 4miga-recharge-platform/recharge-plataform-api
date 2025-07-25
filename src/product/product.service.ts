@@ -18,7 +18,7 @@ export class ProductService {
     instructions: true,
     imgBannerUrl: true,
     imgCardUrl: true,
-    packages: false, // Não buscar packages diretamente
+    packages: false,
     createdAt: false,
     updatedAt: false,
   };
@@ -27,7 +27,7 @@ export class ProductService {
   async findAll(storeId: string): Promise<any[]> {
     try {
       const products = await this.prisma.product.findMany({ select: this.productSelect });
-      // Para cada produto, buscar os packages relacionados ao storeId e incluir paymentMethods
+      // For each product, fetch related packages by storeId and include paymentMethods
       const productsWithPackages = await Promise.all(
         products.map(async (product) => {
           const packages = await this.prisma.package.findMany({
@@ -67,7 +67,6 @@ export class ProductService {
     }
   }
 
-  // admin only access - retorna produtos sem packages
   async findAllForAdmin(): Promise<Product[]> {
     try {
       return await this.prisma.product.findMany({ select: this.productSelect });
@@ -85,7 +84,7 @@ export class ProductService {
       if (!product) {
         throw new BadRequestException('Product not found');
       }
-      // Buscar os packages relacionados ao storeId e incluir paymentMethods
+      // Fetch packages related to storeId and include paymentMethods
       const packages = await this.prisma.package.findMany({
         where: {
           productId: product.id,
@@ -120,7 +119,7 @@ export class ProductService {
 
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     try {
-      await this.findOne(id, ''); // Verificar se o produto existe
+      await this.findOne(id, '');
       Object.entries(dto).forEach(([key, value]) => {
         if (typeof value === 'string' && value.trim() === '') {
           throw new BadRequestException(`Field '${key}' cannot be empty`);
@@ -138,7 +137,6 @@ export class ProductService {
 
   async remove(id: string): Promise<Product> {
     try {
-      // Verificar se o produto existe antes de remover
       const product = await this.prisma.product.findUnique({
         where: { id },
         select: this.productSelect,

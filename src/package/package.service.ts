@@ -62,10 +62,10 @@ export class PackageService {
         'storeId'
       ]);
 
-      // Separar paymentMethods do resto dos dados
+      // Separate paymentMethods from the rest of the data
       const { paymentMethods, ...packageData } = dto;
 
-      // Criar package com payment methods se fornecidos
+      // Create package with payment methods if provided
       const createData: any = {
         ...packageData,
         ...(paymentMethods && paymentMethods.length > 0 && {
@@ -91,23 +91,22 @@ export class PackageService {
     try {
       await this.findOne(id);
 
-      // Validar campos vazios de forma mais robusta
+      // Validate empty fields more robustly
       Object.entries(dto).forEach(([key, value]) => {
-        // Para strings
+        // For strings
         if (typeof value === 'string' && value.trim() === '') {
           throw new BadRequestException(`Field '${key}' cannot be empty`);
         }
-        // Para números (verificar se não é null/undefined)
+        // For numbers (check if not null/undefined)
         if (typeof value === 'number' && (value === null || value === undefined)) {
           throw new BadRequestException(`Field '${key}' cannot be empty`);
         }
-        // Para boolean (verificar se não é null/undefined)
+        // For boolean (check if not null/undefined)
         if (typeof value === 'boolean' && (value === null || value === undefined)) {
           throw new BadRequestException(`Field '${key}' cannot be empty`);
         }
       });
 
-      // Validar foreign keys se estiverem sendo atualizadas
       if (dto.productId) {
         const product = await this.prisma.product.findUnique({
           where: { id: dto.productId },
@@ -126,10 +125,10 @@ export class PackageService {
         }
       }
 
-      // Separar paymentMethods do resto dos dados
+      // Separate paymentMethods from the rest of the data
       const { paymentMethods, ...packageData } = dto;
 
-      // Preparar dados para atualização
+      // Prepare data for update
       const updateData: any = {
         ...packageData,
         ...(paymentMethods && paymentMethods.length > 0 && {
