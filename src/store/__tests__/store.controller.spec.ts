@@ -76,8 +76,6 @@ describe('StoreController', () => {
     const createStoreDto: CreateStoreDto = {
       name: 'Nova Loja',
       email: 'nova@loja.com',
-      password: 'SenhaForte123',
-      confirmPassword: 'SenhaForte123',
       wppNumber: '+5511999999999',
       instagramUrl: 'https://instagram.com/novaloja',
     };

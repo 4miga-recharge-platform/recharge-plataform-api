@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
@@ -57,13 +56,11 @@ export class StoreService {
 
   async create(dto: CreateStoreDto): Promise<Store> {
     try {
-      if (dto.password !== dto.confirmPassword) {
-        throw new BadRequestException('Passwords do not match');
-      }
-      const { confirmPassword, ...rest } = dto;
-      validateRequiredFields(rest, ['name', 'email', 'password']);
-      const data = { ...rest, password: await bcrypt.hash(dto.password, 10) };
-      return await this.prisma.store.create({ data, select: this.storeSelect });
+      validateRequiredFields(dto, ['name', 'email']);
+      return await this.prisma.store.create({
+        data: dto,
+        select: this.storeSelect
+      });
     } catch (error) {
       throw new BadRequestException('Failed to create store');
     }
@@ -72,13 +69,11 @@ export class StoreService {
   async update(id: string, dto: UpdateStoreDto): Promise<Store> {
     try {
       await this.findOne(id);
-      const { confirmPassword, ...rest } = dto;
-      const fieldsToValidate = Object.keys(rest).filter(key => rest[key] !== undefined);
-      validateRequiredFields(rest, fieldsToValidate);
-      const data = { ...rest };
+      const fieldsToValidate = Object.keys(dto).filter(key => dto[key] !== undefined);
+      validateRequiredFields(dto, fieldsToValidate);
       return await this.prisma.store.update({
         where: { id },
-        data,
+        data: dto,
         select: this.storeSelect,
       });
     } catch (error) {

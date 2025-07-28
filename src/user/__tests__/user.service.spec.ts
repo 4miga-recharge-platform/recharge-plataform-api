@@ -49,6 +49,7 @@ describe('UserService', () => {
     phone: true,
     documentType: true,
     documentValue: true,
+    emailVerified: true,
     password: false,
     createdAt: false,
     updatedAt: false,

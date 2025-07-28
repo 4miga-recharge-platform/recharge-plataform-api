@@ -143,8 +143,6 @@ describe('StoreService', () => {
     const createStoreDto: CreateStoreDto = {
       name: 'Nova Loja',
       email: 'nova@loja.com',
-      password: 'SenhaForte123',
-      confirmPassword: 'SenhaForte123',
       wppNumber: '+5511999999999',
       instagramUrl: 'https://instagram.com/novaloja',
     };
@@ -161,47 +159,30 @@ describe('StoreService', () => {
       const result = await service.create(createStoreDto);
 
       expect(validateRequiredFields).toHaveBeenCalledWith(
-        {
-          name: createStoreDto.name,
-          email: createStoreDto.email,
-          password: createStoreDto.password,
-          wppNumber: createStoreDto.wppNumber,
-          instagramUrl: createStoreDto.instagramUrl,
-        },
-        ['name', 'email', 'password'],
+        createStoreDto,
+        ['name', 'email'],
       );
 
-      expect(bcrypt.hash).toHaveBeenCalledWith(createStoreDto.password, 10);
-
       expect(prismaService.store.create).toHaveBeenCalledWith({
-        data: {
-          name: createStoreDto.name,
-          email: createStoreDto.email,
-          password: 'hashedPassword',
-          wppNumber: createStoreDto.wppNumber,
-          instagramUrl: createStoreDto.instagramUrl,
-        },
+        data: createStoreDto,
         select: mockStoreSelect,
       });
 
       expect(result).toEqual(mockStore);
     });
 
-    it('should throw BadRequestException when passwords do not match', async () => {
-      const dtoWithMismatch = {
-        ...createStoreDto,
-        confirmPassword: 'DifferentPassword',
-      };
+    it('should throw BadRequestException when validation fails', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {
+        throw new BadRequestException('Validation failed');
+      });
 
-      await expect(service.create(dtoWithMismatch)).rejects.toThrow(
+      await expect(service.create(createStoreDto)).rejects.toThrow(
         new BadRequestException('Failed to create store'),
       );
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      const bcrypt = require('bcrypt');
-      bcrypt.hash.mockResolvedValue('hashedPassword');
-
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 

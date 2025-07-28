@@ -20,22 +20,6 @@ export class CreateStoreDto {
   email: string;
 
   @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Store password',
-    example: 'SenhaForte123',
-  })
-  password: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Confirm password',
-    example: 'SenhaForte123',
-  })
-  confirmPassword: string;
-
-  @IsString()
   @IsOptional()
   @ApiProperty({
     description: 'WhatsApp number',
