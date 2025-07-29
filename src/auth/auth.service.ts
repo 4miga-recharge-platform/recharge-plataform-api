@@ -108,6 +108,7 @@ export class AuthService {
         },
         user: data,
       };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
@@ -123,6 +124,9 @@ export class AuthService {
     });
     if (!user) {
       throw new BadRequestException('User with this email does not exist');
+    }
+    if (!user.emailVerified) {
+      throw new BadRequestException('Email not verified');
     }
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();

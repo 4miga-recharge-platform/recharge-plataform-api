@@ -7,16 +7,19 @@ import {
   Param,
   Delete,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { UserCleanupService } from './user-cleanup.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ValidationInterceptor } from '../common/interceptors/validation.interceptor';
 
 @ApiTags('user')
 @Controller('user')
+@UseInterceptors(ValidationInterceptor)
 export class UserController {
   constructor(
     private readonly userService: UserService,
@@ -40,8 +43,6 @@ export class UserController {
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
-
-
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user by id' })

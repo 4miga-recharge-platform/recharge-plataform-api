@@ -6,6 +6,7 @@
 
 ## POST /auth/refresh
 - (Unauthorized) Invalid or expired refresh token
+- Email not verified
 
 ## POST /auth/forgot-password
 - User with this email does not exist

@@ -14,7 +14,7 @@ jest.mock('bcrypt', () => ({
 
 // Mock validation utility
 jest.mock('../../utils/validation.util', () => ({
-  validateRequiredFields: jest.fn(),
+  validateRequiredFields: jest.fn().mockReturnValue(true),
 }));
 
 // Mock email template
@@ -61,6 +61,7 @@ describe('UserService', () => {
       user: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -176,6 +177,8 @@ describe('UserService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       const { getEmailConfirmationTemplate } = require('../../email/templates/email-confirmation.template');
 
+      // Mock findFirst to return null (user doesn't exist)
+      prismaService.user.findFirst.mockResolvedValue(null);
       prismaService.user.create.mockResolvedValue(mockUser);
       emailService.sendEmail.mockResolvedValue({} as any);
 
@@ -215,7 +218,7 @@ describe('UserService', () => {
 
       expect(emailService.sendEmail).toHaveBeenCalledWith(
         createUserDto.email,
-        'Confirme seu cadastro',
+        'Confirm your registration',
         '<html>Email template</html>',
       );
 

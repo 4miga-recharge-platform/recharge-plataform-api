@@ -70,6 +70,30 @@ export class UserService {
         'storeId',
       ]);
 
+      // Check if user already exists with same email in the same store
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          email: dto.email,
+          storeId: dto.storeId,
+        },
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('User with this email already exists');
+      }
+
+      // Check if user already exists with same document in the same store
+      const existingUserByDocument = await this.prisma.user.findFirst({
+        where: {
+          documentValue: dto.documentValue,
+          storeId: dto.storeId,
+        },
+      });
+
+      if (existingUserByDocument) {
+        throw new BadRequestException('User with this document already exists');
+      }
+
       // Generate email confirmation code
       const code = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -94,12 +118,16 @@ export class UserService {
       const html = getEmailConfirmationTemplate(code, dto.name);
       await this.emailService.sendEmail(
         dto.email,
-        'Confirme seu cadastro',
+        'Confirm your registration',
         html,
       );
 
       return user;
+     
     } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new BadRequestException('Failed to create user');
     }
   }
