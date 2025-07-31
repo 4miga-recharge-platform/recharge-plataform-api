@@ -40,8 +40,6 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Refresh access token using refresh token' })
   async refresh(@Body() body: RefreshTokenDto) {
     return this.authService.refreshAccessToken(body.refreshToken);
