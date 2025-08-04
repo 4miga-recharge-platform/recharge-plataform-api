@@ -1,11 +1,11 @@
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/recharge-api:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/recharge-api:latest', '.']
 
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/recharge-api:$COMMIT_SHA']
+    args: ['push', 'gcr.io/$PROJECT_ID/recharge-api:latest']
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -14,7 +14,7 @@ steps:
       - 'deploy'
       - 'recharge-api'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/recharge-api:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/recharge-api:latest'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -32,8 +32,6 @@ steps:
       - '1'
       - '--set-env-vars'
       - 'NODE_ENV=production'
-      - '--set-env-vars'
-      - 'PORT=3333'
 
 images:
-  - 'gcr.io/$PROJECT_ID/recharge-api:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/recharge-api:latest'
