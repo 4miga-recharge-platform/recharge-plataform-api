@@ -42,8 +42,8 @@ async function main() {
         name: 'Bigo Live',
         description: 'A Bigo Live é uma plataforma de transmissões ao vivo onde usuários compartilham momentos, mostram talentos e interagem em tempo real.',
         instructions: 'Recarregue diamantes da Bigo Live em instantes! Basta informar o ID da sua conta Bigo Live, escolher a quantidade de diamantes que deseja adquirir, finalizar o pagamento, e seus diamantes serão entregues diretamente na sua conta Bigo Live em alguns minutos.',
-        imgBannerUrl: 'https://i.imgur.com/OqYwlo2.png',
-        imgCardUrl: 'https://i.imgur.com/cXxheGY.png',
+        imgBannerUrl: 'https://storage.googleapis.com/4miga-images/products/bigo/wide-banner.png',
+        imgCardUrl: 'https://storage.googleapis.com/4miga-images/products/bigo/card.png',
       },
     }),
     await prisma.product.create({
@@ -51,8 +51,8 @@ async function main() {
         name: 'Poppo Live',
         description: 'A Poppo Live é uma plataforma de transmissões ao vivo onde usuários compartilham momentos, mostram talentos e interagem em tempo real.',
         instructions: 'Recarregue moedas da Poppo Live em instantes! Basta informar o ID da sua conta Poppo Live, escolher a quantidade de moedas que deseja adquirir, finalizar o pagamento, e suas moedas serão entregues diretamente na sua conta Poppo Live em alguns minutos.',
-        imgBannerUrl: 'https://i.imgur.com/WEcY23E.png',
-        imgCardUrl: 'https://i.imgur.com/slLVbbu.png',
+        imgBannerUrl: 'https://storage.googleapis.com/4miga-images/products/poppo/wide-banner.png',
+        imgCardUrl: 'https://storage.googleapis.com/4miga-images/products/poppo/card.png',
       },
     }),
   ];
@@ -63,24 +63,24 @@ async function main() {
 
   // Packages for Bigo Live
   const bigoPackages = [
-    { amountCredits: 50, name: "50 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: false, basePrice: 6.18 },
-    { amountCredits: 100, name: "100 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: false, basePrice: 12.59 },
-    { amountCredits: 200, name: "200 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: true, basePrice: 25.35 },
-    { amountCredits: 500, name: "500 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: true, basePrice: 62.81 },
-    { amountCredits: 1000, name: "1000 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: true, basePrice: 123.44 },
-    { amountCredits: 2000, name: "2000 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: false, basePrice: 251.18 },
-    { amountCredits: 5000, name: "5000 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: true, basePrice: 613.86 },
-    { amountCredits: 10000, name: "10000 Diamonds Bigo", imgCardUrl: "https://i.imgur.com/0CEHULk.png", isOffer: true, basePrice: 1220.13 },
+    { amountCredits: 50, name: "50 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: false, basePrice: 6.18 },
+    { amountCredits: 100, name: "100 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: false, basePrice: 12.59 },
+    { amountCredits: 200, name: "200 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: true, basePrice: 25.35 },
+    { amountCredits: 500, name: "500 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: true, basePrice: 62.81 },
+    { amountCredits: 1000, name: "1000 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: true, basePrice: 123.44 },
+    { amountCredits: 2000, name: "2000 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: false, basePrice: 251.18 },
+    { amountCredits: 5000, name: "5000 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: true, basePrice: 613.86 },
+    { amountCredits: 10000, name: "10000 Diamonds Bigo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/bigo/package.png", isOffer: true, basePrice: 1220.13 },
   ];
 
   // Packages for Poppo Live
   const poppoPackages = [
-    { amountCredits: 35000, name: "35.000 Coins Poppo", imgCardUrl: "https://i.imgur.com/NPIiDId.png", isOffer: true, basePrice: 22.5 },
-    { amountCredits: 70000, name: "70.000 Coins Poppo", imgCardUrl: "https://i.imgur.com/NPIiDId.png", isOffer: true, basePrice: 22.5 },
-    { amountCredits: 210000, name: "210.000 Coins Poppo", imgCardUrl: "https://i.imgur.com/NPIiDId.png", isOffer: true, basePrice: 22.5 },
-    { amountCredits: 350000, name: "350.000 Coins Poppo", imgCardUrl: "https://i.imgur.com/NPIiDId.png", isOffer: true, basePrice: 22.5 },
-    { amountCredits: 700000, name: "700.000 Coins Poppo", imgCardUrl: "https://i.imgur.com/NPIiDId.png", isOffer: true, basePrice: 22.5 },
-    { amountCredits: 1400000, name: "1.400.000 Coins Poppo", imgCardUrl: "https://i.imgur.com/NPIiDId.png", isOffer: true, basePrice: 22.5 },
+    { amountCredits: 35000, name: "35.000 Coins Poppo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/poppo/package.png", isOffer: true, basePrice: 22.5 },
+    { amountCredits: 70000, name: "70.000 Coins Poppo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/poppo/package.png", isOffer: true, basePrice: 22.5 },
+    { amountCredits: 210000, name: "210.000 Coins Poppo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/poppo/package.png", isOffer: true, basePrice: 22.5 },
+    { amountCredits: 350000, name: "350.000 Coins Poppo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/poppo/package.png", isOffer: true, basePrice: 22.5 },
+    { amountCredits: 700000, name: "700.000 Coins Poppo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/poppo/package.png", isOffer: true, basePrice: 22.5 },
+    { amountCredits: 1400000, name: "1.400.000 Coins Poppo", imgCardUrl: "https://storage.googleapis.com/4miga-images/products/poppo/package.png", isOffer: true, basePrice: 22.5 },
   ];
 
   // Create packages for both stores

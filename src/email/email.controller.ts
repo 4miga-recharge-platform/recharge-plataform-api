@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { EmailService } from './email.service';
 
 @Controller('email')
@@ -24,16 +24,5 @@ export class EmailController {
         details: error.response?.body || error
       };
     }
-  }
-
-  @Get('config')
-  async getEmailConfig() {
-    return {
-      fromEmail: process.env.SENDGRID_FROM_EMAIL,
-      apiKeyConfigured: !!process.env.SENDGRID_API_KEY,
-      apiKeyPreview: process.env.SENDGRID_API_KEY ?
-        `${process.env.SENDGRID_API_KEY.substring(0, 10)}...` :
-        'NOT SET'
-    };
   }
 }
