@@ -1,0 +1,196 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Store {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  wppNumber    String?  @unique
+  instagramUrl String?
+  facebookUrl  String?
+  tiktokUrl    String?
+  logoUrl      String?
+  miniLogoUrl  String?
+  faviconUrl   String?
+  bannersUrl   String[]
+  onSaleUrlImg String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users    User[]
+  packages Package[]
+  orders   Order[]
+}
+
+model User {
+  id                       String         @id @default(uuid())
+  name                     String
+  email                    String
+  phone                    String
+  password                 String
+  documentType             IndividualType
+  documentValue            String
+  role                     UserRole       @default(USER)
+  emailVerified            Boolean        @default(false)
+  emailConfirmationCode    String?
+  emailConfirmationExpires DateTime?
+  resetPasswordCode        String?
+  resetPasswordExpires     DateTime?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+
+  storeId String
+  store   Store   @relation(fields: [storeId], references: [id])
+  orders  Order[]
+
+  @@unique([email, storeId])
+  @@unique([documentValue, storeId])
+}
+
+model Product {
+  id           String    @id @default(uuid())
+  name         String
+  description  String
+  instructions String
+  imgBannerUrl String
+  imgCardUrl   String
+  packages     Package[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Package {
+  id             String          @id @default(uuid())
+  name           String
+  amountCredits  Int
+  imgCardUrl     String
+  isOffer        Boolean         @default(false)
+  basePrice      Decimal         @db.Decimal(10, 2)
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  paymentMethods PaymentMethod[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id])
+}
+
+model PaymentMethod {
+  id        String            @id @default(uuid())
+  name      PaymentMethodName
+  price     Decimal           @db.Decimal(10, 2)
+  packageId String
+  package   Package           @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique
+  price       Decimal     @db.Decimal(10, 2)
+  orderStatus OrderStatus
+  payment     Payment     @relation(fields: [paymentId], references: [id])
+  paymentId   String      @unique
+  orderItem   OrderItem   @relation(fields: [orderItemId], references: [id])
+  orderItemId String      @unique
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  storeId String
+  store   Store  @relation(fields: [storeId], references: [id])
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id                  String        @id @default(uuid())
+  name                String // Keeping as String for now
+  status              PaymentStatus
+  statusUpdatedAt     DateTime?
+  qrCode              String?
+  qrCodetextCopyPaste String?
+  order               Order?
+}
+
+model OrderItem {
+  id          String      @id @default(uuid())
+  productId   String
+  productName String
+  recharge    Recharge    @relation(fields: [rechargeId], references: [id])
+  rechargeId  String      @unique
+  package     PackageInfo @relation(fields: [packageId], references: [id])
+  packageId   String      @unique
+  order       Order?
+}
+
+model Recharge {
+  id                String         @id @default(uuid())
+  userIdForRecharge String
+  status            RechargeStatus
+  amountCredits     Int
+  statusUpdatedAt   DateTime?
+  orderItem         OrderItem?
+}
+
+model PackageInfo {
+  id                String     @id @default(uuid())
+  packageId         String
+  name              String
+  userIdForRecharge String
+  imgCardUrl        String
+  orderItem         OrderItem?
+}
+
+enum UserRole {
+  MASTER_ADMIN
+  ADMIN
+  USER
+}
+
+enum OrderStatus {
+  CREATED
+  PROCESSING
+  COMPLETED
+  EXPIRED
+  REFOUNDED
+}
+
+enum PaymentStatus {
+  PAYMENT_PENDING
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+}
+
+enum RechargeStatus {
+  RECHARGE_PENDING
+  RECHARGE_APPROVED
+  RECHARGE_REJECTED
+}
+
+enum PaymentMethodName {
+  pix
+  mercado_pago
+  picpay
+  paypal
+  boleto
+  transferencia
+}
+
+enum IndividualType {
+  cpf
+  cnpj
+}

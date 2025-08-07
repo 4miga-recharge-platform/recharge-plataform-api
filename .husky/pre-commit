@@ -1,0 +1,15 @@
+echo "🔍 Running pre-commit checks..."
+
+# Run linting
+echo "📝 Checking code style..."
+npm run lint
+
+# Run unit tests
+echo "🧪 Running unit tests..."
+npm run test
+
+# Run type checking
+echo "🔧 Checking TypeScript types..."
+npx tsc --noEmit --skipLibCheck
+
+echo "✅ All pre-commit checks passed!"
