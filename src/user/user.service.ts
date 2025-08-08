@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { setTimeout as sleep } from 'timers/promises';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { validateRequiredFields } from 'src/utils/validation.util';
@@ -37,7 +38,7 @@ export class UserService {
         select: this.userSelect
       });
       return data;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch users');
     }
   }
@@ -52,7 +53,7 @@ export class UserService {
         throw new BadRequestException('User not found');
       }
       return data;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch user');
     }
   }
@@ -113,23 +114,49 @@ export class UserService {
         data,
         select: this.userSelect,
       });
+      if(!user) {
+        throw new BadRequestException('Failed to create user');
+      }
 
-      // Send confirmation email
+      // Send confirmation email with retry (non-blocking for user creation)
       const html = getEmailConfirmationTemplate(code, dto.name);
-      await this.emailService.sendEmail(
+      await this.sendEmailWithRetry(
         dto.email,
         'Confirm your registration',
         html,
+        3,
+        2000,
       );
-
       return user;
-     
+
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
       throw new BadRequestException('Failed to create user');
     }
+  }
+
+  private async sendEmailWithRetry(
+    to: string,
+    subject: string,
+    html: string,
+    maxAttempts: number = 3,
+    delayMs: number = 2000,
+  ): Promise<boolean> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.emailService.sendEmail(to, subject, html);
+        return true;
+      } catch {
+        const isLastAttempt = attempt === maxAttempts;
+        if (isLastAttempt) {
+          return false;
+        }
+        await sleep(delayMs);
+      }
+    }
+    return false;
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<User> {
@@ -149,7 +176,7 @@ export class UserService {
         },
         select: this.userSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to update user');
     }
   }
@@ -161,7 +188,7 @@ export class UserService {
         where: { id },
         select: this.userSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to remove user');
     }
   }
