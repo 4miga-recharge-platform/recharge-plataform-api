@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -37,21 +41,19 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
+        storeId,
       },
       select: this.authUser,
     });
     if (!user) {
       throw new UnauthorizedException('User or password invalid');
     }
+    if (user.emailVerified === false) {
+      throw new UnauthorizedException('Email not verified');
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('User or password invalid');
-    }
-
-    // Check if email is verified
-    if (!user.emailVerified) {
-      throw new UnauthorizedException('Email not verified');
     }
 
     const data = {
@@ -88,7 +90,9 @@ export class AuthService {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
       const { iat, exp, ...userData } = payload;
-      const accessToken = await this.jwtService.signAsync(userData, { expiresIn: '10m' });
+      const accessToken = await this.jwtService.signAsync(userData, {
+        expiresIn: '10m',
+      });
       const expiresIn = 10 * 60;
       const data = {
         id: userData.id,
@@ -99,7 +103,7 @@ export class AuthService {
         documentValue: userData.documentValue,
         name: userData.name,
         role: userData.role,
-      }
+      };
       return {
         access: {
           accessToken,
@@ -108,7 +112,7 @@ export class AuthService {
         },
         user: data,
       };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
@@ -119,8 +123,8 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
-      }
+        storeId,
+      },
     });
     if (!user) {
       throw new BadRequestException('User with this email does not exist');
@@ -134,7 +138,7 @@ export class AuthService {
     await this.prisma.user.updateMany({
       where: {
         email,
-        storeId
+        storeId,
       },
       data: {
         resetPasswordCode: code,
@@ -143,11 +147,7 @@ export class AuthService {
     });
     const html = getPasswordResetTemplate(code);
 
-    await this.emailService.sendEmail(
-      email,
-      'Confirmação de E-mail',
-      html
-    );
+    await this.emailService.sendEmail(email, 'Confirmação de E-mail', html);
     return { message: 'Password reset code sent to email' };
   }
 
@@ -158,8 +158,8 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
-      }
+        storeId,
+      },
     });
     if (!user) {
       throw new BadRequestException('User with this email does not exist');
@@ -182,7 +182,8 @@ export class AuthService {
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const { email, code, password, confirmPassword, storeId } = resetPasswordDto;
+    const { email, code, password, confirmPassword, storeId } =
+      resetPasswordDto;
 
     // Validate password confirmation
     if (password !== confirmPassword) {
@@ -193,8 +194,8 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
-      }
+        storeId,
+      },
     });
     if (!user) {
       throw new BadRequestException('User with this email does not exist');
@@ -220,7 +221,7 @@ export class AuthService {
     await this.prisma.user.updateMany({
       where: {
         email,
-        storeId
+        storeId,
       },
       data: {
         password: hashedPassword,
@@ -233,7 +234,7 @@ export class AuthService {
     const updatedUser = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
+        storeId,
       },
       select: this.authUser,
     });
@@ -275,7 +276,7 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
+        storeId,
       },
       select: {
         id: true,
@@ -288,7 +289,7 @@ export class AuthService {
         documentValue: true,
         emailVerified: true,
         emailConfirmationCode: true,
-      }
+      },
     });
 
     if (!user) {
@@ -313,15 +314,17 @@ export class AuthService {
     const userWithExpiration = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
+        storeId,
       },
       select: {
         emailConfirmationExpires: true,
-      }
+      },
     });
 
-    if (userWithExpiration?.emailConfirmationExpires &&
-        new Date() > userWithExpiration.emailConfirmationExpires) {
+    if (
+      userWithExpiration?.emailConfirmationExpires &&
+      new Date() > userWithExpiration.emailConfirmationExpires
+    ) {
       throw new BadRequestException('Confirmation code has expired');
     }
 
@@ -329,7 +332,7 @@ export class AuthService {
     await this.prisma.user.updateMany({
       where: {
         email,
-        storeId
+        storeId,
       },
       data: {
         emailVerified: true,
@@ -374,14 +377,14 @@ export class AuthService {
     const user = await this.prisma.user.findFirst({
       where: {
         email,
-        storeId
+        storeId,
       },
       select: {
         id: true,
         email: true,
         name: true,
         emailVerified: true,
-      }
+      },
     });
 
     if (!user) {
@@ -403,7 +406,7 @@ export class AuthService {
     await this.prisma.user.updateMany({
       where: {
         email,
-        storeId
+        storeId,
       },
       data: {
         emailConfirmationCode: code,
