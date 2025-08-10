@@ -1,12 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../../src/app.module';
-import { PrismaService } from '../../src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AppModule } from '../../src/app.module';
 import { AuthService } from '../../src/auth/auth.service';
 import { EmailService } from '../../src/email/email.service';
-import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../src/prisma/prisma.service';
 
 describe('Auth Flow Integration', () => {
   let app: INestApplication;
@@ -37,45 +36,47 @@ describe('Auth Flow Integration', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-    .overrideProvider(PrismaService)
-    .useValue({
-      user: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findFirst: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
-        deleteMany: jest.fn(),
-      },
-      store: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findFirst: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
-        deleteMany: jest.fn(),
-      },
-      $disconnect: jest.fn(),
-      $connect: jest.fn(),
-      $on: jest.fn(),
-    })
-    .overrideProvider(EmailService)
-    .useValue({
-      sendEmailConfirmation: jest.fn().mockResolvedValue(true),
-      sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
-      sendWelcomeEmail: jest.fn().mockResolvedValue(true),
-      sendEmail: jest.fn().mockResolvedValue(true),
-    })
-    .compile();
+      .overrideProvider(PrismaService)
+      .useValue({
+        user: {
+          create: jest.fn(),
+          findUnique: jest.fn(),
+          findFirst: jest.fn(),
+          findMany: jest.fn(),
+          update: jest.fn(),
+          delete: jest.fn(),
+          deleteMany: jest.fn(),
+        },
+        store: {
+          create: jest.fn(),
+          findUnique: jest.fn(),
+          findFirst: jest.fn(),
+          findMany: jest.fn(),
+          update: jest.fn(),
+          delete: jest.fn(),
+          deleteMany: jest.fn(),
+        },
+        $disconnect: jest.fn(),
+        $connect: jest.fn(),
+        $on: jest.fn(),
+      })
+      .overrideProvider(EmailService)
+      .useValue({
+        sendEmailConfirmation: jest.fn().mockResolvedValue(true),
+        sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+        sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+        sendEmail: jest.fn().mockResolvedValue(true),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
     prismaService = app.get<PrismaService>(PrismaService);
     jwtService = app.get<JwtService>(JwtService);
@@ -96,8 +97,12 @@ describe('Auth Flow Integration', () => {
     // Setup default mock responses
     (prismaService.store.findUnique as jest.Mock).mockResolvedValue(mockStore);
     (prismaService.store.create as jest.Mock).mockResolvedValue(mockStore);
-    (prismaService.user.deleteMany as jest.Mock).mockResolvedValue({ count: 0 });
-    (prismaService.store.deleteMany as jest.Mock).mockResolvedValue({ count: 0 });
+    (prismaService.user.deleteMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
+    (prismaService.store.deleteMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
   });
 
   describe('Simple Tests', () => {
@@ -110,7 +115,7 @@ describe('Auth Flow Integration', () => {
         documentValue: '12345678901',
         phone: '11999999999',
         role: 'USER',
-        storeId: '123e4567-e89b-12d3-a456-426614174000'
+        storeId: '123e4567-e89b-12d3-a456-426614174000',
       };
 
       // Test validation manually
