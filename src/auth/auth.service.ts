@@ -89,6 +89,7 @@ export class AuthService {
   async refreshAccessToken(refreshToken: string) {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { iat, exp, ...userData } = payload;
       const accessToken = await this.jwtService.signAsync(userData, {
         expiresIn: '10m',

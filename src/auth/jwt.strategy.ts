@@ -24,6 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException('Login is required');
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...data } = user;
 
     return data;

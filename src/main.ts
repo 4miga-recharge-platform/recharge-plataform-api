@@ -22,6 +22,7 @@ async function bootstrap() {
     .addTag('store')
     .addTag('product')
     .addTag('package')
+    .addTag('bigo')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

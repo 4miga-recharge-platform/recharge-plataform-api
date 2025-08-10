@@ -1,7 +1,7 @@
-import { Controller, Post, Body } from '@nestjs/common';
-import { EmailService } from './email.service';
+import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TestEmailDto } from './dto/test-email.dto';
+import { EmailService } from './email.service';
 
 @ApiTags('email')
 @Controller('email')
@@ -11,7 +11,7 @@ export class EmailController {
   @Post('test')
   @ApiOperation({
     summary: 'Send test email',
-    description: 'Send a test email to the provided email address'
+    description: 'Send a test email to the provided email address',
   })
   async testEmail(@Body() body: TestEmailDto) {
     const { email } = body;
@@ -37,12 +37,12 @@ export class EmailController {
         success: true,
         message: 'Test email sent successfully',
         sentTo: email,
-        sentAt: new Date().toISOString()
+        sentAt: new Date().toISOString(),
       };
-    } catch (error) {
+    } catch {
       return {
         success: false,
-        message: 'Failed to send test email'
+        message: 'Failed to send test email',
       };
     }
   }

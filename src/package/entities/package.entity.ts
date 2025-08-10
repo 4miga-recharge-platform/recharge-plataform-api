@@ -1,6 +1,4 @@
 // import { PaymentMethod } from 'src/payment/entities/payment-method.entity';
-import { Product } from 'src/product/entities/product.entity';
-import { Store } from 'src/store/entities/store.entity';
 
 export class Package {
   id: string;

@@ -1,11 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 import { validateRequiredFields } from 'src/utils/validation.util';
-import { Product } from './entities/product.entity';
-import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { Product } from './entities/product.entity';
 
 @Injectable()
 export class ProductService {
@@ -26,7 +25,9 @@ export class ProductService {
   // master admin only access
   async findAll(storeId: string): Promise<any[]> {
     try {
-      const products = await this.prisma.product.findMany({ select: this.productSelect });
+      const products = await this.prisma.product.findMany({
+        select: this.productSelect,
+      });
       // For each product, fetch related packages by storeId and include paymentMethods
       const productsWithPackages = await Promise.all(
         products.map(async (product) => {
@@ -59,10 +60,10 @@ export class ProductService {
             },
           });
           return { ...product, packages };
-        })
+        }),
       );
       return productsWithPackages;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch products');
     }
   }
@@ -70,7 +71,7 @@ export class ProductService {
   async findAllForAdmin(): Promise<Product[]> {
     try {
       return await this.prisma.product.findMany({ select: this.productSelect });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch products');
     }
   }
@@ -103,16 +104,25 @@ export class ProductService {
         },
       });
       return { ...product, packages };
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch product');
     }
   }
 
   async create(dto: CreateProductDto): Promise<Product> {
     try {
-      validateRequiredFields(dto, ['name', 'description', 'instructions', 'imgBannerUrl', 'imgCardUrl']);
-      return await this.prisma.product.create({ data: dto, select: this.productSelect });
-    } catch (error) {
+      validateRequiredFields(dto, [
+        'name',
+        'description',
+        'instructions',
+        'imgBannerUrl',
+        'imgCardUrl',
+      ]);
+      return await this.prisma.product.create({
+        data: dto,
+        select: this.productSelect,
+      });
+    } catch {
       throw new BadRequestException('Failed to create product');
     }
   }
@@ -120,14 +130,16 @@ export class ProductService {
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     try {
       await this.findOne(id, '');
-      const fieldsToValidate = Object.keys(dto).filter(key => dto[key] !== undefined);
+      const fieldsToValidate = Object.keys(dto).filter(
+        (key) => dto[key] !== undefined,
+      );
       validateRequiredFields(dto, fieldsToValidate);
       return await this.prisma.product.update({
         where: { id },
         data: dto,
         select: this.productSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to update product');
     }
   }
@@ -145,7 +157,7 @@ export class ProductService {
         where: { id },
         select: this.productSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to remove product');
     }
   }
