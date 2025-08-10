@@ -20,6 +20,14 @@ export class CreateStoreDto {
   email: string;
 
   @IsString()
+  @IsNotEmpty()
+  @ApiProperty({
+    description: 'Store domain',
+    example: 'https://www.4miga.games',
+  })
+  domain: string;
+
+  @IsString()
   @IsOptional()
   @ApiProperty({
     description: 'WhatsApp number',

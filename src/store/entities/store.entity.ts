@@ -2,6 +2,7 @@ export class Store {
   id: string;
   name: string;
   email: string;
+  domain: string;
   wppNumber?: string | null;
   instagramUrl?: string | null;
   facebookUrl?: string | null;

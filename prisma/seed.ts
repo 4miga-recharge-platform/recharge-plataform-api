@@ -17,6 +17,7 @@ async function main() {
     data: {
       name: 'Loja Exemplo 1',
       email: 'loja1@exemplo.com',
+      domain: 'www.4miga.games',
       wppNumber: '11999999999',
       instagramUrl: 'https://www.instagram.com/lojaexemplo1',
       facebookUrl: 'https://www.facebook.com/lojaexemplo1',
@@ -28,6 +29,7 @@ async function main() {
     data: {
       name: 'Loja Exemplo 2',
       email: 'loja2@exemplo.com',
+      domain: 'loja.4miga.games',
       wppNumber: '11888888888',
       instagramUrl: 'https://www.instagram.com/lojaexemplo2',
       facebookUrl: 'https://www.facebook.com/lojaexemplo2',

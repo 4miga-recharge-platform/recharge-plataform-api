@@ -38,6 +38,7 @@ describe('StoreService', () => {
     id: true,
     name: true,
     email: true,
+    domain: true,
     wppNumber: true,
     instagramUrl: true,
     facebookUrl: true,
@@ -143,6 +144,7 @@ describe('StoreService', () => {
     const createStoreDto: CreateStoreDto = {
       name: 'Nova Loja',
       email: 'nova@loja.com',
+      domain: 'https://www.novaloja.com',
       wppNumber: '+5511999999999',
       instagramUrl: 'https://instagram.com/novaloja',
     };

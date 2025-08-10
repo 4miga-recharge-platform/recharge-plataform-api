@@ -415,8 +415,18 @@ export class AuthService {
       },
     });
 
+    // Get store domain for email template
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { domain: true },
+    });
+
+    if (!store) {
+      throw new BadRequestException('Store not found');
+    }
+
     // Send new confirmation email
-    const html = getEmailConfirmationTemplate(code, user.name);
+    const html = getEmailConfirmationTemplate(code, user.name, store.domain, email, storeId);
     await this.emailService.sendEmail(
       email,
       'Confirme seu cadastro - Novo código',

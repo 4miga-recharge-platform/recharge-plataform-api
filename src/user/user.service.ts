@@ -118,8 +118,18 @@ export class UserService {
         throw new BadRequestException('Failed to create user');
       }
 
+      // Get store domain for email template
+      const store = await this.prisma.store.findUnique({
+        where: { id: dto.storeId },
+        select: { domain: true },
+      });
+
+      if (!store) {
+        throw new BadRequestException('Store not found');
+      }
+
       // Send confirmation email with retry (non-blocking for user creation)
-      const html = getEmailConfirmationTemplate(code, dto.name);
+      const html = getEmailConfirmationTemplate(code, dto.name, store.domain, dto.email, dto.storeId);
       await this.sendEmailWithRetry(
         dto.email,
         'Confirm your registration',

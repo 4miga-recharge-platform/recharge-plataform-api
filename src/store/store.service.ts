@@ -13,6 +13,7 @@ export class StoreService {
     id: true,
     name: true,
     email: true,
+    domain: true,
     wppNumber: true,
     instagramUrl: true,
     facebookUrl: true,

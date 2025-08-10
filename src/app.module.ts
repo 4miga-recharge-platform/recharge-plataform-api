@@ -11,6 +11,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProductModule } from './product/product.module';
 import { StoreModule } from './store/store.module';
 import { UserModule } from './user/user.module';
+import { WebsocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UserModule } from './user/user.module';
     AuthModule,
     OrderModule,
     BigoModule,
+    WebsocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],

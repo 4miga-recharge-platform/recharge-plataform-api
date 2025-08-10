@@ -76,6 +76,9 @@ describe('AuthService', () => {
         update: jest.fn(),
         updateMany: jest.fn(),
       },
+      store: {
+        findUnique: jest.fn(),
+      },
     };
 
     const mockJwtService = {
@@ -546,6 +549,7 @@ describe('AuthService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(unverifiedUser);
       prismaService.user.updateMany.mockResolvedValue({ count: 1 });
+      prismaService.store.findUnique.mockResolvedValue({ domain: 'https://www.example.com' });
       emailService.sendEmail.mockResolvedValue({} as any);
 
       const result = await service.resendEmailConfirmation(email, storeId);

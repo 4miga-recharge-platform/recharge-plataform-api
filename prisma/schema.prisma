@@ -17,6 +17,7 @@ model Store {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
+  domain       String   @unique
   wppNumber    String?  @unique
   instagramUrl String?
   facebookUrl  String?
