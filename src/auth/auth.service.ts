@@ -12,6 +12,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailService } from '../email/email.service';
 import { getPasswordResetTemplate } from '../email/templates/password-reset.template';
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
+import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly websocketGateway: WebsocketGateway,
   ) {}
 
   private authUser = {
@@ -362,6 +364,13 @@ export class AuthService {
     });
 
     const expiresIn = 10 * 60;
+
+    // Notify via WebSocket that email was verified
+    try {
+      this.websocketGateway.notifyEmailVerified(user.id, userData);
+    } catch (error) {
+      console.error('Failed to notify via WebSocket:', error);
+    }
 
     return {
       access: {
