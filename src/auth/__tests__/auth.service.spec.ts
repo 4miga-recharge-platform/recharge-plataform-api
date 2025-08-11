@@ -24,6 +24,10 @@ jest.mock('../../email/templates/email-confirmation.template', () => ({
   getEmailConfirmationTemplate: jest.fn().mockReturnValue('<html>Email confirmation template</html>'),
 }));
 
+jest.mock('../../email/templates/email-change-confirmation.template', () => ({
+  getEmailChangeConfirmationTemplate: jest.fn().mockReturnValue('<html>Email change confirmation template</html>'),
+}));
+
 describe('AuthService', () => {
   let service: AuthService;
   let prismaService: any;
@@ -608,6 +612,192 @@ describe('AuthService', () => {
 
       await expect(service.resendEmailConfirmation(email, storeId)).rejects.toThrow(
         new BadRequestException('Email is already verified'),
+      );
+    });
+  });
+
+  describe('requestEmailChange', () => {
+    const currentEmail = 'john@example.com';
+    const newEmail = 'new@example.com';
+    const storeId = 'store-123';
+
+    it('should request email change and send code to new email', async () => {
+      prismaService.user.findFirst
+        .mockResolvedValueOnce({ id: 'user-123', name: 'John Doe', emailVerified: true }) // current user
+        .mockResolvedValueOnce(null); // no existing new email
+      prismaService.user.update.mockResolvedValue({});
+      emailService.sendEmail.mockResolvedValue({} as any);
+
+      const result = await service.requestEmailChange(currentEmail, newEmail, storeId);
+
+      expect(prismaService.user.findFirst).toHaveBeenNthCalledWith(1, {
+        where: { email: currentEmail, storeId },
+        select: { id: true, name: true, emailVerified: true },
+      });
+      expect(prismaService.user.findFirst).toHaveBeenNthCalledWith(2, {
+        where: { email: newEmail, storeId },
+        select: { id: true },
+      });
+      expect(prismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: {
+          emailConfirmationCode: expect.any(String),
+          emailConfirmationExpires: expect.any(Date),
+        },
+      });
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        newEmail,
+        'Confirme a alteração de e-mail',
+        '<html>Email change confirmation template</html>',
+      );
+      expect(result).toEqual({ message: 'Email change code sent to new email' });
+    });
+
+    it('should throw when user not found', async () => {
+      prismaService.user.findFirst.mockResolvedValueOnce(null);
+
+      await expect(service.requestEmailChange(currentEmail, newEmail, storeId)).rejects.toThrow(
+        new BadRequestException('User with this email does not exist'),
+      );
+    });
+
+    it('should throw when user email not verified', async () => {
+      prismaService.user.findFirst.mockResolvedValueOnce({ id: 'user-123', name: 'John Doe', emailVerified: false });
+
+      await expect(service.requestEmailChange(currentEmail, newEmail, storeId)).rejects.toThrow(
+        new BadRequestException('Email not verified'),
+      );
+    });
+
+    it('should throw when new email already in use', async () => {
+      prismaService.user.findFirst
+        .mockResolvedValueOnce({ id: 'user-123', name: 'John Doe', emailVerified: true })
+        .mockResolvedValueOnce({ id: 'other-user' });
+
+      await expect(service.requestEmailChange(currentEmail, newEmail, storeId)).rejects.toThrow(
+        new BadRequestException('New email is already in use'),
+      );
+    });
+  });
+
+  describe('confirmEmailChange', () => {
+    const currentEmail = 'john@example.com';
+    const newEmail = 'new@example.com';
+    const code = '123456';
+    const storeId = 'store-123';
+
+    it('should confirm email change successfully', async () => {
+      prismaService.user.findFirst
+        .mockResolvedValueOnce({
+          id: 'user-123',
+          email: currentEmail,
+          emailConfirmationCode: code,
+          emailConfirmationExpires: new Date(Date.now() + 3600000),
+          emailVerified: true,
+        })
+        .mockResolvedValueOnce(null); // new email not in use
+      prismaService.user.update.mockResolvedValue({});
+
+      const result = await service.confirmEmailChange(currentEmail, newEmail, code, storeId);
+
+      expect(prismaService.user.findFirst).toHaveBeenNthCalledWith(1, {
+        where: { email: currentEmail, storeId },
+        select: {
+          id: true,
+          email: true,
+          emailConfirmationCode: true,
+          emailConfirmationExpires: true,
+          emailVerified: true,
+        },
+      });
+      expect(prismaService.user.findFirst).toHaveBeenNthCalledWith(2, {
+        where: { email: newEmail, storeId },
+        select: { id: true },
+      });
+      expect(prismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: {
+          email: newEmail,
+          emailConfirmationCode: null,
+          emailConfirmationExpires: null,
+        },
+      });
+      expect(result).toEqual({ message: 'Email updated successfully' });
+    });
+
+    it('should throw when user not found', async () => {
+      prismaService.user.findFirst.mockResolvedValueOnce(null);
+
+      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+        new BadRequestException('User with this email does not exist'),
+      );
+    });
+
+    it('should throw when email not verified', async () => {
+      prismaService.user.findFirst.mockResolvedValueOnce({
+        id: 'user-123',
+        email: currentEmail,
+        emailConfirmationCode: code,
+        emailConfirmationExpires: new Date(Date.now() + 3600000),
+        emailVerified: false,
+      });
+
+      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+        new BadRequestException('Email not verified'),
+      );
+    });
+
+    it('should throw when no code or expiration', async () => {
+      prismaService.user.findFirst.mockResolvedValueOnce({
+        id: 'user-123', email: currentEmail, emailConfirmationCode: null, emailConfirmationExpires: null, emailVerified: true,
+      });
+
+      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+        new BadRequestException('No confirmation code found or code has expired'),
+      );
+    });
+
+    it('should throw when code is invalid', async () => {
+      prismaService.user.findFirst.mockResolvedValueOnce({
+        id: 'user-123',
+        email: currentEmail,
+        emailConfirmationCode: '654321',
+        emailConfirmationExpires: new Date(Date.now() + 3600000),
+        emailVerified: true,
+      });
+
+      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+        new BadRequestException('Invalid confirmation code'),
+      );
+    });
+
+    it('should throw when code expired', async () => {
+      prismaService.user.findFirst.mockResolvedValueOnce({
+        id: 'user-123',
+        email: currentEmail,
+        emailConfirmationCode: code,
+        emailConfirmationExpires: new Date(Date.now() - 3600000),
+        emailVerified: true,
+      });
+
+      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+        new BadRequestException('Confirmation code has expired'),
+      );
+    });
+
+    it('should throw when new email already in use', async () => {
+      prismaService.user.findFirst
+        .mockResolvedValueOnce({
+          id: 'user-123',
+          email: currentEmail,
+          emailConfirmationCode: code,
+          emailConfirmationExpires: new Date(Date.now() + 3600000),
+          emailVerified: true,
+        })
+        .mockResolvedValueOnce({ id: 'other-user' });
+
+      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+        new BadRequestException('New email is already in use'),
       );
     });
   });
