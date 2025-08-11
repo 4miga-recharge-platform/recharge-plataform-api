@@ -21,6 +21,7 @@ import { VerifyCodeDto } from './dto/verify-code.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendEmailConfirmationDto } from './dto/resend-email-confirmation.dto';
 import { LoggedUser } from './logged-user.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RequestEmailChangeDto } from './dto/request-email-change.dto';
 import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
 
@@ -120,5 +121,14 @@ export class AuthController {
   async confirmEmailChange(@LoggedUser() user: User, @Body() dto: ConfirmEmailChangeDto) {
     // Preferimos `user` do token para currentEmail e storeId
     return this.authService.confirmEmailChange(user.email, dto.newEmail, dto.code, user.storeId);
+  }
+
+  @Post('change-password')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Atualizar senha do usuário autenticado' })
+  async changePassword(@LoggedUser() user: User, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user.id, dto);
   }
 }

@@ -13,6 +13,7 @@ import { EmailService } from '../email/email.service';
 import { getPasswordResetTemplate } from '../email/templates/password-reset.template';
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
 import { getEmailChangeConfirmationTemplate } from '../email/templates/email-change-confirmation.template';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
@@ -549,5 +550,36 @@ export class AuthService {
     });
 
     return { message: 'Email updated successfully' };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const { currentPassword, newPassword, confirmPassword } = dto;
+
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, password: true },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const isCurrentValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentValid) {
+      throw new BadRequestException('Current password is invalid');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Password updated successfully' };
   }
 }
