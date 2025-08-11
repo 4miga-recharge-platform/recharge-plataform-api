@@ -10,6 +10,6 @@ npm run test
 
 # Run type checking
 echo "🔧 Checking TypeScript types..."
-npx tsc --noEmit --skipLibCheck
+npx tsc --noEmit --skipLibCheck --incremental false
 
 echo "✅ All pre-commit checks passed!"
