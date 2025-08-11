@@ -87,12 +87,12 @@ gcloud run services update recharge-api \
 
 ### **Simple Deploy:**
 ```bash
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 ### **Deploy with Migrations:**
 ```bash
-./deploy-migrate-only.sh
+./scripts/deploy-migrate-only.sh
 ```
 
 ### **Environment Variables:**

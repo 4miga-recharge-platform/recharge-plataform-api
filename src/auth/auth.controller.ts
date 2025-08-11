@@ -21,6 +21,8 @@ import { VerifyCodeDto } from './dto/verify-code.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendEmailConfirmationDto } from './dto/resend-email-confirmation.dto';
 import { LoggedUser } from './logged-user.decorator';
+import { RequestEmailChangeDto } from './dto/request-email-change.dto';
+import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -99,5 +101,24 @@ export class AuthController {
     return {
       user: filteredUser,
     };
+  }
+
+  @Post('request-email-change')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Solicitar alteração de e-mail (envia código para o novo e-mail)' })
+  async requestEmailChange(@LoggedUser() user: User, @Body() dto: RequestEmailChangeDto) {
+    return this.authService.requestEmailChange(user.email, dto.newEmail, user.storeId);
+  }
+
+  @Post('confirm-email-change')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirmar alteração de e-mail com código' })
+  async confirmEmailChange(@LoggedUser() user: User, @Body() dto: ConfirmEmailChangeDto) {
+    // Preferimos `user` do token para currentEmail e storeId
+    return this.authService.confirmEmailChange(user.email, dto.newEmail, dto.code, user.storeId);
   }
 }

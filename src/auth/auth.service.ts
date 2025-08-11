@@ -12,6 +12,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailService } from '../email/email.service';
 import { getPasswordResetTemplate } from '../email/templates/password-reset.template';
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
+import { getEmailChangeConfirmationTemplate } from '../email/templates/email-change-confirmation.template';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
 
 @Injectable()
@@ -445,5 +446,108 @@ export class AuthService {
     return {
       message: 'New confirmation code sent successfully',
     };
+  }
+
+  async requestEmailChange(currentEmail: string, newEmail: string, storeId: string) {
+    // Check if current user exists and is verified
+    const user = await this.prisma.user.findFirst({
+      where: { email: currentEmail, storeId },
+      select: { id: true, name: true, emailVerified: true },
+    });
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+    if (!user.emailVerified) {
+      throw new BadRequestException('Email not verified');
+    }
+
+    // Ensure new email is not already used in the same store
+    const existingNewEmail = await this.prisma.user.findFirst({
+      where: { email: newEmail, storeId },
+      select: { id: true },
+    });
+    if (existingNewEmail) {
+      throw new BadRequestException('New email is already in use');
+    }
+
+    // Generate code and set expiration (10 min similar to reset password)
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const emailConfirmationExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Store code and expiration on user
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailConfirmationCode: code,
+        emailConfirmationExpires,
+      },
+    });
+
+    // Send code to NEW email
+    const html = getEmailChangeConfirmationTemplate(code);
+    await this.emailService.sendEmail(
+      newEmail,
+      'Confirme a alteração de e-mail',
+      html,
+    );
+
+    return { message: 'Email change code sent to new email' };
+  }
+
+  async confirmEmailChange(
+    currentEmail: string,
+    newEmail: string,
+    code: string,
+    storeId: string,
+  ) {
+    // Find user by current email
+    const user = await this.prisma.user.findFirst({
+      where: { email: currentEmail, storeId },
+      select: {
+        id: true,
+        email: true,
+        emailConfirmationCode: true,
+        emailConfirmationExpires: true,
+        emailVerified: true,
+      },
+    });
+    if (!user) {
+      throw new BadRequestException('User with this email does not exist');
+    }
+    if (!user.emailVerified) {
+      throw new BadRequestException('Email not verified');
+    }
+
+    // Validate code
+    if (!user.emailConfirmationCode || !user.emailConfirmationExpires) {
+      throw new BadRequestException('No confirmation code found or code has expired');
+    }
+    if (user.emailConfirmationCode !== code) {
+      throw new BadRequestException('Invalid confirmation code');
+    }
+    if (new Date() > user.emailConfirmationExpires) {
+      throw new BadRequestException('Confirmation code has expired');
+    }
+
+    // Ensure new email is not already used in the same store at confirmation time
+    const existingNewEmail = await this.prisma.user.findFirst({
+      where: { email: newEmail, storeId },
+      select: { id: true },
+    });
+    if (existingNewEmail) {
+      throw new BadRequestException('New email is already in use');
+    }
+
+    // Update email and clear confirmation fields
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        email: newEmail,
+        emailConfirmationCode: null,
+        emailConfirmationExpires: null,
+      },
+    });
+
+    return { message: 'Email updated successfully' };
   }
 }
