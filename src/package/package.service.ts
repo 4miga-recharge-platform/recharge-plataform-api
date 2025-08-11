@@ -1,8 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { validateRequiredFields } from 'src/utils/validation.util';
-import { Package } from './entities/package.entity';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 
@@ -29,9 +27,9 @@ export class PackageService {
     try {
       return await this.prisma.package.findMany({
         where: { storeId },
-        select: this.packageSelect
+        select: this.packageSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch packages');
     }
   }
@@ -46,7 +44,7 @@ export class PackageService {
         throw new BadRequestException('Package not found');
       }
       return data;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch package');
     }
   }
@@ -59,7 +57,7 @@ export class PackageService {
         'imgCardUrl',
         'basePrice',
         'productId',
-        'storeId'
+        'storeId',
       ]);
 
       // Separate paymentMethods from the rest of the data
@@ -68,21 +66,22 @@ export class PackageService {
       // Create package with payment methods if provided
       const createData: any = {
         ...packageData,
-        ...(paymentMethods && paymentMethods.length > 0 && {
-          paymentMethods: {
-            create: paymentMethods.map(pm => ({
-              name: pm.name,
-              price: pm.price,
-            }))
-          }
-        })
+        ...(paymentMethods &&
+          paymentMethods.length > 0 && {
+            paymentMethods: {
+              create: paymentMethods.map((pm) => ({
+                name: pm.name,
+                price: pm.price,
+              })),
+            },
+          }),
       };
 
       return await this.prisma.package.create({
         data: createData,
-        select: this.packageSelect
+        select: this.packageSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to create package');
     }
   }
@@ -90,7 +89,9 @@ export class PackageService {
   async update(id: string, dto: UpdatePackageDto): Promise<any> {
     try {
       await this.findOne(id);
-      const fieldsToValidate = Object.keys(dto).filter(key => dto[key] !== undefined);
+      const fieldsToValidate = Object.keys(dto).filter(
+        (key) => dto[key] !== undefined,
+      );
       validateRequiredFields(dto, fieldsToValidate);
 
       if (dto.productId) {
@@ -117,15 +118,16 @@ export class PackageService {
       // Prepare data for update
       const updateData: any = {
         ...packageData,
-        ...(paymentMethods && paymentMethods.length > 0 && {
-          paymentMethods: {
-            deleteMany: {}, // Remove todos os payment methods existentes
-            create: paymentMethods.map(pm => ({
-              name: pm.name,
-              price: pm.price,
-            }))
-          }
-        })
+        ...(paymentMethods &&
+          paymentMethods.length > 0 && {
+            paymentMethods: {
+              deleteMany: {}, // Remove todos os payment methods existentes
+              create: paymentMethods.map((pm) => ({
+                name: pm.name,
+                price: pm.price,
+              })),
+            },
+          }),
       };
 
       return await this.prisma.package.update({
@@ -133,7 +135,7 @@ export class PackageService {
         data: updateData,
         select: this.packageSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to update package');
     }
   }
@@ -145,7 +147,7 @@ export class PackageService {
         where: { id },
         select: this.packageSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to remove package');
     }
   }

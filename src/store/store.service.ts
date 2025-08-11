@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { validateRequiredFields } from 'src/utils/validation.util';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { Store } from './entities/store.entity';
-import { validateRequiredFields } from 'src/utils/validation.util';
 
 @Injectable()
 export class StoreService {
@@ -13,6 +13,7 @@ export class StoreService {
     id: true,
     name: true,
     email: true,
+    domain: true,
     wppNumber: true,
     instagramUrl: true,
     facebookUrl: true,
@@ -32,9 +33,11 @@ export class StoreService {
   // master admin only access
   async findAll(): Promise<Store[]> {
     try {
-      const data = await this.prisma.store.findMany({ select: this.storeSelect });
+      const data = await this.prisma.store.findMany({
+        select: this.storeSelect,
+      });
       return data;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch stores');
     }
   }
@@ -49,7 +52,7 @@ export class StoreService {
         throw new BadRequestException('Store not found');
       }
       return data;
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to fetch store');
     }
   }
@@ -59,9 +62,9 @@ export class StoreService {
       validateRequiredFields(dto, ['name', 'email']);
       return await this.prisma.store.create({
         data: dto,
-        select: this.storeSelect
+        select: this.storeSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to create store');
     }
   }
@@ -69,14 +72,16 @@ export class StoreService {
   async update(id: string, dto: UpdateStoreDto): Promise<Store> {
     try {
       await this.findOne(id);
-      const fieldsToValidate = Object.keys(dto).filter(key => dto[key] !== undefined);
+      const fieldsToValidate = Object.keys(dto).filter(
+        (key) => dto[key] !== undefined,
+      );
       validateRequiredFields(dto, fieldsToValidate);
       return await this.prisma.store.update({
         where: { id },
         data: dto,
         select: this.storeSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to update store');
     }
   }
@@ -88,7 +93,7 @@ export class StoreService {
         where: { id },
         select: this.storeSelect,
       });
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to remove store');
     }
   }

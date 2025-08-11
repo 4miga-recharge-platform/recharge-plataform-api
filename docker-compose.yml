@@ -4,12 +4,13 @@ services:
     container_name: recharge-plataform-api
     ports:
       - "3333:3333"
+      - "5555:5555"
     volumes:
         - .:/app
     command: sh -c "npx prisma generate && npm run start:dev"
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://docker:docker@db:5432/recharge
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - db
 

@@ -18,7 +18,7 @@ export class ResetPasswordDto {
   code: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   @ApiProperty({
     description: 'New password (minimum 6 characters)',
     example: 'NewPassword123',
@@ -26,12 +26,12 @@ export class ResetPasswordDto {
   password: string;
 
   @IsString()
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-    message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/, {
+    message: 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character (@$!%*?&)',
   })
   @ApiProperty({
-    description: 'Password confirmation (must match password and contain uppercase, lowercase, and number)',
-    example: 'NewPassword123',
+    description: 'Password confirmation (must match password; min 8; must contain uppercase, lowercase, number and special character)',
+    example: 'NewPassword123!',
   })
   confirmPassword: string;
 

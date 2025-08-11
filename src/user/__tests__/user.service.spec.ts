@@ -66,6 +66,9 @@ describe('UserService', () => {
         update: jest.fn(),
         delete: jest.fn(),
       },
+      store: {
+        findUnique: jest.fn(),
+      },
     };
 
     const mockEmailService = {
@@ -180,6 +183,7 @@ describe('UserService', () => {
       // Mock findFirst to return null (user doesn't exist)
       prismaService.user.findFirst.mockResolvedValue(null);
       prismaService.user.create.mockResolvedValue(mockUser);
+      prismaService.store.findUnique.mockResolvedValue({ domain: 'https://www.example.com' });
       emailService.sendEmail.mockResolvedValue({} as any);
 
       const result = await service.create(createUserDto);
@@ -214,6 +218,9 @@ describe('UserService', () => {
       expect(getEmailConfirmationTemplate).toHaveBeenCalledWith(
         expect.any(String),
         createUserDto.name,
+        'https://www.example.com',
+        createUserDto.email,
+        createUserDto.storeId,
       );
 
       expect(emailService.sendEmail).toHaveBeenCalledWith(

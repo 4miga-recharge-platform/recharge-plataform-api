@@ -17,6 +17,7 @@ model Store {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
+  domain       String   @unique
   wppNumber    String?  @unique
   instagramUrl String?
   facebookUrl  String?
@@ -114,6 +115,9 @@ model Order {
   store   Store  @relation(fields: [storeId], references: [id])
   userId  String
   user    User   @relation(fields: [userId], references: [id])
+
+  // BIGO recharge tracking
+  bigoRecharges BigoRecharge[]
 }
 
 model Payment {
@@ -153,6 +157,30 @@ model PackageInfo {
   userIdForRecharge String
   imgCardUrl        String
   orderItem         OrderItem?
+}
+
+model BigoRecharge {
+  id            String   @id @default(uuid())
+  seqid         String   @unique // BIGO request correlation ID
+  buOrderId     String?  @unique // Our order ID (optional for precheck)
+  endpoint      String   // /sign/agent/recharge_pre_check, /sign/agent/rs_recharge, /sign/agent/disable
+  status        BigoRechargeStatus
+  rescode       Int?     // BIGO response code (0 = success)
+  message       String?  // BIGO error message
+  requestBody   Json     // Full request payload
+  responseBody  Json?    // Full response payload
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Optional relation to Order (for recharge operations)
+  orderId String?
+  order   Order? @relation(fields: [orderId], references: [id])
+}
+
+enum BigoRechargeStatus {
+  REQUESTED
+  SUCCESS
+  FAILED
 }
 
 enum UserRole {

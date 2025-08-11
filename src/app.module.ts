@@ -2,14 +2,16 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { BigoModule } from './bigo/bigo.module';
+import { EmailModule } from './email/email.module';
+import { OrderModule } from './order/order.module';
+import { PackageModule } from './package/package.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProductModule } from './product/product.module';
 import { StoreModule } from './store/store.module';
 import { UserModule } from './user/user.module';
-import { ProductModule } from './product/product.module';
-import { PackageModule } from './package/package.module';
-import { AuthModule } from './auth/auth.module';
-import { OrderModule } from './order/order.module';
-import { EmailModule } from './email/email.module';
+import { WebsocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { EmailModule } from './email/email.module';
     PackageModule,
     AuthModule,
     OrderModule,
+    BigoModule,
+    WebsocketModule,
   ],
   controllers: [AppController],
   providers: [AppService],

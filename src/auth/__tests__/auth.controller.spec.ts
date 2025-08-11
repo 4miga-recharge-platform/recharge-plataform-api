@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from '../auth.controller';
 import { AuthService } from '../auth.service';
@@ -10,6 +11,9 @@ import { VerifyCodeDto } from '../dto/verify-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { ResendEmailConfirmationDto } from '../dto/resend-email-confirmation.dto';
+import { RequestEmailChangeDto } from '../dto/request-email-change.dto';
+import { ConfirmEmailChangeDto } from '../dto/confirm-email-change.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -50,6 +54,9 @@ describe('AuthController', () => {
       resetPassword: jest.fn(),
       verifyEmail: jest.fn(),
       resendEmailConfirmation: jest.fn(),
+      requestEmailChange: jest.fn(),
+      confirmEmailChange: jest.fn(),
+      changePassword: jest.fn(),
     };
 
     const mockEmailService = {
@@ -322,6 +329,105 @@ describe('AuthController', () => {
         resendEmailConfirmationDto.email,
         resendEmailConfirmationDto.storeId,
       );
+    });
+  });
+
+  describe('requestEmailChange', () => {
+    const dto: RequestEmailChangeDto = {
+      newEmail: 'new@example.com',
+    };
+
+    it('should request email change successfully', async () => {
+      const response = { message: 'Email change code sent to new email' };
+      authService.requestEmailChange.mockResolvedValue(response);
+
+      const result = await controller.requestEmailChange(mockUser as any, dto);
+
+      expect(authService.requestEmailChange).toHaveBeenCalledWith(
+        mockUser.email,
+        dto.newEmail,
+        mockUser.storeId,
+      );
+      expect(result).toEqual(response);
+    });
+
+    it('should handle request email change errors', async () => {
+      const error = new Error('New email is already in use');
+      authService.requestEmailChange.mockRejectedValue(error);
+
+      await expect(controller.requestEmailChange(mockUser as any, dto)).rejects.toThrow(
+        'New email is already in use',
+      );
+      expect(authService.requestEmailChange).toHaveBeenCalledWith(
+        mockUser.email,
+        dto.newEmail,
+        mockUser.storeId,
+      );
+    });
+  });
+
+  describe('confirmEmailChange', () => {
+    const dto: ConfirmEmailChangeDto = {
+      newEmail: 'new@example.com',
+      code: '123456',
+    } as any;
+
+    it('should confirm email change successfully', async () => {
+      const response = { message: 'Email updated successfully' };
+      authService.confirmEmailChange.mockResolvedValue(response);
+
+      const result = await controller.confirmEmailChange(mockUser as any, dto);
+
+      expect(authService.confirmEmailChange).toHaveBeenCalledWith(
+        mockUser.email,
+        dto.newEmail,
+        dto.code,
+        mockUser.storeId,
+      );
+      expect(result).toEqual(response);
+    });
+
+    it('should handle confirm email change errors', async () => {
+      const error = new Error('Invalid confirmation code');
+      authService.confirmEmailChange.mockRejectedValue(error);
+
+      await expect(controller.confirmEmailChange(mockUser as any, dto)).rejects.toThrow(
+        'Invalid confirmation code',
+      );
+      expect(authService.confirmEmailChange).toHaveBeenCalledWith(
+        mockUser.email,
+        dto.newEmail,
+        dto.code,
+        mockUser.storeId,
+      );
+    });
+  });
+
+  describe('changePassword', () => {
+    const dto: ChangePasswordDto = {
+      currentPassword: 'OldPass123',
+      newPassword: 'NewPass123',
+      confirmPassword: 'NewPass123',
+    } as any;
+
+    it('should change password successfully', async () => {
+      const response = { message: 'Password updated successfully' };
+      authService.changePassword.mockResolvedValue(response);
+
+      const result = await controller.changePassword(mockUser as any, dto);
+
+      expect(authService.changePassword).toHaveBeenCalledWith(mockUser.id, dto);
+      expect(result).toEqual(response);
+    });
+
+    it('should handle change password errors', async () => {
+      const error = new Error('Current password is invalid');
+      authService.changePassword.mockRejectedValue(error);
+
+      await expect(controller.changePassword(mockUser as any, dto)).rejects.toThrow(
+        'Current password is invalid',
+      );
+      expect(authService.changePassword).toHaveBeenCalledWith(mockUser.id, dto);
     });
   });
 

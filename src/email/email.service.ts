@@ -43,6 +43,18 @@ export class EmailService {
         from: this.fromEmail,
         subject,
         html,
+        trackingSettings: {
+          clickTracking: {
+            enable: false,
+            enableText: false
+          },
+          openTracking: {
+            enable: false
+          },
+          subscriptionTracking: {
+            enable: false
+          }
+        }
       };
 
       const result = await sgMail.send(msg);
