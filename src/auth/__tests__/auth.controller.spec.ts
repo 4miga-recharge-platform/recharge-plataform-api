@@ -13,6 +13,7 @@ import { VerifyEmailDto } from '../dto/verify-email.dto';
 import { ResendEmailConfirmationDto } from '../dto/resend-email-confirmation.dto';
 import { RequestEmailChangeDto } from '../dto/request-email-change.dto';
 import { ConfirmEmailChangeDto } from '../dto/confirm-email-change.dto';
+import { ChangePasswordDto } from '../dto/change-password.dto';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -55,6 +56,7 @@ describe('AuthController', () => {
       resendEmailConfirmation: jest.fn(),
       requestEmailChange: jest.fn(),
       confirmEmailChange: jest.fn(),
+      changePassword: jest.fn(),
     };
 
     const mockEmailService = {
@@ -398,6 +400,34 @@ describe('AuthController', () => {
         dto.code,
         mockUser.storeId,
       );
+    });
+  });
+
+  describe('changePassword', () => {
+    const dto: ChangePasswordDto = {
+      currentPassword: 'OldPass123',
+      newPassword: 'NewPass123',
+      confirmPassword: 'NewPass123',
+    } as any;
+
+    it('should change password successfully', async () => {
+      const response = { message: 'Password updated successfully' };
+      authService.changePassword.mockResolvedValue(response);
+
+      const result = await controller.changePassword(mockUser as any, dto);
+
+      expect(authService.changePassword).toHaveBeenCalledWith(mockUser.id, dto);
+      expect(result).toEqual(response);
+    });
+
+    it('should handle change password errors', async () => {
+      const error = new Error('Current password is invalid');
+      authService.changePassword.mockRejectedValue(error);
+
+      await expect(controller.changePassword(mockUser as any, dto)).rejects.toThrow(
+        'Current password is invalid',
+      );
+      expect(authService.changePassword).toHaveBeenCalledWith(mockUser.id, dto);
     });
   });
 

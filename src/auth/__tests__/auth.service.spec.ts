@@ -616,6 +616,70 @@ describe('AuthService', () => {
     });
   });
 
+  describe('changePassword', () => {
+    it('should change password when current is valid and confirmation matches', async () => {
+      const bcrypt = require('bcrypt');
+      bcrypt.compare.mockResolvedValue(true);
+      bcrypt.hash.mockResolvedValue('hashedNew');
+
+      prismaService.user.findUnique.mockResolvedValue({ id: 'user-123', password: 'oldHashed' });
+      prismaService.user.update.mockResolvedValue({});
+
+      const result = await service.changePassword('user-123', {
+        currentPassword: 'OldPass123',
+        newPassword: 'NewPass123',
+        confirmPassword: 'NewPass123',
+      });
+
+      expect(prismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        select: { id: true, password: true },
+      });
+      expect(bcrypt.compare).toHaveBeenCalledWith('OldPass123', 'oldHashed');
+      expect(bcrypt.hash).toHaveBeenCalledWith('NewPass123', 10);
+      expect(prismaService.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: { password: 'hashedNew' },
+      });
+      expect(result).toEqual({ message: 'Password updated successfully' });
+    });
+
+    it('should throw when passwords do not match', async () => {
+      await expect(
+        service.changePassword('user-123', {
+          currentPassword: 'OldPass123',
+          newPassword: 'NewPass123',
+          confirmPassword: 'Different',
+        }),
+      ).rejects.toThrow(new BadRequestException('Passwords do not match'));
+    });
+
+    it('should throw when user not found', async () => {
+      prismaService.user.findUnique.mockResolvedValue(null);
+      await expect(
+        service.changePassword('user-123', {
+          currentPassword: 'OldPass123',
+          newPassword: 'NewPass123',
+          confirmPassword: 'NewPass123',
+        }),
+      ).rejects.toThrow(new BadRequestException('User not found'));
+    });
+
+    it('should throw when current password is invalid', async () => {
+      const bcrypt = require('bcrypt');
+      bcrypt.compare.mockResolvedValue(false);
+      prismaService.user.findUnique.mockResolvedValue({ id: 'user-123', password: 'oldHashed' });
+
+      await expect(
+        service.changePassword('user-123', {
+          currentPassword: 'Wrong',
+          newPassword: 'NewPass123',
+          confirmPassword: 'NewPass123',
+        }),
+      ).rejects.toThrow(new BadRequestException('Current password is invalid'));
+    });
+  });
+
   describe('requestEmailChange', () => {
     const currentEmail = 'john@example.com';
     const newEmail = 'new@example.com';
