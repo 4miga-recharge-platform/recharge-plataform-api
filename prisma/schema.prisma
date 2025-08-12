@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,26 +8,25 @@ datasource db {
 }
 
 model Store {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   name         String
-  email        String   @unique
-  domain       String   @unique
-  wppNumber    String?  @unique
-  instagramUrl String?
-  facebookUrl  String?
-  tiktokUrl    String?
+  email        String    @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  bannersUrl   String[]
+  faviconUrl   String?
   logoUrl      String?
   miniLogoUrl  String?
-  faviconUrl   String?
-  bannersUrl   String[]
   onSaleUrlImg String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  users    User[]
-  packages Package[]
-  orders   Order[]
-  coupons  Coupon[]
+  facebookUrl  String?
+  instagramUrl String?
+  tiktokUrl    String?
+  wppNumber    String?   @unique
+  domain       String    @unique
+  coupons      Coupon[]
+  orders       Order[]
+  packages     Package[]
+  users        User[]
 }
 
 model User {
@@ -45,17 +38,16 @@ model User {
   documentType             IndividualType
   documentValue            String
   role                     UserRole       @default(USER)
-  emailVerified            Boolean        @default(false)
-  emailConfirmationCode    String?
-  emailConfirmationExpires DateTime?
-  resetPasswordCode        String?
-  resetPasswordExpires     DateTime?
   createdAt                DateTime       @default(now())
   updatedAt                DateTime       @updatedAt
-
-  storeId String
-  store   Store   @relation(fields: [storeId], references: [id])
-  orders  Order[]
+  storeId                  String
+  resetPasswordCode        String?
+  resetPasswordExpires     DateTime?
+  emailConfirmationCode    String?
+  emailVerified            Boolean        @default(false)
+  emailConfirmationExpires DateTime?
+  orders                   Order[]
+  store                    Store          @relation(fields: [storeId], references: [id])
 
   @@unique([email, storeId])
   @@unique([documentValue, storeId])
@@ -68,9 +60,9 @@ model Product {
   instructions String
   imgBannerUrl String
   imgCardUrl   String
-  packages     Package[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  packages     Package[]
 }
 
 model Package {
@@ -81,13 +73,12 @@ model Package {
   isOffer        Boolean         @default(false)
   basePrice      Decimal         @db.Decimal(10, 2)
   productId      String
-  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  paymentMethods PaymentMethod[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
-
-  storeId String
-  store   Store  @relation(fields: [storeId], references: [id])
+  storeId        String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store          Store           @relation(fields: [storeId], references: [id])
+  paymentMethods PaymentMethod[]
 }
 
 model PaymentMethod {
@@ -95,38 +86,33 @@ model PaymentMethod {
   name      PaymentMethodName
   price     Decimal           @db.Decimal(10, 2)
   packageId String
-  package   Package           @relation(fields: [packageId], references: [id], onDelete: Cascade)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
+  package   Package           @relation(fields: [packageId], references: [id], onDelete: Cascade)
 }
 
 model Order {
-  id          String      @id @default(uuid())
-  orderNumber String      @unique
-  price       Decimal     @db.Decimal(10, 2)
-  orderStatus OrderStatus
-  payment     Payment     @relation(fields: [paymentId], references: [id])
-  paymentId   String      @unique
-  orderItem   OrderItem   @relation(fields: [orderItemId], references: [id])
-  orderItemId String      @unique
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  storeId String
-  store   Store  @relation(fields: [storeId], references: [id])
-  userId  String
-  user    User   @relation(fields: [userId], references: [id])
-
-  // BIGO recharge tracking
+  id            String         @id @default(uuid())
+  orderNumber   String         @unique
+  price         Decimal        @db.Decimal(10, 2)
+  orderStatus   OrderStatus
+  paymentId     String         @unique
+  orderItemId   String         @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  storeId       String
+  userId        String
   bigoRecharges BigoRecharge[]
-
-  // Coupon tracking
-  couponUsages CouponUsage[]
+  couponUsages  CouponUsage[]
+  orderItem     OrderItem      @relation(fields: [orderItemId], references: [id])
+  payment       Payment        @relation(fields: [paymentId], references: [id])
+  store         Store          @relation(fields: [storeId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
 }
 
 model Payment {
   id                  String        @id @default(uuid())
-  name                String // Keeping as String for now
+  name                String
   status              PaymentStatus
   statusUpdatedAt     DateTime?
   qrCode              String?
@@ -138,11 +124,11 @@ model OrderItem {
   id          String      @id @default(uuid())
   productId   String
   productName String
-  recharge    Recharge    @relation(fields: [rechargeId], references: [id])
   rechargeId  String      @unique
-  package     PackageInfo @relation(fields: [packageId], references: [id])
   packageId   String      @unique
   order       Order?
+  package     PackageInfo @relation(fields: [packageId], references: [id])
+  recharge    Recharge    @relation(fields: [rechargeId], references: [id])
 }
 
 model Recharge {
@@ -164,70 +150,53 @@ model PackageInfo {
 }
 
 model BigoRecharge {
-  id            String   @id @default(uuid())
-  seqid         String   @unique // BIGO request correlation ID
-  buOrderId     String?  @unique // Our order ID (optional for precheck)
-  endpoint      String   // /sign/agent/recharge_pre_check, /sign/agent/rs_recharge, /sign/agent/disable
-  status        BigoRechargeStatus
-  rescode       Int?     // BIGO response code (0 = success)
-  message       String?  // BIGO error message
-  requestBody   Json     // Full request payload
-  responseBody  Json?    // Full response payload
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Optional relation to Order (for recharge operations)
-  orderId String?
-  order   Order? @relation(fields: [orderId], references: [id])
+  id           String             @id @default(uuid())
+  seqid        String             @unique
+  buOrderId    String?            @unique
+  endpoint     String
+  status       BigoRechargeStatus
+  rescode      Int?
+  message      String?
+  requestBody  Json
+  responseBody Json?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  orderId      String?
+  order        Order?             @relation(fields: [orderId], references: [id])
 }
 
 model Coupon {
-  id                    String   @id @default(uuid())
-  title                 String
-  influencerName        String
-  paymentMethod         String
-  paymentData           String
+  id                 String        @id @default(uuid())
+  title              String
+  influencerName     String
+  paymentMethod      String
+  paymentData        String
+  discountPercentage Decimal?      @db.Decimal(5, 2)
+  discountAmount     Decimal?      @db.Decimal(10, 2)
+  expiresAt          DateTime?
+  timesUsed          Int           @default(0)
+  totalSalesAmount   Decimal       @default(0) @db.Decimal(10, 2)
+  maxUses            Int?
+  minOrderAmount     Decimal?      @db.Decimal(10, 2)
+  isActive           Boolean       @default(true)
+  storeId            String
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  store              Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  couponUsages       CouponUsage[]
 
-  // Discount
-  discountPercentage    Decimal? @db.Decimal(5, 2)
-  discountAmount        Decimal? @db.Decimal(10, 2)
-
-  // Validity
-  expiresAt             DateTime? // Expiration date (null = never expires)
-
-  // Statistics
-  timesUsed             Int      @default(0)
-  totalSalesAmount      Decimal  @default(0) @db.Decimal(10, 2)
-
-  // Optional limits
-  maxUses               Int?    // Maximum uses allowed
-  minOrderAmount        Decimal? @db.Decimal(10, 2)
-
-  // Status
-  isActive              Boolean  @default(true)
-
-  // Relationships
-  storeId               String
-  store                 Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  // Usage history
-  couponUsages          CouponUsage[]
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  @@unique([title, storeId]) // Unique title per store
+  @@unique([title, storeId])
 }
 
 model CouponUsage {
-  id        String   @id @default(uuid())
-  couponId  String
-  coupon    Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  orderId   String
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  usedAt    DateTime @default(now())
+  id       String   @id @default(uuid())
+  couponId String
+  orderId  String
+  usedAt   DateTime @default(now())
+  coupon   Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  @@unique([couponId, orderId]) // Prevents duplicate use of same coupon in same order
+  @@unique([couponId, orderId])
 }
 
 enum BigoRechargeStatus {
