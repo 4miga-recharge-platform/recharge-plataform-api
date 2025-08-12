@@ -33,6 +33,7 @@ model Store {
   users    User[]
   packages Package[]
   orders   Order[]
+  coupons  Coupon[]
 }
 
 model User {
@@ -118,6 +119,9 @@ model Order {
 
   // BIGO recharge tracking
   bigoRecharges BigoRecharge[]
+
+  // Coupon tracking
+  couponUsages CouponUsage[]
 }
 
 model Payment {
@@ -175,6 +179,55 @@ model BigoRecharge {
   // Optional relation to Order (for recharge operations)
   orderId String?
   order   Order? @relation(fields: [orderId], references: [id])
+}
+
+model Coupon {
+  id                    String   @id @default(uuid())
+  title                 String
+  influencerName        String
+  paymentMethod         String
+  paymentData           String
+
+  // Discount
+  discountPercentage    Decimal? @db.Decimal(5, 2)
+  discountAmount        Decimal? @db.Decimal(10, 2)
+
+  // Validity
+  expiresAt             DateTime? // Expiration date (null = never expires)
+
+  // Statistics
+  timesUsed             Int      @default(0)
+  totalSalesAmount      Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Optional limits
+  maxUses               Int?    // Maximum uses allowed
+  minOrderAmount        Decimal? @db.Decimal(10, 2)
+
+  // Status
+  isActive              Boolean  @default(true)
+
+  // Relationships
+  storeId               String
+  store                 Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Usage history
+  couponUsages          CouponUsage[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([title, storeId]) // Unique title per store
+}
+
+model CouponUsage {
+  id        String   @id @default(uuid())
+  couponId  String
+  coupon    Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  usedAt    DateTime @default(now())
+
+  @@unique([couponId, orderId]) // Prevents duplicate use of same coupon in same order
 }
 
 enum BigoRechargeStatus {
