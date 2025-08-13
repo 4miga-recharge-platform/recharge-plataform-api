@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { BigoModule } from './bigo/bigo.module';
+import { CouponModule } from './coupon/coupon.module';
 import { EmailModule } from './email/email.module';
 import { InfluencerModule } from './influencer/influencer.module';
 import { OrderModule } from './order/order.module';
@@ -28,6 +29,7 @@ import { WebsocketModule } from './websocket/websocket.module';
     BigoModule,
     WebsocketModule,
     InfluencerModule,
+    CouponModule,
   ],
   controllers: [AppController],
   providers: [AppService],
