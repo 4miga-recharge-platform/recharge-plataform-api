@@ -1,0 +1,169 @@
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { validateRequiredFields } from 'src/utils/validation.util';
+import { CreateInfluencerDto } from './dto/create-influencer.dto';
+import { UpdateInfluencerDto } from './dto/update-influencer.dto';
+import { Influencer } from './entities/influencer.entity';
+
+@Injectable()
+export class InfluencerService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  private influencerSelect = {
+    id: true,
+    name: true,
+    email: true,
+    phone: true,
+    paymentMethod: true,
+    paymentData: true,
+    isActive: true,
+    storeId: true,
+    coupons: true,
+    createdAt: false,
+    updatedAt: false,
+    // store: false,
+  };
+
+  async findAll(): Promise<Influencer[]> {
+    try {
+      const data = await this.prisma.influencer.findMany({
+        select: this.influencerSelect,
+      });
+      return data;
+    } catch {
+      throw new BadRequestException('Failed to fetch influencers');
+    }
+  }
+
+  async findOne(id: string): Promise<Influencer> {
+    try {
+      const data = await this.prisma.influencer.findUnique({
+        where: { id },
+        select: this.influencerSelect,
+      });
+      if (!data) {
+        throw new BadRequestException('Influencer not found');
+      }
+      return data;
+    } catch {
+      throw new BadRequestException('Failed to fetch influencer');
+    }
+  }
+
+  async findByStore(storeId: string): Promise<Influencer[]> {
+    try {
+      const data = await this.prisma.influencer.findMany({
+        where: { storeId },
+        select: this.influencerSelect,
+      });
+      return data;
+    } catch {
+      throw new BadRequestException('Failed to fetch influencers by store');
+    }
+  }
+
+  async create(dto: CreateInfluencerDto): Promise<Influencer> {
+    try {
+      validateRequiredFields(dto, ['name', 'storeId']);
+
+      // Check if store exists
+      const store = await this.prisma.store.findUnique({
+        where: { id: dto.storeId },
+      });
+      if (!store) {
+        throw new BadRequestException('Store not found');
+      }
+
+      // Check if influencer name already exists for this store
+      const existingInfluencer = await this.prisma.influencer.findFirst({
+        where: {
+          name: dto.name,
+          storeId: dto.storeId,
+        },
+      });
+      if (existingInfluencer) {
+        throw new BadRequestException('Influencer with this name already exists for this store');
+      }
+
+      return await this.prisma.influencer.create({
+        data: dto,
+        select: this.influencerSelect,
+      });
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to create influencer');
+    }
+  }
+
+  async update(id: string, dto: UpdateInfluencerDto): Promise<Influencer> {
+    try {
+      await this.findOne(id);
+
+      const fieldsToValidate = Object.keys(dto).filter(
+        (key) => dto[key] !== undefined,
+      );
+      validateRequiredFields(dto, fieldsToValidate);
+
+      // If updating storeId, check if new store exists
+      if (dto.storeId) {
+        const store = await this.prisma.store.findUnique({
+          where: { id: dto.storeId },
+        });
+        if (!store) {
+          throw new BadRequestException('Store not found');
+        }
+      }
+
+      // If updating name, check if new name already exists for the store
+      if (dto.name) {
+        const existingInfluencer = await this.prisma.influencer.findFirst({
+          where: {
+            name: dto.name,
+            storeId: dto.storeId || (await this.findOne(id)).storeId,
+            id: { not: id },
+          },
+        });
+        if (existingInfluencer) {
+          throw new BadRequestException('Influencer with this name already exists for this store');
+        }
+      }
+
+      return await this.prisma.influencer.update({
+        where: { id },
+        data: dto,
+        select: this.influencerSelect,
+      });
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to update influencer');
+    }
+  }
+
+  async remove(id: string): Promise<Influencer> {
+    try {
+      await this.findOne(id);
+
+      // Check if influencer has associated coupons
+      const coupons = await this.prisma.coupon.findMany({
+        where: { influencerId: id },
+      });
+      if (coupons.length > 0) {
+        throw new BadRequestException('Cannot delete influencer with associated coupons');
+      }
+
+      return await this.prisma.influencer.delete({
+        where: { id },
+        select: this.influencerSelect,
+      });
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to remove influencer');
+    }
+  }
+}
