@@ -8,11 +8,11 @@ datasource db {
 }
 
 model Store {
-  id           String    @id @default(uuid())
+  id           String       @id @default(uuid())
   name         String
-  email        String    @unique
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  email        String       @unique
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   bannersUrl   String[]
   faviconUrl   String?
   logoUrl      String?
@@ -21,12 +21,30 @@ model Store {
   facebookUrl  String?
   instagramUrl String?
   tiktokUrl    String?
-  wppNumber    String?   @unique
-  domain       String    @unique
+  wppNumber    String?      @unique
+  domain       String       @unique
   coupons      Coupon[]
+  influencers  Influencer[]
   orders       Order[]
   packages     Package[]
   users        User[]
+}
+
+model Influencer {
+  id            String   @id @default(uuid())
+  name          String
+  email         String?
+  phone         String?
+  paymentMethod String?
+  paymentData   String?
+  isActive      Boolean  @default(true)
+  storeId       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  coupons       Coupon[]
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([name, storeId])
 }
 
 model User {
@@ -168,9 +186,6 @@ model BigoRecharge {
 model Coupon {
   id                 String        @id @default(uuid())
   title              String
-  influencerName     String
-  paymentMethod      String
-  paymentData        String
   discountPercentage Decimal?      @db.Decimal(5, 2)
   discountAmount     Decimal?      @db.Decimal(10, 2)
   expiresAt          DateTime?
@@ -182,6 +197,9 @@ model Coupon {
   storeId            String
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+  influencerId       String
+  isFirstPurchase    Boolean       @default(false)
+  influencer         Influencer    @relation(fields: [influencerId], references: [id], onDelete: Cascade)
   store              Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   couponUsages       CouponUsage[]
 
