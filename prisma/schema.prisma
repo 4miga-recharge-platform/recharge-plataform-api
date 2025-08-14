@@ -221,6 +221,7 @@ enum BigoRechargeStatus {
   REQUESTED
   SUCCESS
   FAILED
+  RETRY_PENDING
 }
 
 enum UserRole {

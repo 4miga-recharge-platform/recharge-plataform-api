@@ -3,9 +3,10 @@ import { HttpModule } from '@nestjs/axios';
 import { BigoController } from './bigo.controller';
 import { BigoService } from './bigo.service';
 import { BigoSignatureService } from './http/bigo-signature.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, PrismaModule],
   controllers: [BigoController],
   providers: [BigoService, BigoSignatureService],
 })
