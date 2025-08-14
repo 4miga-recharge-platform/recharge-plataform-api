@@ -5,6 +5,8 @@ import * as bcrypt from 'bcrypt';
 async function main() {
   // 0. Clear all existing data
   console.log('🧹 Limpando dados existentes...');
+  await prisma.couponUsage.deleteMany();
+  await prisma.coupon.deleteMany();
   await prisma.order.deleteMany();
   await prisma.user.deleteMany();
   await prisma.package.deleteMany();
@@ -122,6 +124,258 @@ async function main() {
     }
   }
 
+  // 3. Create influencers for both stores
+  console.log('👤 Criando influencers para cada loja...');
+
+  const store1Influencers = [
+    {
+      name: 'GamerPro',
+      email: 'gamerpro@example.com',
+      phone: '11999999999',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_GAMERPRO',
+      isActive: true,
+      storeId: store1.id,
+    },
+    {
+      name: 'LiveStreamer',
+      email: 'livestreamer@example.com',
+      phone: '11988888888',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_LIVESTREAMER',
+      isActive: true,
+      storeId: store1.id,
+    },
+    {
+      name: 'NewUser',
+      email: 'newuser@example.com',
+      phone: '11977777777',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_NEWUSER',
+      isActive: true,
+      storeId: store1.id,
+    },
+    {
+      name: 'WeekendGamer',
+      email: 'weekendgamer@example.com',
+      phone: '11966666666',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_WEEKENDGAMER',
+      isActive: true,
+      storeId: store1.id,
+    },
+    {
+      name: 'LoyalCustomer',
+      email: 'loyalcustomer@example.com',
+      phone: '11955555555',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_LOYALCUSTOMER',
+      isActive: true,
+      storeId: store1.id,
+    },
+  ];
+
+  const store2Influencers = [
+    {
+      name: 'StoreOpener',
+      email: 'storeopener@example.com',
+      phone: '11944444444',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_STOREOPENER',
+      isActive: true,
+      storeId: store2.id,
+    },
+    {
+      name: 'PoppoFan',
+      email: 'poppofan@example.com',
+      phone: '11933333333',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_POPPOFAN',
+      isActive: true,
+      storeId: store2.id,
+    },
+    {
+      name: 'FlashSale',
+      email: 'flashsale@example.com',
+      phone: '11922222222',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_FLASHSALE',
+      isActive: true,
+      storeId: store2.id,
+    },
+    {
+      name: 'DailyDeal',
+      email: 'dailydeal@example.com',
+      phone: '11911111111',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_DAILYDEAL',
+      isActive: true,
+      storeId: store2.id,
+    },
+    {
+      name: 'VIPMember',
+      email: 'vipmember@example.com',
+      phone: '11900000000',
+      paymentMethod: 'pix',
+      paymentData: 'PIX_VIPMEMBER',
+      isActive: true,
+      storeId: store2.id,
+    },
+  ];
+
+  // Create influencers for both stores
+  const createdStore1Influencers: any[] = [];
+  const createdStore2Influencers: any[] = [];
+
+  for (const influencerData of store1Influencers) {
+    const influencer = await prisma.influencer.create({ data: influencerData });
+    createdStore1Influencers.push(influencer);
+  }
+
+  for (const influencerData of store2Influencers) {
+    const influencer = await prisma.influencer.create({ data: influencerData });
+    createdStore2Influencers.push(influencer);
+  }
+
+  console.log('✅ Influencers criados!');
+
+  // 4. Create 5 coupons for each store
+  console.log('🎫 Criando cupons para cada loja...');
+
+  const store1Coupons = [
+    {
+      title: 'WELCOME10',
+      influencerId: createdStore1Influencers[0].id, // GamerPro
+      discountPercentage: 10.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+      maxUses: 100,
+      minOrderAmount: 20.00,
+      isActive: true,
+      isFirstPurchase: true,
+      storeId: store1.id,
+    },
+    {
+      title: 'BIGO5',
+      influencerId: createdStore1Influencers[1].id, // LiveStreamer
+      discountPercentage: 5.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 dias
+      maxUses: 200,
+      minOrderAmount: 15.00,
+      isActive: true,
+      storeId: store1.id,
+    },
+    {
+      title: 'FIRSTORDER',
+      influencerId: createdStore1Influencers[2].id, // NewUser
+      discountPercentage: 10.00,
+      discountAmount: null,
+      expiresAt: null,
+      maxUses: 50,
+      minOrderAmount: 10.00,
+      isActive: true,
+      storeId: store1.id,
+    },
+    {
+      title: 'WEEKEND5',
+      influencerId: createdStore1Influencers[3].id, // WeekendGamer
+      discountPercentage: 5.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 dia atrás
+      maxUses: 150,
+      minOrderAmount: 25.00,
+      isActive: true,
+      storeId: store1.id,
+    },
+    {
+      title: 'LOYALTY10',
+      influencerId: createdStore1Influencers[4].id, // LoyalCustomer
+      discountPercentage: 10.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000), // 120 dias
+      maxUses: 75,
+      minOrderAmount: 30.00,
+      isActive: true,
+      storeId: store1.id,
+    },
+  ];
+
+  const store2Coupons = [
+    {
+      title: 'NEWSTORE10',
+      influencerId: createdStore2Influencers[0].id, // StoreOpener
+      discountPercentage: 10.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000), // 25 dias
+      maxUses: 80,
+      minOrderAmount: 18.00,
+      isActive: true,
+      isFirstPurchase: true,
+      storeId: store2.id,
+    },
+    {
+      title: 'POPPO5',
+      influencerId: createdStore2Influencers[1].id, // PoppoFan
+      discountPercentage: 5.00,
+      discountAmount: null,
+      expiresAt: null,
+      maxUses: 180,
+      minOrderAmount: 20.00,
+      isActive: true,
+      storeId: store2.id,
+    },
+    {
+      title: 'FLASH10',
+      influencerId: createdStore2Influencers[2].id, // FlashSale
+      discountPercentage: 10.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 dias
+      maxUses: 60,
+      minOrderAmount: 15.00,
+      isActive: true,
+      storeId: store2.id,
+    },
+    {
+      title: 'DAILY5',
+      influencerId: createdStore2Influencers[3].id, // DailyDeal
+      discountPercentage: 5.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() + 55 * 24 * 60 * 60 * 1000), // 55 dias
+      maxUses: 120,
+      minOrderAmount: 22.00,
+      isActive: true,
+      storeId: store2.id,
+    },
+    {
+      title: 'VIP10',
+      influencerId: createdStore2Influencers[4].id, // VIPMember
+      discountPercentage: 10.00,
+      discountAmount: null,
+      expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), //expired
+      maxUses: 40,
+      minOrderAmount: 35.00,
+      isActive: true,
+      storeId: store2.id,
+    },
+  ];
+
+  // Create coupons for both stores
+  const createdStore1Coupons: any[] = [];
+  const createdStore2Coupons: any[] = [];
+
+  for (const couponData of store1Coupons) {
+    const coupon = await prisma.coupon.create({ data: couponData });
+    createdStore1Coupons.push(coupon);
+  }
+
+  for (const couponData of store2Coupons) {
+    const coupon = await prisma.coupon.create({ data: couponData });
+    createdStore2Coupons.push(coupon);
+  }
+
+  console.log('✅ Cupons criados!');
+
   // 4. Create users for both stores
   const password = await bcrypt.hash('Babebi22*', 10)
   const user1 = await prisma.user.create({
@@ -157,10 +411,12 @@ async function main() {
   // 5. Create 10 Orders for each user, each with random Product and Package
   const users = [user1, user2];
   const storesForOrders = [store1, store2];
+  const couponsForStores = [createdStore1Coupons, createdStore2Coupons];
 
   for (let userIndex = 0; userIndex < users.length; userIndex++) {
     const currentUser = users[userIndex];
     const currentStore = storesForOrders[userIndex];
+    const currentStoreCoupons = couponsForStores[userIndex];
 
     for (let i = 0; i < 10; i++) {
       const randomProduct = products[Math.floor(Math.random() * products.length)];
@@ -213,7 +469,7 @@ async function main() {
       });
 
       // Order
-      await prisma.order.create({
+      const order = await prisma.order.create({
         data: {
           orderNumber: `ORDER-${userIndex + 1}-${i + 1}`,
           price: randomPackage.basePrice,
@@ -224,6 +480,48 @@ async function main() {
           userId: currentUser.id,
         },
       });
+
+      // 70% chance de aplicar um cupom (7 de 10 pedidos)
+      if (Math.random() < 0.7) {
+        const randomCoupon = currentStoreCoupons[Math.floor(Math.random() * currentStoreCoupons.length)];
+
+        // Verificar se o pedido atende aos requisitos mínimos do cupom
+        if (randomCoupon.minOrderAmount === null || randomPackage.basePrice >= randomCoupon.minOrderAmount) {
+          // Aplicar desconto
+          let finalPrice = randomPackage.basePrice;
+          if (randomCoupon.discountPercentage) {
+            finalPrice = randomPackage.basePrice.mul(1 - randomCoupon.discountPercentage.toNumber() / 100);
+          } else if (randomCoupon.discountAmount) {
+            const tempPrice = randomPackage.basePrice.sub(randomCoupon.discountAmount);
+            finalPrice = tempPrice.greaterThan(0) ? tempPrice : tempPrice;
+          }
+
+          // Atualizar o preço do pedido com desconto
+          await prisma.order.update({
+            where: { id: order.id },
+            data: { price: finalPrice }
+          });
+
+          // Registrar uso do cupom
+          await prisma.couponUsage.create({
+            data: {
+              couponId: randomCoupon.id,
+              orderId: order.id,
+            },
+          });
+
+          // Atualizar estatísticas do cupom
+          await prisma.coupon.update({
+            where: { id: randomCoupon.id },
+            data: {
+              timesUsed: { increment: 1 },
+              totalSalesAmount: { increment: finalPrice }
+            }
+          });
+
+          console.log(`🎫 Cupom ${randomCoupon.title} aplicado no pedido ${order.orderNumber} - Desconto: ${randomCoupon.discountPercentage}%`);
+        }
+      }
     }
   }
 
