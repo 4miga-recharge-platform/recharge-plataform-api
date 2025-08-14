@@ -9,6 +9,8 @@ export class BigoRetryService {
   private readonly maxRetries = 3;
   private readonly retryDelays = [5, 15, 30]; // minutes
 
+
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => BigoService))
@@ -30,18 +32,32 @@ export class BigoRetryService {
       },
     });
 
+
+
     this.logger.log(`Added recharge ${rechargeId} to retry queue for ${nextRetry}`);
   }
 
   /**
-   * Processes the retry queue every 2 minutes
+   * Processes the retry queue every 5 minutes
    */
-  @Cron('0 */2 * * * *') // Every 2 minutes
+  @Cron('0 */5 * * * *') // Every 5 minutes
   async processRetryQueue() {
-    this.logger.debug('Processing retry queue...');
-
     try {
-      // Find pending retries
+      // Quick check: only process if there are any pending retries
+      const hasPending = await this.prisma.bigoRecharge.findFirst({
+        where: {
+          status: 'RETRY_PENDING',
+          nextRetry: { lte: new Date() },
+          attempts: { lt: this.maxRetries },
+        },
+        select: { id: true }, // Only select ID for faster query
+      });
+
+      if (!hasPending) {
+        return; // Exit early, no processing needed
+      }
+
+      // Find pending retries for processing
       const pendingRetries = await this.prisma.bigoRecharge.findMany({
         where: {
           status: 'RETRY_PENDING',
@@ -49,14 +65,15 @@ export class BigoRetryService {
           attempts: { lt: this.maxRetries },
         },
         orderBy: { nextRetry: 'asc' },
-        take: 10, // Process 10 at a time
+        take: 50,
       });
 
-      this.logger.log(`Found ${pendingRetries.length} pending retries`);
+      this.logger.debug(`Processing ${pendingRetries.length} retries`);
 
-      for (const recharge of pendingRetries) {
-        await this.processRetry(recharge);
-      }
+      // Process retries in parallel for better performance
+      await Promise.all(
+        pendingRetries.map(recharge => this.processRetry(recharge))
+      );
     } catch (error) {
       this.logger.error(`Error processing retry queue: ${error.message}`);
     }
@@ -97,6 +114,8 @@ export class BigoRetryService {
           nextRetry: null,
         },
       });
+
+
 
       this.logger.log(`Retry successful for recharge ${recharge.id}`);
 
@@ -179,4 +198,6 @@ export class BigoRetryService {
       retryDelays: this.retryDelays,
     };
   }
+
+
 }
