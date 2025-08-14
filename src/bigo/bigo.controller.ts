@@ -66,4 +66,13 @@ export class BigoController {
   async testConnectivity() {
     return this.bigoService.testConnectivity();
   }
+
+  @Get('retry-stats')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get retry queue statistics' })
+  @ApiResponse({ status: 200, description: 'Retry statistics' })
+  async getRetryStats() {
+    return this.bigoService.getRetryStats();
+  }
 }

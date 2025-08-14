@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -7,6 +8,7 @@ import { DiamondRechargeDto } from './dto/diamond-recharge.dto';
 import { DisableRechargeDto } from './dto/disable-recharge.dto';
 import { BigoSignatureService } from './http/bigo-signature.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BigoRetryService } from './bigo-retry.service';
 
 @Injectable()
 export class BigoService {
@@ -17,6 +19,7 @@ export class BigoService {
     private readonly httpService: HttpService,
     private readonly signatureService: BigoSignatureService,
     private readonly prisma: PrismaService,
+    private readonly retryService: BigoRetryService,
   ) {
     this.baseUrl = env.BIGO_HOST_DOMAIN || 'https://oauth.bigolive.tv';
   }
@@ -53,14 +56,8 @@ export class BigoService {
     } catch (error) {
       this.logger.error(`Recharge precheck failed: ${error.message}`);
 
-      // Update log with error
-      await this.prisma.bigoRecharge.update({
-        where: { id: logEntry.id },
-        data: {
-          status: 'FAILED',
-          message: error.message,
-        },
-      });
+      // Add to retry queue instead of marking as failed
+      await this.retryService.addToRetryQueue(logEntry.id);
 
       throw error;
     }
@@ -99,14 +96,8 @@ export class BigoService {
     } catch (error) {
       this.logger.error(`Diamond recharge failed: ${error.message}`);
 
-      // Update log with error
-      await this.prisma.bigoRecharge.update({
-        where: { id: logEntry.id },
-        data: {
-          status: 'FAILED',
-          message: error.message,
-        },
-      });
+      // Add to retry queue instead of marking as failed
+      await this.retryService.addToRetryQueue(logEntry.id);
 
       throw error;
     }
@@ -144,14 +135,8 @@ export class BigoService {
     } catch (error) {
       this.logger.error(`Disable recharge failed: ${error.message}`);
 
-      // Update log with error
-      await this.prisma.bigoRecharge.update({
-        where: { id: logEntry.id },
-        data: {
-          status: 'FAILED',
-          message: error.message,
-        },
-      });
+      // Add to retry queue instead of marking as failed
+      await this.retryService.addToRetryQueue(logEntry.id);
 
       throw error;
     }
@@ -312,5 +297,9 @@ export class BigoService {
       results,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  async getRetryStats() {
+    return this.retryService.getRetryStats();
   }
 }
