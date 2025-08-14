@@ -7,7 +7,7 @@ import { BigoService } from './bigo.service';
 export class BigoRetryService {
   private readonly logger = new Logger(BigoRetryService.name);
   private readonly maxRetries = 3;
-  private readonly retryDelays = [5, 15, 30]; // minutes
+  private readonly retryDelays = [3, 13, 28]; // minutes
 
 
 
