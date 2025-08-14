@@ -436,7 +436,7 @@ export class OrderService {
           isFirstPurchase: coupon.isFirstPurchase,
         },
       };
-    } catch (error) {
+    } catch {
       return { valid: false, message: 'Failed to validate coupon' };
     }
   }

@@ -4,6 +4,7 @@ import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
 import { OrderService } from '../order.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto } from '../dto/create-order.dto';
+import { ValidateCouponDto } from '../dto/validate-coupon.dto';
 
 // Mock validation utility
 jest.mock('../../utils/validation.util', () => ({
@@ -78,6 +79,21 @@ describe('OrderService', () => {
         imgCardUrl: 'https://example.com/package-card.png',
       },
     },
+    couponUsages: [],
+  };
+
+  const mockCoupon = {
+    id: 'coupon-123',
+    title: 'WELCOME10',
+    discountPercentage: 10.00,
+    discountAmount: null,
+    expiresAt: new Date('2025-12-31'),
+    timesUsed: 5,
+    maxUses: 100,
+    minOrderAmount: 10.00,
+    isActive: true,
+    isFirstPurchase: false,
+    storeId: 'store-123',
   };
 
   beforeEach(async () => {
@@ -106,6 +122,14 @@ describe('OrderService', () => {
       },
       payment: {
         create: jest.fn(),
+      },
+      coupon: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
+      couponUsage: {
+        create: jest.fn(),
+        update: jest.fn(),
       },
       $transaction: jest.fn(),
     };
@@ -137,7 +161,7 @@ describe('OrderService', () => {
     const limit = 6;
 
     it('should return paginated orders successfully', async () => {
-      const orders = [mockOrder];
+      const orders = [{ ...mockOrder, couponUsages: [] }];
       const totalOrders = 1;
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
@@ -165,6 +189,19 @@ describe('OrderService', () => {
               recharge: true,
               package: true,
             },
+          },
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  title: true,
+                  discountPercentage: true,
+                  discountAmount: true,
+                  isFirstPurchase: true,
+                }
+              }
+            }
           },
         },
         orderBy: {
@@ -227,6 +264,19 @@ describe('OrderService', () => {
               package: true,
             },
           },
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  title: true,
+                  discountPercentage: true,
+                  discountAmount: true,
+                  isFirstPurchase: true,
+                }
+              }
+            }
+          },
         },
       });
 
@@ -254,6 +304,7 @@ describe('OrderService', () => {
       packageId: 'package-123',
       paymentMethodId: 'payment-method-123',
       userIdForRecharge: 'player123456',
+      couponTitle: undefined,
     };
     const userId = 'user-123';
 
@@ -401,6 +452,196 @@ describe('OrderService', () => {
       prismaService.$transaction.mockRejectedValue(new Error('Database error'));
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow('Database error');
+    });
+  });
+
+  describe('validateCoupon', () => {
+    const validateCouponDto: ValidateCouponDto = {
+      couponTitle: 'WELCOME10',
+      orderAmount: 50.00,
+    };
+    const storeId = 'store-123';
+    const userId = 'user-123';
+
+    it('should validate a valid coupon successfully', async () => {
+      prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(prismaService.coupon.findFirst).toHaveBeenCalledWith({
+        where: {
+          title: 'WELCOME10',
+          storeId,
+        },
+        select: {
+          id: true,
+          title: true,
+          discountPercentage: true,
+          discountAmount: true,
+          expiresAt: true,
+          timesUsed: true,
+          maxUses: true,
+          minOrderAmount: true,
+          isActive: true,
+          isFirstPurchase: true,
+          storeId: true,
+        },
+      });
+
+      expect(result.valid).toBe(true);
+      expect(result.discountAmount).toBe(5.00); // 10% of 50.00
+      expect(result.finalAmount).toBe(45.00);
+    });
+
+    it('should return invalid when coupon not found', async () => {
+      prismaService.coupon.findFirst.mockResolvedValue(null);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Coupon not found');
+    });
+
+    it('should return invalid when coupon is not active', async () => {
+      const inactiveCoupon = { ...mockCoupon, isActive: false };
+      prismaService.coupon.findFirst.mockResolvedValue(inactiveCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Coupon is not active');
+    });
+
+    it('should return invalid when coupon has expired', async () => {
+      const expiredCoupon = { ...mockCoupon, expiresAt: new Date('2020-12-31') };
+      prismaService.coupon.findFirst.mockResolvedValue(expiredCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Coupon has expired');
+    });
+
+    it('should return invalid when usage limit reached', async () => {
+      const maxUsesCoupon = { ...mockCoupon, maxUses: 5, timesUsed: 5 };
+      prismaService.coupon.findFirst.mockResolvedValue(maxUsesCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Coupon usage limit reached');
+    });
+
+    it('should return invalid when order amount is below minimum', async () => {
+      const minOrderCoupon = { ...mockCoupon, minOrderAmount: 100.00 };
+      prismaService.coupon.findFirst.mockResolvedValue(minOrderCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('Minimum order amount required: 100');
+    });
+
+    it('should return invalid for first purchase coupon when user has previous orders', async () => {
+      const firstPurchaseCoupon = { ...mockCoupon, isFirstPurchase: true };
+      prismaService.coupon.findFirst.mockResolvedValue(firstPurchaseCoupon);
+      prismaService.order.count.mockResolvedValue(2); // User has 2 previous orders
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('First purchase coupon can only be used by new customers');
+    });
+
+    it('should return valid for first purchase coupon when user has no previous orders', async () => {
+      const firstPurchaseCoupon = { ...mockCoupon, isFirstPurchase: true };
+      prismaService.coupon.findFirst.mockResolvedValue(firstPurchaseCoupon);
+      prismaService.order.count.mockResolvedValue(0); // User has no previous orders
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should handle percentage discount correctly', async () => {
+      const percentageCoupon = { ...mockCoupon, discountPercentage: 20.00, discountAmount: null };
+      prismaService.coupon.findFirst.mockResolvedValue(percentageCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(true);
+      expect(result.discountAmount).toBe(10.00); // 20% of 50.00
+      expect(result.finalAmount).toBe(40.00);
+    });
+
+    it('should handle amount discount correctly', async () => {
+      const amountCoupon = { ...mockCoupon, discountPercentage: null, discountAmount: 15.00 };
+      prismaService.coupon.findFirst.mockResolvedValue(amountCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(true);
+      expect(result.discountAmount).toBe(15.00);
+      expect(result.finalAmount).toBe(35.00);
+    });
+
+    it('should limit amount discount to order amount', async () => {
+      const amountCoupon = { ...mockCoupon, discountPercentage: null, discountAmount: 100.00 };
+      prismaService.coupon.findFirst.mockResolvedValue(amountCoupon);
+
+      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+
+      expect(result.valid).toBe(true);
+      expect(result.discountAmount).toBe(50.00); // Limited to order amount
+      expect(result.finalAmount).toBe(0.00);
+    });
+  });
+
+  describe('applyCoupon', () => {
+    const couponTitle = 'WELCOME10';
+    const orderAmount = 50.00;
+    const storeId = 'store-123';
+    const userId = 'user-123';
+
+    it('should apply a valid coupon successfully', async () => {
+      const mockValidation = {
+        valid: true,
+        discountAmount: 5.00,
+        finalAmount: 45.00,
+        coupon: mockCoupon,
+      };
+
+      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
+
+      const result = await service.applyCoupon(couponTitle, orderAmount, storeId, userId);
+
+      expect(service.validateCoupon).toHaveBeenCalledWith(
+        { couponTitle, orderAmount },
+        storeId,
+        userId
+      );
+      expect(result).toEqual(mockValidation);
+    });
+
+    it('should throw BadRequestException when coupon validation fails', async () => {
+      const mockValidation = {
+        valid: false,
+        message: 'Coupon has expired',
+      };
+
+      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
+
+      await expect(service.applyCoupon(couponTitle, orderAmount, storeId, userId)).rejects.toThrow(
+        BadRequestException
+      );
+    });
+
+    it('should handle validation errors', async () => {
+      jest.spyOn(service, 'validateCoupon').mockRejectedValue(new Error('Validation error'));
+
+      await expect(service.applyCoupon(couponTitle, orderAmount, storeId, userId)).rejects.toThrow(
+        BadRequestException
+      );
     });
   });
 });
