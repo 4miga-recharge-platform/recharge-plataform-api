@@ -1,59 +1,84 @@
-import { Injectable } from '@nestjs/common';
-import { RechargeDto } from './dto/recharge.dto';
-import { BigoHttpService } from './http/bigo-http.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { env } from '../env';
+import { RechargePrecheckDto } from './dto/recharge-precheck.dto';
+import { DiamondRechargeDto } from './dto/diamond-recharge.dto';
+import { DisableRechargeDto } from './dto/disable-recharge.dto';
+import { BigoSignatureService } from './http/bigo-signature.service';
 
 @Injectable()
 export class BigoService {
+  private readonly logger = new Logger(BigoService.name);
+  private readonly baseUrl: string;
+
   constructor(
-    private readonly http: BigoHttpService,
-    private readonly prisma: PrismaService,
-  ) {}
+    private readonly httpService: HttpService,
+    private readonly signatureService: BigoSignatureService,
+  ) {
+    this.baseUrl = env.BIGO_HOST_DOMAIN || 'https://oauth.bigolive.tv';
+  }
 
-  private generateSeqId(): string {
-    const timestamp = Date.now().toString(36);
-    let rand = '';
-    for (let i = 0; i < 16; i++) {
-      rand += Math.floor(Math.random() * 36).toString(36);
+  async rechargePrecheck(dto: RechargePrecheckDto) {
+    this.logger.log(`Recharge precheck for bigoid: ${dto.recharge_bigoid}`);
+
+    try {
+      const response = await this.makeSignedRequest(
+        '/sign/agent/recharge_pre_check',
+        dto,
+      );
+
+      return response;
+    } catch (error) {
+      this.logger.error(`Recharge precheck failed: ${error.message}`);
+      throw error;
     }
-    const seqid = (timestamp + rand).slice(0, 20).replace(/[^0-9a-z]/g, '');
-    return seqid;
   }
 
-  async precheck() {
-    const seqid = this.generateSeqId();
-    return this.http.post('/sign/agent/recharge_pre_check', { seqid });
+    async diamondRecharge(dto: DiamondRechargeDto) {
+    this.logger.log(`Diamond recharge for bigoid: ${dto.recharge_bigoid}, value: ${dto.value}`);
+
+    try {
+      const response = await this.makeSignedRequest(
+        '/sign/agent/rs_recharge',
+        dto,
+      );
+
+      return response;
+    } catch (error) {
+      this.logger.error(`Diamond recharge failed: ${error.message}`);
+      throw error;
+    }
   }
 
-  async recharge(payload: RechargeDto) {
-    const seqid = this.generateSeqId();
-    const body = {
-      ...payload,
-      seqid,
-    } as any;
+  async disableRecharge(dto: DisableRechargeDto) {
+    this.logger.log('Disabling recharge APIs');
 
-    return this.http.post('/sign/agent/rs_recharge', body);
+    try {
+      const response = await this.makeSignedRequest(
+        '/sign/agent/disable',
+        dto,
+      );
+
+      return response;
+    } catch (error) {
+      this.logger.error(`Disable recharge failed: ${error.message}`);
+      throw error;
+    }
   }
 
-  async disable() {
-    const seqid = this.generateSeqId();
-    return this.http.post('/sign/agent/disable', { seqid });
-  }
+  private async makeSignedRequest(endpoint: string, data: any) {
+    const url = `${this.baseUrl}${endpoint}`;
+    const timestamp = Math.floor(Date.now() / 1000).toString();
 
-  async findAll() {
-    return this.prisma.bigoRecharge.findMany({
-      include: {
-        order: {
-          select: {
-            id: true,
-            orderNumber: true,
-            orderStatus: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const headers = await this.signatureService.generateHeaders(data, endpoint, timestamp);
+
+    this.logger.debug(`Making request to: ${url}`);
+
+    const response = await firstValueFrom(
+      this.httpService.post(url, data, { headers })
+    );
+
+    return response.data;
   }
 }

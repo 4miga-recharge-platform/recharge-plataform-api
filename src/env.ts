@@ -11,7 +11,10 @@ const envSchema = z.object({
   BIGO_ENABLED: z
     .union([z.boolean(), z.string()])
     .transform((v) => (typeof v === 'string' ? v === 'true' : v))
-    .optional()
+    .optional(),
+  // BIGO RSA/ECDSA keys for signature authentication
+  BIGO_PRIVATE_KEY: z.string().optional(),
+  BIGO_CLIENT_VERSION: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
