@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { BigoService } from './bigo.service';
 
@@ -11,6 +11,7 @@ export class BigoRetryService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => BigoService))
     private readonly bigoService: BigoService,
   ) {}
 
