@@ -3,6 +3,7 @@ import { OrderStatus, PaymentStatus, Prisma, RechargeStatus } from '@prisma/clie
 import { randomInt } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { validateRequiredFields } from 'src/utils/validation.util';
 
 @Injectable()
@@ -36,6 +37,19 @@ export class OrderService {
                 recharge: true,
                 package: true,
               },
+            },
+            couponUsages: {
+              include: {
+                coupon: {
+                  select: {
+                    id: true,
+                    title: true,
+                    discountPercentage: true,
+                    discountAmount: true,
+                    isFirstPurchase: true,
+                  }
+                }
+              }
             },
           },
           orderBy: {
@@ -83,6 +97,19 @@ export class OrderService {
               package: true,
             },
           },
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  title: true,
+                  discountPercentage: true,
+                  discountAmount: true,
+                  isFirstPurchase: true,
+                }
+              }
+            }
+          },
         },
       });
 
@@ -106,7 +133,7 @@ export class OrderService {
       'paymentMethodId',
       'userIdForRecharge',
     ]);
-    const { storeId, packageId, paymentMethodId, userIdForRecharge } = createOrderDto;
+    const { storeId, packageId, paymentMethodId, userIdForRecharge, couponTitle } = createOrderDto;
 
     try {
       // Check if user belongs to the store
@@ -205,11 +232,38 @@ export class OrderService {
           });
         } while (existingOrder); // Repeat if it already exists
 
-        // 5. Create Order
+        // 5. Apply coupon discount if provided
+        let finalPrice = paymentMethod.price;
+        let couponUsage: any = null;
+        let couponValidation: any = null;
+
+        if (couponTitle) {
+          couponValidation = await this.validateCoupon(
+            { couponTitle, orderAmount: Number(paymentMethod.price) },
+            storeId,
+            userId
+          );
+
+          if (!couponValidation.valid) {
+            throw new BadRequestException(couponValidation.message);
+          }
+
+          finalPrice = couponValidation.finalAmount;
+
+          // Create coupon usage record
+          couponUsage = await tx.couponUsage.create({
+            data: {
+              couponId: couponValidation.coupon.id,
+              orderId: '', // Will be set after order creation
+            },
+          });
+        }
+
+        // 6. Create Order
         const order = await tx.order.create({
           data: {
             orderNumber,
-            price: paymentMethod.price,
+            price: finalPrice,
             orderStatus: OrderStatus.CREATED,
             storeId,
             userId,
@@ -226,6 +280,23 @@ export class OrderService {
             },
           },
         });
+
+        // 7. Update coupon usage and increment usage count if coupon was applied
+        if (couponUsage) {
+          await tx.couponUsage.update({
+            where: { id: couponUsage.id },
+            data: { orderId: order.id },
+          });
+
+          // Increment coupon usage count
+          await tx.coupon.update({
+            where: { id: couponValidation.coupon.id },
+            data: {
+              timesUsed: { increment: 1 },
+              totalSalesAmount: { increment: finalPrice }
+            },
+          });
+        }
 
         return order;
       });
@@ -269,5 +340,125 @@ export class OrderService {
     //
     //
     return `qrcode-copypaste${amount}`;
+  }
+
+  async validateCoupon(validateCouponDto: ValidateCouponDto, storeId: string, userId: string): Promise<any> {
+    try {
+      const { couponTitle, orderAmount } = validateCouponDto;
+
+      // Find the coupon by title and store
+      const coupon = await this.prisma.coupon.findFirst({
+        where: {
+          title: couponTitle,
+          storeId
+        },
+        select: {
+          id: true,
+          title: true,
+          discountPercentage: true,
+          discountAmount: true,
+          expiresAt: true,
+          timesUsed: true,
+          maxUses: true,
+          minOrderAmount: true,
+          isActive: true,
+          isFirstPurchase: true,
+          storeId: true,
+        },
+      });
+
+      if (!coupon) {
+        return { valid: false, message: 'Coupon not found' };
+      }
+
+      // Check if coupon is active
+      if (!coupon.isActive) {
+        return { valid: false, message: 'Coupon is not active' };
+      }
+
+      // Check if coupon has expired
+      if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+        return { valid: false, message: 'Coupon has expired' };
+      }
+
+      // Check if usage limit reached
+      if (coupon.maxUses && coupon.timesUsed >= coupon.maxUses) {
+        return { valid: false, message: 'Coupon usage limit reached' };
+      }
+
+      // Check minimum order amount
+      if (coupon.minOrderAmount && orderAmount < Number(coupon.minOrderAmount)) {
+        return {
+          valid: false,
+          message: `Minimum order amount required: ${coupon.minOrderAmount}`
+        };
+      }
+
+      // Check if this is a first purchase coupon and if user is eligible
+      if (coupon.isFirstPurchase) {
+        const userOrderCount = await this.prisma.order.count({
+          where: {
+            userId: userId, // We need to pass userId to this method
+            storeId: storeId,
+            orderStatus: {
+              not: 'EXPIRED' // Exclude expired orders
+            }
+          }
+        });
+
+        if (userOrderCount > 0) {
+          return {
+            valid: false,
+            message: 'First purchase coupon can only be used by new customers'
+          };
+        }
+      }
+
+      // Calculate discount
+      let discountAmount = 0;
+      if (coupon.discountPercentage) {
+        discountAmount = (orderAmount * Number(coupon.discountPercentage)) / 100;
+      } else if (coupon.discountAmount) {
+        discountAmount = Math.min(Number(coupon.discountAmount), orderAmount);
+      }
+
+      const finalAmount = orderAmount - discountAmount;
+
+      return {
+        valid: true,
+        discountAmount,
+        finalAmount: Math.max(0, finalAmount),
+        coupon: {
+          id: coupon.id,
+          title: coupon.title,
+          discountPercentage: coupon.discountPercentage,
+          discountAmount: coupon.discountAmount,
+          isFirstPurchase: coupon.isFirstPurchase,
+        },
+      };
+    } catch (error) {
+      return { valid: false, message: 'Failed to validate coupon' };
+    }
+  }
+
+  async applyCoupon(couponTitle: string, orderAmount: number, storeId: string, userId: string): Promise<any> {
+    try {
+      const validation = await this.validateCoupon(
+        { couponTitle, orderAmount },
+        storeId,
+        userId
+      );
+
+      if (!validation.valid) {
+        throw new BadRequestException(validation.message);
+      }
+
+      return validation;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to apply coupon');
+    }
   }
 }

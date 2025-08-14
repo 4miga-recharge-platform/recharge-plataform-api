@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID, IsOptional } from 'class-validator';
 
 export class CreateOrderDto {
   @IsUUID()
@@ -33,4 +33,13 @@ export class CreateOrderDto {
     example: 'player123456',
   })
   userIdForRecharge: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description: 'Coupon title for discount (optional)',
+    example: 'WELCOME10',
+    required: false,
+  })
+  couponTitle?: string;
 }
