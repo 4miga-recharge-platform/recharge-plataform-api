@@ -4,7 +4,6 @@ import {
   IsNotEmpty,
   IsInt,
   IsNumber,
-  IsOptional,
   Length,
   Matches,
   Min,

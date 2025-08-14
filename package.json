@@ -23,6 +23,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:integration": "jest --config ./test/jest-e2e.json --testPathPattern=integration",
     "test:setup-db": "ts-node test/setup-test-db.ts",
+    "bigo:generate-keys": "ts-node scripts/generate-bigo-keys.ts",
     "prepare": "husky"
   },
   "lint-staged": {

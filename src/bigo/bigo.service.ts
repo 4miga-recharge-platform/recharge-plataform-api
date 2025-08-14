@@ -81,4 +81,24 @@ export class BigoService {
 
     return response.data;
   }
+
+  async testSignature() {
+    this.logger.log('Testing signature generation');
+
+    try {
+      const testResult = this.signatureService.testSignatureGeneration();
+      return {
+        success: true,
+        testData: testResult,
+        message: 'Signature generation test completed',
+      };
+    } catch (error) {
+      this.logger.error(`Signature test failed: ${error.message}`);
+      return {
+        success: false,
+        error: error.message,
+        message: 'Signature generation test failed',
+      };
+    }
+  }
 }

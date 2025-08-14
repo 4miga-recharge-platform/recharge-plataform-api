@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BigoService } from './bigo.service';
 import { RechargePrecheckDto } from './dto/recharge-precheck.dto';
@@ -42,5 +42,12 @@ export class BigoController {
   @ApiResponse({ status: 500, description: 'Internal error' })
   async disableRecharge(@Body() dto: DisableRechargeDto) {
     return this.bigoService.disableRecharge(dto);
+  }
+
+  @Get('test-signature')
+  @ApiOperation({ summary: 'Test signature generation (development only)' })
+  @ApiResponse({ status: 200, description: 'Signature test result' })
+  async testSignature() {
+    return this.bigoService.testSignature();
   }
 }
