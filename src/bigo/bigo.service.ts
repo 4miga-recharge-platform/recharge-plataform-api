@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { env } from '../env';
@@ -26,6 +26,15 @@ export class BigoService {
 
     async rechargePrecheck(dto: RechargePrecheckDto) {
     this.logger.log(`Recharge precheck for bigoid: ${dto.recharge_bigoid}`);
+
+    // Business validation: check if seqid is already used
+    const existingRecharge = await this.prisma.bigoRecharge.findFirst({
+      where: { seqid: dto.seqid },
+    });
+
+    if (existingRecharge) {
+      throw new BadRequestException(`seqid '${dto.seqid}' has already been used`);
+    }
 
     // Create log entry
     const logEntry = await this.prisma.bigoRecharge.create({
@@ -59,12 +68,34 @@ export class BigoService {
       // Add to retry queue instead of marking as failed
       await this.retryService.addToRetryQueue(logEntry.id);
 
-      throw error;
+      // Re-throw as BadRequestException to follow app pattern
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Recharge precheck failed: ${error.message}`);
     }
   }
 
       async diamondRecharge(dto: DiamondRechargeDto) {
     this.logger.log(`Diamond recharge for bigoid: ${dto.recharge_bigoid}, value: ${dto.value}`);
+
+    // Business validation: check if seqid is already used
+    const existingRecharge = await this.prisma.bigoRecharge.findFirst({
+      where: { seqid: dto.seqid },
+    });
+
+    if (existingRecharge) {
+      throw new BadRequestException(`seqid '${dto.seqid}' has already been used`);
+    }
+
+    // Business validation: check if bu_orderid is already used
+    const existingOrder = await this.prisma.bigoRecharge.findFirst({
+      where: { buOrderId: dto.bu_orderid },
+    });
+
+    if (existingOrder) {
+      throw new BadRequestException(`bu_orderid '${dto.bu_orderid}' has already been used`);
+    }
 
     // Create log entry
     const logEntry = await this.prisma.bigoRecharge.create({
@@ -99,7 +130,11 @@ export class BigoService {
       // Add to retry queue instead of marking as failed
       await this.retryService.addToRetryQueue(logEntry.id);
 
-      throw error;
+      // Re-throw as BadRequestException to follow app pattern
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Diamond recharge failed: ${error.message}`);
     }
   }
 
@@ -138,7 +173,11 @@ export class BigoService {
       // Add to retry queue instead of marking as failed
       await this.retryService.addToRetryQueue(logEntry.id);
 
-      throw error;
+      // Re-throw as BadRequestException to follow app pattern
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Disable recharge failed: ${error.message}`);
     }
   }
 
@@ -154,6 +193,13 @@ export class BigoService {
       const response = await firstValueFrom(
         this.httpService.post(primaryUrl, data, { headers })
       );
+
+      // Validate Bigo API response
+      if (response.data.rescode !== 0) {
+        const errorMessage = this.getBigoErrorMessage(response.data.rescode, response.data.message);
+        throw new BadRequestException(errorMessage);
+      }
+
       return response.data;
     } catch (error) {
       this.logger.warn(`Primary domain failed: ${error.message}`);
@@ -168,14 +214,21 @@ export class BigoService {
           const backupResponse = await firstValueFrom(
             this.httpService.post(backupUrl, data, { headers })
           );
+
+          // Validate backup response
+          if (backupResponse.data.rescode !== 0) {
+            const errorMessage = this.getBigoErrorMessage(backupResponse.data.rescode, backupResponse.data.message);
+            throw new BadRequestException(errorMessage);
+          }
+
           this.logger.log(`Backup domain request successful`);
           return backupResponse.data;
         } catch (backupError) {
           this.logger.error(`Backup domain also failed: ${backupError.message}`);
-          throw backupError;
+          throw new BadRequestException(`Network error: ${backupError.message}`);
         }
       } else {
-        throw error;
+        throw new BadRequestException(`Network error: ${error.message}`);
       }
     }
   }
@@ -301,5 +354,47 @@ export class BigoService {
 
   async getRetryStats() {
     return this.retryService.getRetryStats();
+  }
+
+    /**
+   * Maps Bigo error codes to user-friendly messages
+   */
+  private getBigoErrorMessage(rescode: number, originalMessage: string): string {
+    const errorMap: Record<number, string> = {
+      // Invalid parameters
+      400001: 'Invalid request parameters',
+
+      // APIs disabled
+      7212001: 'Recharge API disabled by Bigo',
+      7212002: 'Recharge API disabled by third-party website',
+
+      // Authorization issues
+      7212003: 'IP not authorized to make requests',
+      7212006: 'Reseller not linked to client_id',
+
+      // User issues
+      7212004: 'Bigo user does not exist',
+      7212005: 'User cannot be recharged',
+
+      // Business issues
+      7212008: 'Diamond amount exceeds upper limit',
+      7212009: 'Currency not supported',
+      7212010: 'Order ID duplicated',
+      7212011: 'Insufficient balance',
+      7212012: 'Request too frequent, please wait a moment',
+      7212013: 'Diamond pricing outside specified range',
+      7212014: 'User area not eligible',
+      7212015: 'Recharge not supported in your area',
+
+      // Other errors
+      500001: 'Internal error, contact Bigo team',
+    };
+
+    const userMessage = errorMap[rescode];
+    if (userMessage) {
+      return `Bigo API Error (${rescode}): ${userMessage}`;
+    }
+
+    return `Bigo API Error (${rescode}): ${originalMessage || 'Unknown error'}`;
   }
 }
