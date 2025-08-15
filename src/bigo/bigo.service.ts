@@ -65,8 +65,9 @@ export class BigoService {
     } catch (error) {
       this.logger.error(`Recharge precheck failed: ${error.message}`);
 
-      // Add to retry queue instead of marking as failed
-      await this.retryService.addToRetryQueue(logEntry.id);
+      // Add to retry queue with error code and message
+      const rescode = this.extractRescodeFromError(error);
+      await this.retryService.addToRetryQueue(logEntry.id, rescode, error.message);
 
       // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {
@@ -127,8 +128,9 @@ export class BigoService {
     } catch (error) {
       this.logger.error(`Diamond recharge failed: ${error.message}`);
 
-      // Add to retry queue instead of marking as failed
-      await this.retryService.addToRetryQueue(logEntry.id);
+      // Add to retry queue with error code and message
+      const rescode = this.extractRescodeFromError(error);
+      await this.retryService.addToRetryQueue(logEntry.id, rescode, error.message);
 
       // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {
@@ -170,8 +172,9 @@ export class BigoService {
     } catch (error) {
       this.logger.error(`Disable recharge failed: ${error.message}`);
 
-      // Add to retry queue instead of marking as failed
-      await this.retryService.addToRetryQueue(logEntry.id);
+      // Add to retry queue with error code and message
+      const rescode = this.extractRescodeFromError(error);
+      await this.retryService.addToRetryQueue(logEntry.id, rescode, error.message);
 
       // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {
@@ -357,6 +360,19 @@ export class BigoService {
   }
 
     /**
+   * Extrai o rescode de uma mensagem de erro
+   */
+  private extractRescodeFromError(error: any): number {
+    if (error.message && error.message.includes('Bigo API Error')) {
+      const match = error.message.match(/\((\d+)\)/);
+      if (match) {
+        return parseInt(match[1]);
+      }
+    }
+    return 500001; // default para erro interno
+  }
+
+  /**
    * Maps Bigo error codes to user-friendly messages
    */
   private getBigoErrorMessage(rescode: number, originalMessage: string): string {

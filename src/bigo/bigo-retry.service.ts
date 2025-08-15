@@ -1,15 +1,18 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, OnModuleDestroy } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { BigoService } from './bigo.service';
 
+// Node.js globals
+declare const setTimeout: (callback: (...args: any[]) => void, ms: number) => any;
+declare const clearTimeout: (timeoutId: any) => void;
+
 @Injectable()
-export class BigoRetryService {
+export class BigoRetryService implements OnModuleDestroy {
   private readonly logger = new Logger(BigoRetryService.name);
   private readonly maxRetries = 3;
-  private readonly retryDelays = [3, 13, 28]; // minutes
-
-
+  private readonly retryDelays = [3, 13, 28]; // minutos para erros gerais
+  private retryTimeouts = new Map<string, any>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -18,85 +21,103 @@ export class BigoRetryService {
   ) {}
 
   /**
-   * Adds a recharge to the retry queue
+   * Determina se um erro deve ter retry baseado nos códigos da API Bigo
    */
-  async addToRetryQueue(rechargeId: string, delayMinutes: number = 5) {
+  private shouldRetry(rescode: number): boolean {
+    const retryableErrors = [
+      7212012, // "request frequently, just wait a second to call" - Rate limit
+      500001,  // "Other errors, contact Bigo team" - Erro interno temporário
+    ];
+
+    return retryableErrors.includes(rescode);
+  }
+
+  /**
+   * Calcula delay de retry baseado no tipo de erro e tentativa
+   */
+  private getRetryDelay(rescode: number, attempt: number): number {
+    if (rescode === 7212012) {
+      // Rate limit - esperar mais tempo, progressivo
+      return Math.min(30 * attempt, 120); // 30s, 60s, 90s, 120s max
+    }
+
+    // Erro interno - usar delays padrão
+    return this.retryDelays[attempt - 1] || 30;
+  }
+
+  /**
+   * Adiciona uma recarga à fila de retry com agendamento sob demanda
+   */
+  async addToRetryQueue(rechargeId: string, rescode: number, errorMessage: string, attemptNumber?: number) {
+    const currentAttempt = attemptNumber || 1;
+
+    // Verificar se o erro é retryable
+    if (!this.shouldRetry(rescode)) {
+      this.logger.warn(`Error ${rescode} is not retryable for recharge ${rechargeId}`);
+      await this.markAsFailed(rechargeId, `Error ${rescode} is not retryable`);
+      return;
+    }
+
+    if (currentAttempt > this.maxRetries) {
+      // Máximo de tentativas atingido
+      await this.markAsFailed(rechargeId, `Max retries (${this.maxRetries}) exceeded for error ${rescode}`);
+      return;
+    }
+
+    const delayMinutes = this.getRetryDelay(rescode, currentAttempt);
     const nextRetry = new Date(Date.now() + delayMinutes * 60 * 1000);
 
+    // Atualizar no banco
     await this.prisma.bigoRecharge.update({
       where: { id: rechargeId },
       data: {
         status: 'RETRY_PENDING',
         nextRetry,
-        attempts: { increment: 1 },
+        attempts: currentAttempt,
+        rescode,
+        message: errorMessage,
       },
     });
 
+    // Agendar retry específico
+    const timeout = setTimeout(() => {
+      this.processSpecificRetry(rechargeId, currentAttempt);
+    }, delayMinutes * 60 * 1000);
 
+    // Armazenar timeout para possível cancelamento
+    this.retryTimeouts.set(rechargeId, timeout);
 
-    this.logger.log(`Added recharge ${rechargeId} to retry queue for ${nextRetry}`);
+    this.logger.log(errorMessage);
   }
 
   /**
-   * Processes the retry queue every 5 minutes
+   * Processa retry específico
    */
-  @Cron('0 */5 * * * *') // Every 5 minutes
-  async processRetryQueue() {
+  private async processSpecificRetry(rechargeId: string, attemptNumber: number) {
+    this.retryTimeouts.delete(rechargeId);
+
     try {
-      // Quick check: only process if there are any pending retries
-      const hasPending = await this.prisma.bigoRecharge.findFirst({
-        where: {
-          status: 'RETRY_PENDING',
-          nextRetry: { lte: new Date() },
-          attempts: { lt: this.maxRetries },
-        },
-        select: { id: true }, // Only select ID for faster query
+      const recharge = await this.prisma.bigoRecharge.findUnique({
+        where: { id: rechargeId },
       });
 
-      if (!hasPending) {
-        return; // Exit early, no processing needed
+      if (!recharge || recharge.status !== 'RETRY_PENDING') {
+        this.logger.debug(`Recharge ${rechargeId} not found or already processed`);
+        return; // Já foi processado ou cancelado
       }
 
-      // Find pending retries for processing
-      const pendingRetries = await this.prisma.bigoRecharge.findMany({
-        where: {
-          status: 'RETRY_PENDING',
-          nextRetry: { lte: new Date() },
-          attempts: { lt: this.maxRetries },
-        },
-        orderBy: { nextRetry: 'asc' },
-        take: 50,
-      });
+      this.logger.log(`Processing retry ${attemptNumber} for recharge ${rechargeId}`);
 
-      this.logger.debug(`Processing ${pendingRetries.length} retries`);
-
-      // Process retries in parallel for better performance
-      await Promise.all(
-        pendingRetries.map(recharge => this.processRetry(recharge))
-      );
-    } catch (error) {
-      this.logger.error(`Error processing retry queue: ${error.message}`);
-    }
-  }
-
-  /**
-   * Processes an individual retry
-   */
-  private async processRetry(recharge: any) {
-    this.logger.log(`Processing retry for recharge ${recharge.id} (attempt ${recharge.attempts})`);
-
-    try {
-      // Mark as REQUESTED to avoid duplicate processing
+      // Marcar como REQUESTED para evitar duplicação
       await this.prisma.bigoRecharge.update({
-        where: { id: recharge.id },
+        where: { id: rechargeId },
         data: { status: 'REQUESTED' },
       });
 
-      // Reconstruct DTO based on endpoint
+      // Reconstruir DTO e tentar novamente
       const dto = this.reconstructDto(recharge);
-
-      // Try the request again
       let response;
+
       if (recharge.endpoint === '/sign/agent/recharge_pre_check') {
         response = await this.bigoService.rechargePrecheck(dto as any);
       } else if (recharge.endpoint === '/sign/agent/rs_recharge') {
@@ -105,45 +126,90 @@ export class BigoRetryService {
         response = await this.bigoService.disableRecharge(dto as any);
       }
 
-      // Success - update original log
+      // Sucesso
       await this.prisma.bigoRecharge.update({
-        where: { id: recharge.id },
+        where: { id: rechargeId },
         data: {
           status: 'SUCCESS',
           responseBody: response,
           nextRetry: null,
+          message: `Retry ${attemptNumber} successful`,
         },
       });
 
-
-
-      this.logger.log(`Retry successful for recharge ${recharge.id}`);
+      this.logger.log(`Retry ${attemptNumber} successful for recharge ${rechargeId}`);
 
     } catch (error) {
-      this.logger.warn(`Retry failed for recharge ${recharge.id}: ${error.message}`);
+      this.logger.warn(`Retry ${attemptNumber} failed for recharge ${rechargeId}: ${error.message}`);
 
-      // Check if can try again
-      if (recharge.attempts < this.maxRetries) {
-        const delayMinutes = this.retryDelays[recharge.attempts] || 30;
-        await this.addToRetryQueue(recharge.id, delayMinutes);
+      // Extrair rescode do erro se possível
+      let rescode = 500001; // default para erro interno
+      if (error.message && error.message.includes('Bigo API Error')) {
+        const match = error.message.match(/\((\d+)\)/);
+        if (match) {
+          rescode = parseInt(match[1]);
+        }
+      }
+
+      // Agendar próxima tentativa se o erro for retryable
+      if (this.shouldRetry(rescode)) {
+        await this.addToRetryQueue(rechargeId, rescode, error.message, attemptNumber + 1);
       } else {
-        // Maximum retry attempts reached
-        await this.prisma.bigoRecharge.update({
-          where: { id: recharge.id },
-          data: {
-            status: 'FAILED',
-            message: `Max retries (${this.maxRetries}) exceeded. Last error: ${error.message}`,
-            nextRetry: null,
-          },
-        });
-
-        this.logger.error(`Max retries exceeded for recharge ${recharge.id}`);
+        await this.markAsFailed(rechargeId, `Retry ${attemptNumber} failed: ${error.message}`);
       }
     }
   }
 
   /**
-   * Reconstructs DTO based on endpoint and saved data
+   * Marca uma recarga como falhada
+   */
+  private async markAsFailed(rechargeId: string, message: string) {
+    await this.prisma.bigoRecharge.update({
+      where: { id: rechargeId },
+      data: {
+        status: 'FAILED',
+        message,
+        nextRetry: null,
+      },
+    });
+
+    this.logger.error(`Recharge ${rechargeId} marked as failed: ${message}`);
+  }
+
+  /**
+   * Cron de emergência (1x por hora) para retries perdidos
+   * Apenas para casos onde o servidor reiniciou e perdeu os timeouts
+   */
+  @Cron('0 0 * * * *') // A cada hora
+  async processStuckRetries() {
+    try {
+      const stuckRetries = await this.prisma.bigoRecharge.findMany({
+        where: {
+          status: 'RETRY_PENDING',
+          nextRetry: { lt: new Date(Date.now() - 60 * 60 * 1000) }, // 1 hora atrasado
+          attempts: { lt: this.maxRetries },
+        },
+      });
+
+      if (stuckRetries.length > 0) {
+        this.logger.warn(`Found ${stuckRetries.length} stuck retries, reprocessing...`);
+
+        for (const retry of stuckRetries) {
+          // Reagendar com delay mínimo
+          const timeout = setTimeout(() => {
+            this.processSpecificRetry(retry.id, retry.attempts);
+          }, 30 * 1000); // 30 segundos
+
+          this.retryTimeouts.set(retry.id, timeout);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error processing stuck retries: ${error.message}`);
+    }
+  }
+
+  /**
+   * Reconstrui DTO baseado no endpoint e dados salvos
    */
   private reconstructDto(recharge: any) {
     const requestBody = recharge.requestBody as any;
@@ -176,7 +242,7 @@ export class BigoRetryService {
   }
 
   /**
-   * Gets retry queue statistics
+   * Obtém estatísticas da fila de retry
    */
   async getRetryStats() {
     const stats = await this.prisma.bigoRecharge.groupBy({
@@ -191,13 +257,31 @@ export class BigoRetryService {
       },
     });
 
+    const retryableErrors = await this.prisma.bigoRecharge.groupBy({
+      by: ['rescode'],
+      where: {
+        status: { in: ['FAILED', 'RETRY_PENDING'] },
+        rescode: { in: [7212012, 500001] },
+      },
+      _count: { rescode: true },
+    });
+
     return {
       stats,
       pendingRetries: pendingCount,
       maxRetries: this.maxRetries,
       retryDelays: this.retryDelays,
+      retryableErrors,
+      activeTimeouts: this.retryTimeouts.size,
     };
   }
 
-
+  /**
+   * Limpa timeouts ao destruir o módulo
+   */
+  onModuleDestroy() {
+    this.retryTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.retryTimeouts.clear();
+    this.logger.log('Cleared all retry timeouts');
+  }
 }
