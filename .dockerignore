@@ -1,4 +1,6 @@
 node_modules
+admin
+keys
 npm-debug.log
 .git
 .gitignore
@@ -19,4 +21,3 @@ coverage
 .env.development.local
 .env.test.local
 .env.production.local
-/admin

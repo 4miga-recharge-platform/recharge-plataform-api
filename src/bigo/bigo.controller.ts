@@ -1,38 +1,64 @@
-import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BigoService } from './bigo.service';
-// No body for precheck; seqid is generated server-side
-import { RechargeDto } from './dto/recharge.dto';
+import { RechargePrecheckDto } from './dto/recharge-precheck.dto';
+import { DiamondRechargeDto } from './dto/diamond-recharge.dto';
+import { DisableRechargeDto } from './dto/disable-recharge.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('bigo')
 @Controller('bigo')
 export class BigoController {
   constructor(private readonly bigoService: BigoService) {}
 
-  @Get()
-  @ApiOperation({ summary: 'Get all BIGO recharge records' })
-  findAll() {
-    return this.bigoService.findAll();
+  @Post('recharge-precheck')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check if bigoid can be recharged and reseller balance' })
+  @ApiResponse({ status: 200, description: 'Precheck completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid parameters' })
+  async rechargePrecheck(@Body() dto: RechargePrecheckDto) {
+    return this.bigoService.rechargePrecheck(dto);
   }
 
-  @Post('precheck')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Recharge Precheck (BIGO) — etapa 1' })
-  precheck() {
-    return this.bigoService.precheck();
+  @Post('diamond-recharge')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Recharge user with diamonds using dealer quota' })
+  @ApiResponse({ status: 200, description: 'Recharge completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid parameters or insufficient balance' })
+  async diamondRecharge(@Body() dto: DiamondRechargeDto) {
+    return this.bigoService.diamondRecharge(dto);
   }
 
-  @Post('recharge')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Diamond Recharge (BIGO)' })
-  recharge(@Body() body: RechargeDto) {
-    return this.bigoService.recharge(body);
+  @Post('disable-recharge')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Disable all recharge APIs (emergency use only)' })
+  @ApiResponse({ status: 200, description: 'Recharge disabled successfully' })
+  @ApiResponse({ status: 500, description: 'Internal error' })
+  async disableRecharge(@Body() dto: DisableRechargeDto) {
+    return this.bigoService.disableRecharge(dto);
   }
 
-  @Post('disable')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Disable all recharge APIs (BIGO)' })
-  disable() {
-    return this.bigoService.disable();
+  @Get('logs')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get recharge logs' })
+  @ApiResponse({ status: 200, description: 'Recharge logs retrieved successfully' })
+  async getLogs(@Query('limit') limit = 10) {
+    return this.bigoService.getRechargeLogs(Number(limit));
+  }
+
+  @Get('retry-stats')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get retry queue statistics' })
+  @ApiResponse({ status: 200, description: 'Retry statistics' })
+  async getRetryStats() {
+    return this.bigoService.getRetryStats();
   }
 }

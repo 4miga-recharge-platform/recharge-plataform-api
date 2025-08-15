@@ -1,20 +1,14 @@
-import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
+import { HttpModule } from '@nestjs/axios';
 import { BigoController } from './bigo.controller';
 import { BigoService } from './bigo.service';
-import { BigoHttpService } from './http/bigo-http.service';
+import { BigoSignatureService } from './http/bigo-signature.service';
+import { BigoRetryService } from './bigo-retry.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [
-    HttpModule.register({
-      timeout: 10000,
-      maxRedirects: 0,
-    }),
-    PrismaModule,
-  ],
+  imports: [HttpModule, PrismaModule],
   controllers: [BigoController],
-  providers: [BigoService, BigoHttpService],
-  exports: [BigoService],
+  providers: [BigoService, BigoSignatureService, BigoRetryService],
 })
 export class BigoModule {}

@@ -180,6 +180,8 @@ model BigoRecharge {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   orderId      String?
+  attempts     Int                @default(0)
+  nextRetry    DateTime?
   order        Order?             @relation(fields: [orderId], references: [id])
 }
 
@@ -221,6 +223,7 @@ enum BigoRechargeStatus {
   REQUESTED
   SUCCESS
   FAILED
+  RETRY_PENDING
 }
 
 enum UserRole {

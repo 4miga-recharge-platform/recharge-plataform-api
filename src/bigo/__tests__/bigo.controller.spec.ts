@@ -1,53 +1,89 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BigoController } from '../bigo.controller';
 import { BigoService } from '../bigo.service';
-import { RechargeDto } from '../dto/recharge.dto';
 
-// Mock env module to avoid environment variable issues during testing
+// Mock env to prevent DATABASE_URL issues
 jest.mock('../../env', () => ({
   env: {
-    BIGO_HOST_DOMAIN: 'test.bigo.com',
+    BIGO_HOST_DOMAIN: 'https://oauth.bigolive.tv',
+    BIGO_HOST_BACKUP_DOMAIN: 'https://backup.bigolive.tv',
     BIGO_CLIENT_ID: 'test-client-id',
-    BIGO_CLIENT_SECRET: 'test-client-secret',
-    BIGO_RESELLER_BIGOID: 'test-reseller-id',
-    BIGO_ENABLED: true,
+    BIGO_PRIVATE_KEY: 'test-private-key',
+    DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
   },
 }));
+import { RechargePrecheckDto } from '../dto/recharge-precheck.dto';
+import { DiamondRechargeDto } from '../dto/diamond-recharge.dto';
+import { DisableRechargeDto } from '../dto/disable-recharge.dto';
 
 describe('BigoController', () => {
   let controller: BigoController;
   let bigoService: any;
 
-  const mockRechargeDto: RechargeDto = {
+  const mockRechargePrecheckDto: RechargePrecheckDto = {
     recharge_bigoid: '52900149',
-    bu_orderid: 'ORDER_ABC_123',
-    value: 712,
-    total_cost: 711.9,
-    currency: 'USD' as any,
+    seqid: '83jyhm2784_089j',
   };
 
-  const mockBigoRecharge = {
-    id: 'bigo-recharge-123',
-    rechargeBigoid: '52900149',
-    buOrderid: 'ORDER_ABC_123',
+  const mockDiamondRechargeDto: DiamondRechargeDto = {
+    recharge_bigoid: '52900149',
+    seqid: '83jyhm2784_089j',
+    bu_orderid: 'order_123456789',
     value: 712,
-    totalCost: 711.9,
+    total_cost: 711.9,
     currency: 'USD',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    order: {
-      id: 'order-123',
-      orderNumber: 'ORD-001',
-      orderStatus: 'PENDING',
-    },
+  };
+
+  const mockDisableRechargeDto: DisableRechargeDto = {
+    seqid: '83jyhm2784_089j',
+  };
+
+  const mockPrecheckResponse = {
+    rescode: 0,
+    message: 'Success',
+    recharge_balance: 1000,
+  };
+
+  const mockRechargeResponse = {
+    rescode: 0,
+    message: 'Recharge successful',
+  };
+
+  const mockDisableResponse = {
+    rescode: 0,
+    message: 'Recharge disabled',
+  };
+
+  const mockLogsResponse = {
+    success: true,
+    logs: [
+      {
+        id: 'log-1',
+        seqid: 'seq-1',
+        endpoint: '/sign/agent/recharge_pre_check',
+        status: 'SUCCESS',
+        createdAt: new Date(),
+      },
+    ],
+    total: 1,
+  };
+
+  const mockRetryStatsResponse = {
+    stats: [{ status: 'RETRY_PENDING', _count: 2 }],
+    pendingRetries: 2,
+    maxRetries: 3,
+    retryDelays: [3, 13, 28],
+    retryableErrors: [],
+    activeTimeouts: 0,
   };
 
   beforeEach(async () => {
     const mockBigoService = {
-      findAll: jest.fn(),
-      precheck: jest.fn(),
-      recharge: jest.fn(),
-      disable: jest.fn(),
+      rechargePrecheck: jest.fn(),
+      diamondRecharge: jest.fn(),
+      disableRecharge: jest.fn(),
+      getRechargeLogs: jest.fn(),
+      getRetryStats: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -63,6 +99,7 @@ describe('BigoController', () => {
     controller = module.get<BigoController>(BigoController);
     bigoService = module.get(BigoService);
 
+    // Reset all mocks before each test
     jest.clearAllMocks();
   });
 
@@ -70,96 +107,122 @@ describe('BigoController', () => {
     jest.clearAllMocks();
   });
 
-  describe('findAll', () => {
-    it('should return all BIGO recharge records', async () => {
-      const mockRecharges = [mockBigoRecharge];
-      bigoService.findAll.mockResolvedValue(mockRecharges);
+  describe('rechargePrecheck', () => {
+    it('should successfully perform recharge precheck', async () => {
+      bigoService.rechargePrecheck.mockResolvedValue(mockPrecheckResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.rechargePrecheck(mockRechargePrecheckDto);
 
-      expect(bigoService.findAll).toHaveBeenCalledWith();
-      expect(result).toEqual(mockRecharges);
+      expect(bigoService.rechargePrecheck).toHaveBeenCalledWith(mockRechargePrecheckDto);
+      expect(result).toEqual(mockPrecheckResponse);
     });
 
-    it('should return empty array when no records exist', async () => {
-      bigoService.findAll.mockResolvedValue([]);
+    it('should handle service errors', async () => {
+      const error = new Error('Service error');
+      bigoService.rechargePrecheck.mockRejectedValue(error);
 
-      const result = await controller.findAll();
+      await expect(controller.rechargePrecheck(mockRechargePrecheckDto))
+        .rejects
+        .toThrow(error);
 
-      expect(result).toEqual([]);
-    });
-
-    it('should handle service errors gracefully', async () => {
-      const error = new Error('Database connection failed');
-      bigoService.findAll.mockRejectedValue(error);
-
-      await expect(controller.findAll()).rejects.toThrow('Database connection failed');
+      expect(bigoService.rechargePrecheck).toHaveBeenCalledWith(mockRechargePrecheckDto);
     });
   });
 
-  describe('precheck', () => {
-    it('should call precheck service and return result', async () => {
-      const mockResponse = { success: true, seqid: 'test-seqid' };
-      bigoService.precheck.mockResolvedValue(mockResponse);
+  describe('diamondRecharge', () => {
+    it('should successfully perform diamond recharge', async () => {
+      bigoService.diamondRecharge.mockResolvedValue(mockRechargeResponse);
 
-      const result = await controller.precheck();
+      const result = await controller.diamondRecharge(mockDiamondRechargeDto);
 
-      expect(bigoService.precheck).toHaveBeenCalledWith();
-      expect(result).toEqual(mockResponse);
+      expect(bigoService.diamondRecharge).toHaveBeenCalledWith(mockDiamondRechargeDto);
+      expect(result).toEqual(mockRechargeResponse);
     });
 
-    it('should handle precheck service errors', async () => {
-      const error = new Error('BIGO service unavailable');
-      bigoService.precheck.mockRejectedValue(error);
+    it('should handle service errors', async () => {
+      const error = new Error('Service error');
+      bigoService.diamondRecharge.mockRejectedValue(error);
 
-      await expect(controller.precheck()).rejects.toThrow('BIGO service unavailable');
-    });
-  });
+      await expect(controller.diamondRecharge(mockDiamondRechargeDto))
+        .rejects
+        .toThrow(error);
 
-  describe('recharge', () => {
-    it('should call recharge service with correct payload', async () => {
-      const mockResponse = { success: true, seqid: 'test-seqid' };
-      bigoService.recharge.mockResolvedValue(mockResponse);
-
-      const result = await controller.recharge(mockRechargeDto);
-
-      expect(bigoService.recharge).toHaveBeenCalledWith(mockRechargeDto);
-      expect(result).toEqual(mockResponse);
-    });
-
-    it('should handle recharge service errors', async () => {
-      const error = new Error('Invalid BIGO ID');
-      bigoService.recharge.mockRejectedValue(error);
-
-      await expect(controller.recharge(mockRechargeDto)).rejects.toThrow('Invalid BIGO ID');
-    });
-
-    it('should pass through the complete DTO payload', async () => {
-      const mockResponse = { success: true };
-      bigoService.recharge.mockResolvedValue(mockResponse);
-
-      await controller.recharge(mockRechargeDto);
-
-      expect(bigoService.recharge).toHaveBeenCalledWith(mockRechargeDto);
+      expect(bigoService.diamondRecharge).toHaveBeenCalledWith(mockDiamondRechargeDto);
     });
   });
 
-  describe('disable', () => {
-    it('should call disable service and return result', async () => {
-      const mockResponse = { success: true, message: 'APIs disabled' };
-      bigoService.disable.mockResolvedValue(mockResponse);
+  describe('disableRecharge', () => {
+    it('should successfully disable recharge', async () => {
+      bigoService.disableRecharge.mockResolvedValue(mockDisableResponse);
 
-      const result = await controller.disable();
+      const result = await controller.disableRecharge(mockDisableRechargeDto);
 
-      expect(bigoService.disable).toHaveBeenCalledWith();
-      expect(result).toEqual(mockResponse);
+      expect(bigoService.disableRecharge).toHaveBeenCalledWith(mockDisableRechargeDto);
+      expect(result).toEqual(mockDisableResponse);
     });
 
-    it('should handle disable service errors', async () => {
-      const error = new Error('Failed to disable APIs');
-      bigoService.disable.mockRejectedValue(error);
+    it('should handle service errors', async () => {
+      const error = new Error('Service error');
+      bigoService.disableRecharge.mockRejectedValue(error);
 
-      await expect(controller.disable()).rejects.toThrow('Failed to disable APIs');
+      await expect(controller.disableRecharge(mockDisableRechargeDto))
+        .rejects
+        .toThrow(error);
+
+      expect(bigoService.disableRecharge).toHaveBeenCalledWith(mockDisableRechargeDto);
+    });
+  });
+
+  describe('getLogs', () => {
+    it('should return recharge logs with default limit', async () => {
+      bigoService.getRechargeLogs.mockResolvedValue(mockLogsResponse);
+
+      const result = await controller.getLogs();
+
+      expect(bigoService.getRechargeLogs).toHaveBeenCalledWith(10);
+      expect(result).toEqual(mockLogsResponse);
+    });
+
+    it('should return recharge logs with custom limit', async () => {
+      bigoService.getRechargeLogs.mockResolvedValue(mockLogsResponse);
+
+      const result = await controller.getLogs(25);
+
+      expect(bigoService.getRechargeLogs).toHaveBeenCalledWith(25);
+      expect(result).toEqual(mockLogsResponse);
+    });
+
+    it('should handle service errors', async () => {
+      const error = new Error('Service error');
+      bigoService.getRechargeLogs.mockRejectedValue(error);
+
+      await expect(controller.getLogs(10))
+        .rejects
+        .toThrow(error);
+
+      expect(bigoService.getRechargeLogs).toHaveBeenCalledWith(10);
+    });
+  });
+
+  describe('getRetryStats', () => {
+    it('should return retry statistics', async () => {
+      bigoService.getRetryStats.mockResolvedValue(mockRetryStatsResponse);
+
+      const result = await controller.getRetryStats();
+
+      expect(bigoService.getRetryStats).toHaveBeenCalled();
+      expect(result).toEqual(mockRetryStatsResponse);
+    });
+
+    it('should handle service errors', async () => {
+      const error = new Error('Service error');
+      bigoService.getRetryStats.mockRejectedValue(error);
+
+      await expect(controller.getRetryStats())
+        .rejects
+        .toThrow(error);
+
+      expect(bigoService.getRetryStats).toHaveBeenCalled();
     });
   });
 });
