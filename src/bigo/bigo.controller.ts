@@ -44,13 +44,6 @@ export class BigoController {
     return this.bigoService.disableRecharge(dto);
   }
 
-  @Get('test-signature')
-  @ApiOperation({ summary: 'Test signature generation (development only)' })
-  @ApiResponse({ status: 200, description: 'Signature test result' })
-  async testSignature() {
-    return this.bigoService.testSignature();
-  }
-
   @Get('logs')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
@@ -58,13 +51,6 @@ export class BigoController {
   @ApiResponse({ status: 200, description: 'Recharge logs retrieved successfully' })
   async getLogs(@Query('limit') limit = 10) {
     return this.bigoService.getRechargeLogs(Number(limit));
-  }
-
-  @Get('test-connectivity')
-  @ApiOperation({ summary: 'Test connectivity with Bigo API domains' })
-  @ApiResponse({ status: 200, description: 'Connectivity test results' })
-  async testConnectivity() {
-    return this.bigoService.testConnectivity();
   }
 
   @Get('retry-stats')

@@ -21,15 +21,6 @@ export class DiamondRechargeDto {
   @IsNotEmpty()
   recharge_bigoid: string;
 
-  // @ApiProperty({
-  //   description: 'bigoid that whose credit needs to be deducted (optional)',
-  //   example: 'inshhaa',
-  //   required: false,
-  // })
-  // @IsString()
-  // @IsOptional()
-  // reseller_bigoid?: string;
-
   @ApiProperty({
     description:
       'Request serial number, should be unique, easier to track request. Only contain numbers and lowercase letters. The length must be between 13 and 32',

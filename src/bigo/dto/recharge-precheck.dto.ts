@@ -10,14 +10,6 @@ export class RechargePrecheckDto {
   @IsNotEmpty()
   recharge_bigoid: string;
 
-  // @ApiProperty({
-  //   description: 'bigoid that whose credit needs to be deducted (optional)',
-  //   example: 'inshhaa',
-  //   required: false,
-  // })
-  // @IsString()
-  // reseller_bigoid?: string;
-
   @ApiProperty({
     description: 'Request serial number, should be unique, easier to track request. Only contain numbers and lowercase letters. The length must be between 13 and 32',
     example: '83jyhm2784_089j',

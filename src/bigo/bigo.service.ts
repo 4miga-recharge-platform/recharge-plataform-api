@@ -236,25 +236,7 @@ export class BigoService {
     }
   }
 
-    async testSignature() {
-    this.logger.log('Testing signature generation');
 
-    try {
-      const testResult = this.signatureService.testSignatureGeneration();
-      return {
-        success: true,
-        testData: testResult,
-        message: 'Signature generation test completed',
-      };
-    } catch (error) {
-      this.logger.error(`Signature test failed: ${error.message}`);
-      return {
-        success: false,
-        error: error.message,
-        message: 'Signature generation test failed',
-      };
-    }
-  }
 
   async getRechargeLogs(limit = 10) {
     this.logger.log(`Fetching last ${limit} recharge logs`);
@@ -290,69 +272,6 @@ export class BigoService {
         total: 0,
       };
     }
-  }
-
-  async testConnectivity() {
-    this.logger.log('Testing Bigo API connectivity');
-
-    const testData = { msg: 'connectivity_test' };
-    const endpoint = '/oauth2/test_sign';
-
-    const results = {
-      primary: { url: this.baseUrl, status: 'unknown', error: null as string | null },
-      backup: { url: env.BIGO_HOST_BACKUP_DOMAIN, status: 'unknown', error: null as string | null },
-    };
-
-    // Test primary domain
-    try {
-      const primaryUrl = `${this.baseUrl}${endpoint}`;
-      this.logger.debug(`Testing primary domain: ${primaryUrl}`);
-
-      const timestamp = Math.floor(Date.now() / 1000).toString();
-      const headers = await this.signatureService.generateHeaders(testData, endpoint, timestamp);
-
-      const response = await firstValueFrom(
-        this.httpService.post(primaryUrl, testData, { headers, timeout: 10000 })
-      );
-
-      results.primary.status = 'success';
-      results.primary.error = null;
-    } catch (error) {
-      results.primary.status = 'failed';
-      results.primary.error = error.message;
-      this.logger.warn(`Primary domain test failed: ${error.message}`);
-    }
-
-    // Test backup domain if configured
-    if (env.BIGO_HOST_BACKUP_DOMAIN) {
-      try {
-        const backupUrl = `${env.BIGO_HOST_BACKUP_DOMAIN}${endpoint}`;
-        this.logger.debug(`Testing backup domain: ${backupUrl}`);
-
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-        const headers = await this.signatureService.generateHeaders(testData, endpoint, timestamp);
-
-        const response = await firstValueFrom(
-          this.httpService.post(backupUrl, testData, { headers, timeout: 10000 })
-        );
-
-        results.backup.status = 'success';
-        results.backup.error = null;
-      } catch (error) {
-        results.backup.status = 'failed';
-        results.backup.error = error.message;
-        this.logger.warn(`Backup domain test failed: ${error.message}`);
-      }
-    } else {
-      results.backup.status = 'not_configured';
-      results.backup.error = 'Backup domain not configured';
-    }
-
-    return {
-      success: results.primary.status === 'success' || results.backup.status === 'success',
-      results,
-      timestamp: new Date().toISOString(),
-    };
   }
 
   async getRetryStats() {
