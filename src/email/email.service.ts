@@ -1,84 +1,58 @@
-import { Injectable } from '@nestjs/common';
-import * as sgMail from '@sendgrid/mail';
+import { Injectable, Logger } from '@nestjs/common';
+import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
+  private readonly logger = new Logger(EmailService.name);
+  private resend: Resend;
   private fromEmail: string;
-  private isConfigured: boolean = false;
 
   constructor() {
-    this.initializeSendGrid();
+    this.initializeResend();
   }
 
-  private initializeSendGrid() {
-    const apiKey = process.env.SENDGRID_API_KEY;
-    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+  private initializeResend() {
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@4miga.games';
 
     if (!apiKey) {
-      throw new Error('SENDGRID_API_KEY is required');
+      throw new Error('RESEND_API_KEY is required');
     }
 
-    if (!fromEmail) {
-      throw new Error('SENDGRID_FROM_EMAIL is required');
-    }
-
-    try {
-      sgMail.setApiKey(apiKey);
-      sgMail.setTimeout(10000);
-      this.fromEmail = fromEmail;
-      this.isConfigured = true;
-    } catch (error) {
-      throw new Error(`Failed to initialize SendGrid: ${error.message}`);
-    }
+    this.resend = new Resend(apiKey);
+    this.fromEmail = fromEmail;
   }
 
   async sendEmail(to: string, subject: string, html: string) {
-    if (!this.isConfigured) {
-      throw new Error('SendGrid is not properly configured');
-    }
-
     try {
-      const msg = {
-        to,
+      const result = await this.resend.emails.send({
         from: this.fromEmail,
+        to: [to],
         subject,
         html,
-        trackingSettings: {
-          clickTracking: {
-            enable: false,
-            enableText: false
-          },
-          openTracking: {
-            enable: false
-          },
-          subscriptionTracking: {
-            enable: false
-          }
-        }
-      };
+      });
 
-      const result = await sgMail.send(msg);
       return result;
     } catch (error) {
-      if (error.response) {
-        throw new Error(
-          `SendGrid API Error: ${error.response.status} - ${error.response.body}`,
-        );
-      }
+      this.logger.error('Resend email error:', {
+        message: error.message,
+        status: error.statusCode,
+        details: error.details
+      });
 
-      if (error.code === 401) {
+      if (error.statusCode === 401) {
         throw new Error('Authentication failed - check your API key');
-      } else if (error.code === 403) {
+      } else if (error.statusCode === 403) {
         throw new Error('Authorization failed - check your sender permissions');
-      } else if (error.code === 400) {
-        throw new Error('Bad request - check your email format');
-      } else if (error.code === 'EAI_AGAIN') {
-        throw new Error('DNS resolution failed - check network connectivity');
-      } else if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
-        throw new Error('Connection timeout - check network or try again');
+      } else if (error.statusCode === 400) {
+        throw new Error(`Bad request: ${error.message}`);
+      } else if (error.statusCode === 429) {
+        throw new Error('Rate limit exceeded - try again later');
       }
 
       throw new Error(`Failed to send email: ${error.message}`);
     }
   }
+
+
 }

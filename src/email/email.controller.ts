@@ -25,7 +25,7 @@ export class EmailController {
         <hr>
         <p style="color: #666; font-size: 12px;">
           Sent at: ${new Date().toLocaleString()}<br>
-          From: ${process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com'}
+          From: ${process.env.RESEND_FROM_EMAIL || 'noreply@4miga.games'}
         </p>
       </div>
     `;
