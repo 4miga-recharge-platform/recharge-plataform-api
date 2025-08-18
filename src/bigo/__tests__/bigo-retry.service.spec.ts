@@ -1,8 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
 import { BigoRetryService } from '../bigo-retry.service';
 import { BigoService } from '../bigo.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
 // Remove Logger mock completely - let NestJS use the default Logger
 
@@ -34,20 +33,6 @@ describe('BigoRetryService', () => {
     attempts: 1,
     rescode: 7212012,
     message: 'Rate limit exceeded',
-  };
-
-  const mockRechargePrecheck = {
-    id: 'recharge-456',
-    seqid: 'seq_456',
-    endpoint: '/sign/agent/recharge_pre_check',
-    status: 'RETRY_PENDING',
-    requestBody: {
-      recharge_bigoid: '52900149',
-      seqid: 'seq_456',
-    },
-    attempts: 1,
-    rescode: 500001,
-    message: 'Internal error',
   };
 
   beforeEach(async () => {
@@ -88,11 +73,11 @@ describe('BigoRetryService', () => {
     // Reset all mocks before each test
     jest.clearAllMocks();
 
-          // Reset setTimeout mock
-      mockSetTimeout.mockImplementation((callback, delay) => {
-        const timeoutId = Math.random().toString();
-        return timeoutId;
-      });
+    // Reset setTimeout mock
+    mockSetTimeout.mockImplementation(() => {
+      const timeoutId = Math.random().toString();
+      return timeoutId;
+    });
   });
 
   afterEach(() => {
@@ -194,7 +179,7 @@ describe('BigoRetryService', () => {
       prismaService.bigoRecharge.update.mockResolvedValue({});
 
       bigoService.diamondRecharge.mockRejectedValue(
-        new Error('Bigo API Error (7212012): request frequently')
+        new Error('Bigo API Error (7212012): request frequently'),
       );
 
       // Mock addToRetryQueue
@@ -207,7 +192,7 @@ describe('BigoRetryService', () => {
         rechargeId,
         7212012,
         'Bigo API Error (7212012): request frequently',
-        2
+        2,
       );
     });
 
@@ -254,7 +239,7 @@ describe('BigoRetryService', () => {
 
     it('should handle errors gracefully', async () => {
       prismaService.bigoRecharge.findMany.mockRejectedValue(
-        new Error('Database error')
+        new Error('Database error'),
       );
 
       await service.processStuckRetries();
@@ -311,29 +296,29 @@ describe('BigoRetryService', () => {
   describe('shouldRetry', () => {
     it('should return true for retryable errors', () => {
       expect((service as any).shouldRetry(7212012)).toBe(true); // Rate limit
-      expect((service as any).shouldRetry(500001)).toBe(true);  // Internal error
+      expect((service as any).shouldRetry(500001)).toBe(true); // Internal error
     });
 
     it('should return false for non-retryable errors', () => {
       expect((service as any).shouldRetry(7212004)).toBe(false); // User not exists
       expect((service as any).shouldRetry(7212005)).toBe(false); // User cannot be recharged
-      expect((service as any).shouldRetry(999999)).toBe(false);  // Unknown error
+      expect((service as any).shouldRetry(999999)).toBe(false); // Unknown error
     });
   });
 
   describe('getRetryDelay', () => {
     it('should return progressive delays for rate limit errors', () => {
-      expect((service as any).getRetryDelay(7212012, 1)).toBe(30);  // 30s
-      expect((service as any).getRetryDelay(7212012, 2)).toBe(60);  // 60s
-      expect((service as any).getRetryDelay(7212012, 3)).toBe(90);  // 90s
+      expect((service as any).getRetryDelay(7212012, 1)).toBe(30); // 30s
+      expect((service as any).getRetryDelay(7212012, 2)).toBe(60); // 60s
+      expect((service as any).getRetryDelay(7212012, 3)).toBe(90); // 90s
       expect((service as any).getRetryDelay(7212012, 4)).toBe(120); // 120s (max)
     });
 
     it('should return standard delays for other errors', () => {
-      expect((service as any).getRetryDelay(500001, 1)).toBe(3);   // 3min
-      expect((service as any).getRetryDelay(500001, 2)).toBe(13);  // 13min
-      expect((service as any).getRetryDelay(500001, 3)).toBe(28);  // 28min
-      expect((service as any).getRetryDelay(500001, 4)).toBe(30);  // 30min (default)
+      expect((service as any).getRetryDelay(500001, 1)).toBe(3); // 3min
+      expect((service as any).getRetryDelay(500001, 2)).toBe(13); // 13min
+      expect((service as any).getRetryDelay(500001, 3)).toBe(28); // 28min
+      expect((service as any).getRetryDelay(500001, 4)).toBe(30); // 30min (default)
     });
   });
 });
