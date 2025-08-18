@@ -2,8 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Subject, Observable } from 'rxjs';
 
 export interface EmailVerifiedEvent {
-  userId: string;
-  userData: any;
+  email: string;
+  userData: {
+    user: any;
+    access: {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+    };
+  };
   timestamp: string;
 }
 
@@ -17,12 +24,14 @@ export class SseService {
   }
 
   // Method to notify when email is verified
-  notifyEmailVerified(userId: string, userData: any) {
+  notifyEmailVerified(email: string, userData: any) {
+    console.log('SseService: Creating event for email:', email);
     const event: EmailVerifiedEvent = {
-      userId,
+      email,
       userData,
       timestamp: new Date().toISOString(),
     };
+    console.log('SseService: Emitting event:', event);
     this.emailVerifiedSubject.next(event);
   }
 }

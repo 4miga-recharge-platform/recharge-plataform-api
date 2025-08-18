@@ -6,7 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
 import { EmailModule } from '../email/email.module';
-import { WebsocketModule } from '../websocket/websocket.module';
+import { SseModule } from '../sse/sse.module';
 
 @Module({
   imports: [
@@ -19,7 +19,7 @@ import { WebsocketModule } from '../websocket/websocket.module';
       },
     }),
     EmailModule,
-    WebsocketModule,
+    SseModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

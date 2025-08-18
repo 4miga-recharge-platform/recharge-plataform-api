@@ -13,7 +13,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ProductModule } from './product/product.module';
 import { StoreModule } from './store/store.module';
 import { UserModule } from './user/user.module';
-import { WebsocketModule } from './websocket/websocket.module';
+import { SseModule } from './sse/sse.module';
 
 @Module({
   imports: [
@@ -27,7 +27,7 @@ import { WebsocketModule } from './websocket/websocket.module';
     AuthModule,
     OrderModule,
     BigoModule,
-    WebsocketModule,
+    SseModule,
     InfluencerModule,
     CouponModule,
   ],
