@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { SseService } from './sse.service';
 import { SseController } from './sse.controller';
+import { SseConfirmEmailService } from './sse.confirm-email.service';
 
 @Module({
   controllers: [SseController],
-  providers: [SseService],
-  exports: [SseService],
+  providers: [SseConfirmEmailService],
+  exports: [SseConfirmEmailService],
 })
 export class SseModule {}

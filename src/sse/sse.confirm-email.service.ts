@@ -15,23 +15,23 @@ export interface EmailVerifiedEvent {
 }
 
 @Injectable()
-export class SseService {
+export class SseConfirmEmailService {
   private emailVerifiedSubject = new Subject<EmailVerifiedEvent>();
 
-  // Observable for clients to subscribe
+  // Observable for clients to subscribe to email verification
   getEmailVerifiedEvents(): Observable<EmailVerifiedEvent> {
     return this.emailVerifiedSubject.asObservable();
   }
 
   // Method to notify when email is verified
   notifyEmailVerified(email: string, userData: any) {
-    console.log('SseService: Creating event for email:', email);
+    console.log('SseConfirmEmailService: Creating event for email:', email);
     const event: EmailVerifiedEvent = {
       email,
       userData,
       timestamp: new Date().toISOString(),
     };
-    console.log('SseService: Emitting event:', event);
+    console.log('SseConfirmEmailService: Emitting event:', event);
     this.emailVerifiedSubject.next(event);
   }
 }

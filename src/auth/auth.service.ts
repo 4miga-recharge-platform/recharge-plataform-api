@@ -14,7 +14,7 @@ import { getPasswordResetTemplate } from '../email/templates/password-reset.temp
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
 import { getEmailChangeConfirmationTemplate } from '../email/templates/email-change-confirmation.template';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { SseService } from '../sse/sse.service';
+import { SseConfirmEmailService } from '../sse/sse.confirm-email.service';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +22,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-    private readonly sseService: SseService,
+    private readonly sseService: SseConfirmEmailService,
   ) {}
 
   private authUser = {
