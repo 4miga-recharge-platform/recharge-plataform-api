@@ -14,7 +14,7 @@ import { getPasswordResetTemplate } from '../email/templates/password-reset.temp
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
 import { getEmailChangeConfirmationTemplate } from '../email/templates/email-change-confirmation.template';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { WebsocketGateway } from '../websocket/websocket.gateway';
+import { SseConfirmEmailService } from '../sse/sse.confirm-email.service';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +22,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-    private readonly websocketGateway: WebsocketGateway,
+    private readonly sseService: SseConfirmEmailService,
   ) {}
 
   private authUser = {
@@ -367,11 +367,20 @@ export class AuthService {
 
     const expiresIn = 10 * 60;
 
-    // Notify via WebSocket that email was verified
+    // Notify via SSE that email was verified
     try {
-      this.websocketGateway.notifyEmailVerified(user.id, userData);
+      console.log('Notifying SSE for email verification:', user.email);
+      this.sseService.notifyEmailVerified(user.email, {
+        user: userData,
+        access: {
+          accessToken,
+          refreshToken,
+          expiresIn,
+        },
+      });
+      console.log('SSE notification sent successfully');
     } catch (error) {
-      console.error('Failed to notify via WebSocket:', error);
+      console.error('Failed to notify via SSE:', error);
     }
 
     return {

@@ -7,7 +7,7 @@ import { EmailService } from '../../email/email.service';
 import { LoginDto } from '../dto/login.dto';
 import { VerifyCodeDto } from '../dto/verify-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
-import { WebsocketGateway } from '../../websocket/websocket.gateway';
+import { SseConfirmEmailService } from '../../sse/sse.confirm-email.service';
 
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
@@ -111,7 +111,7 @@ describe('AuthService', () => {
           useValue: mockEmailService,
         },
         {
-          provide: WebsocketGateway,
+          provide: SseConfirmEmailService,
           useValue: { notifyEmailVerified: jest.fn() },
         },
       ],

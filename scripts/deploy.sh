@@ -24,6 +24,6 @@ echo "🚀 Deploying to Cloud Run..."
 gcloud run deploy recharge-api \
   --image gcr.io/pure-sunlight-468021-r1/recharge-api:latest \
   --allow-unauthenticated \
-  --set-env-vars DATABASE_URL="${DATABASE_URL}",NODE_ENV="${NODE_ENV}",JWT_SECRET="${JWT_SECRET}",SENDGRID_API_KEY="${SENDGRID_API_KEY}",SENDGRID_FROM_EMAIL="${SENDGRID_FROM_EMAIL}"
+  --set-env-vars DATABASE_URL="${DATABASE_URL}",NODE_ENV="${NODE_ENV}",JWT_SECRET="${JWT_SECRET}",RESEND_API_KEY="${RESEND_API_KEY}",RESEND_FROM_EMAIL="${RESEND_FROM_EMAIL}"
 
 echo "✅ Complete deployment finished!"
