@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { WebhookService } from '../webhook/webhook.service';
 
 import { validateRequiredFields } from 'src/utils/validation.util';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -8,7 +9,10 @@ import { Product } from './entities/product.entity';
 
 @Injectable()
 export class ProductService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly webhookService: WebhookService,
+  ) {}
 
   private productSelect = {
     id: true,
@@ -118,10 +122,14 @@ export class ProductService {
         'imgBannerUrl',
         'imgCardUrl',
       ]);
-      return await this.prisma.product.create({
+      const product = await this.prisma.product.create({
         data: dto,
-        select: this.productSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyProductUpdate(product.id, 'created');
+
+      return product;
     } catch {
       throw new BadRequestException('Failed to create product');
     }
@@ -129,22 +137,25 @@ export class ProductService {
 
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     try {
-      await this.findOne(id, '');
       const fieldsToValidate = Object.keys(dto).filter(
         (key) => dto[key] !== undefined,
       );
       validateRequiredFields(dto, fieldsToValidate);
-      return await this.prisma.product.update({
+      const product = await this.prisma.product.update({
         where: { id },
         data: dto,
-        select: this.productSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyProductUpdate(product.id, 'updated');
+
+      return product;
     } catch {
       throw new BadRequestException('Failed to update product');
     }
   }
 
-  async remove(id: string): Promise<Product> {
+  async remove(id: string): Promise<{ message: string }> {
     try {
       const product = await this.prisma.product.findUnique({
         where: { id },
@@ -153,10 +164,14 @@ export class ProductService {
       if (!product) {
         throw new BadRequestException('Product not found');
       }
-      return await this.prisma.product.delete({
+      await this.prisma.product.delete({
         where: { id },
-        select: this.productSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyProductUpdate(id, 'deleted');
+
+      return { message: 'Product deleted successfully' };
     } catch {
       throw new BadRequestException('Failed to remove product');
     }

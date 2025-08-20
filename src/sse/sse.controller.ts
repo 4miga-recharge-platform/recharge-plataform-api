@@ -1,94 +1,108 @@
-import { Controller, Get, Res, Param } from '@nestjs/common';
+import { Controller, Get, Logger, Param, Res } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
-import { SseService } from './sse.service';
-import { setInterval, clearInterval, setTimeout, clearTimeout } from 'timers';
+import { Subscription } from 'rxjs';
+import { clearInterval, clearTimeout, setInterval, setTimeout } from 'timers';
+import { SseConfirmEmailService } from './sse.confirm-email.service';
 
+@ApiTags('SSE')
 @Controller('sse')
 export class SseController {
-  constructor(private readonly sseService: SseService) {}
+  private readonly logger = new Logger(SseController.name);
+  private readonly EMAIL_CONNECTION_TIMEOUT = 60 * 60 * 1000; // 1 hour
+  private readonly HEARTBEAT_INTERVAL = 45000; // 45 seconds
+
+  constructor(
+    private readonly sseService: SseConfirmEmailService,
+  ) {}
 
   @Get('email-verified/:email')
+  @ApiOperation({ summary: 'Subscribe to email verification events' })
+  @ApiParam({ name: 'email', description: 'User email to monitor' })
+  @ApiResponse({ status: 200, description: 'SSE connection established' })
   async emailVerifiedEvents(
     @Param('email') email: string,
     @Res() res: Response,
   ) {
-    // Decode email parameter
     const decodedEmail = decodeURIComponent(email);
-    console.log('SSE Connection established for email:', decodedEmail);
+    this.logger.log(`SSE email connection established for: ${decodedEmail}`);
 
-    // Configure headers for SSE
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control',
-    });
+    this.setupSseHeaders(res);
+    this.sendInitialMessage(res, { type: 'connected', message: 'SSE connection established' });
 
-    // Send connection established event
-    res.write('data: {"type":"connected","message":"SSE connection established"}\n\n');
-
-    // Subscribe to email verification events
     const subscription = this.sseService.getEmailVerifiedEvents().subscribe({
       next: (event) => {
-        console.log('SSE Event received:', {
+        this.logger.debug('SSE Event received:', {
           eventEmail: event.email,
           decodedEmail,
-          match: event.email === decodedEmail
+          match: event.email === decodedEmail,
         });
 
-        // Only send event if it's for the specific email
         if (event.email === decodedEmail) {
-          console.log('Sending SSE notification for email:', decodedEmail);
-          const sseData = `data: ${JSON.stringify({
+          this.logger.log(`Sending SSE notification for email: ${decodedEmail}`);
+          this.sendSseMessage(res, {
             type: 'emailVerified',
             success: true,
             user: event.userData.user,
             access: event.userData.access,
             timestamp: event.timestamp,
-          })}\n\n`;
-          res.write(sseData);
+          });
         }
       },
       error: (error) => {
-        console.error('SSE Error:', error);
-        const errorData = `data: ${JSON.stringify({
-          type: 'error',
-          message: 'Internal server error',
-        })}\n\n`;
-        res.write(errorData);
+        this.logger.error('SSE Email Error:', error);
+        this.sendSseMessage(res, { type: 'error', message: 'Internal server error' });
       },
     });
 
-    // Handle client disconnection
-    res.on('close', () => {
-      subscription.unsubscribe();
-      res.end();
+    this.setupConnectionManagement(res, subscription, decodedEmail, this.EMAIL_CONNECTION_TIMEOUT);
+  }
+
+  // Private helper methods
+  private setupSseHeaders(res: Response): void {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control',
     });
+  }
 
-    // Keep connection alive with heartbeat
-    const heartbeat = setInterval(() => {
-      if (res.writableEnded) {
-        clearInterval(heartbeat);
-        subscription.unsubscribe();
-        return;
-      }
-      res.write(': heartbeat\n\n');
-    }, 30000); // Heartbeat every 30 seconds
+  private sendInitialMessage(res: Response, message: any): void {
+    res.write(`data: ${JSON.stringify(message)}\n\n`);
+  }
 
-    // Set maximum connection time (1 hour)
-    const MAX_CONNECTION_TIME = 60 * 60 * 1000; // 1 hour
-    const connectionTimeout = setTimeout(() => {
-      console.log(`SSE connection timeout for email: ${decodedEmail}`);
-      clearInterval(heartbeat);
+  private sendSseMessage(res: Response, data: any): void {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  }
+
+  private setupConnectionManagement(
+    res: Response,
+    subscription: Subscription,
+    identifier: string,
+    timeoutMs: number,
+  ): void {
+    // Set up connection timeout
+    const timeoutId = setTimeout(() => {
+      this.logger.log(`SSE connection timeout for: ${identifier}`);
       subscription.unsubscribe();
       res.end();
-    }, MAX_CONNECTION_TIME);
+    }, timeoutMs);
 
-    // Clear heartbeat and timeout when connection is closed
+    // Heartbeat to keep connection alive
+    const heartbeat = setInterval(() => {
+      if (!res.writableEnded) {
+        this.sendSseMessage(res, { heartbeat: new Date().toISOString() });
+      }
+    }, this.HEARTBEAT_INTERVAL);
+
+    // Handle client disconnect
     res.on('close', () => {
+      this.logger.log(`SSE connection closed for: ${identifier}`);
+      clearTimeout(timeoutId);
       clearInterval(heartbeat);
-      clearTimeout(connectionTimeout);
+      subscription.unsubscribe();
     });
   }
 }

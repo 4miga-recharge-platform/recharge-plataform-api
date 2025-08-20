@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { WebhookService } from '../webhook/webhook.service';
 import { validateRequiredFields } from 'src/utils/validation.util';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 
 @Injectable()
 export class PackageService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly webhookService: WebhookService,
+  ) {}
 
   private packageSelect = {
     id: true,
@@ -77,10 +81,15 @@ export class PackageService {
           }),
       };
 
-      return await this.prisma.package.create({
+      const package_ = await this.prisma.package.create({
         data: createData,
         select: this.packageSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyPackageUpdate(package_.id, package_.storeId, 'created');
+
+      return package_;
     } catch {
       throw new BadRequestException('Failed to create package');
     }
@@ -130,11 +139,16 @@ export class PackageService {
           }),
       };
 
-      return await this.prisma.package.update({
+      const package_ = await this.prisma.package.update({
         where: { id },
         data: updateData,
         select: this.packageSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyPackageUpdate(package_.id, package_.storeId, 'updated');
+
+      return package_;
     } catch {
       throw new BadRequestException('Failed to update package');
     }
@@ -143,10 +157,15 @@ export class PackageService {
   async remove(id: string): Promise<any> {
     try {
       await this.findOne(id);
-      return await this.prisma.package.delete({
+      const deletedPackage = await this.prisma.package.delete({
         where: { id },
         select: this.packageSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyPackageUpdate(id, deletedPackage.storeId, 'deleted');
+
+      return deletedPackage;
     } catch {
       throw new BadRequestException('Failed to remove package');
     }

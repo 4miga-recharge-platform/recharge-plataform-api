@@ -14,6 +14,7 @@ import { ProductModule } from './product/product.module';
 import { StoreModule } from './store/store.module';
 import { UserModule } from './user/user.module';
 import { SseModule } from './sse/sse.module';
+import { WebhookModule } from './webhook/webhook.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SseModule } from './sse/sse.module';
     SseModule,
     InfluencerModule,
     CouponModule,
+    WebhookModule,
   ],
   controllers: [AppController],
   providers: [AppService],

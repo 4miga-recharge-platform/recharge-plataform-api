@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { ProductService } from '../product.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { WebhookService } from '../../webhook/webhook.service';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 
@@ -68,12 +69,22 @@ describe('ProductService', () => {
       },
     };
 
+    const mockWebhookService = {
+      notifyProductUpdate: jest.fn(),
+      notifyPackageUpdate: jest.fn(),
+      notifyStoreUpdate: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: WebhookService,
+          useValue: mockWebhookService,
         },
       ],
     }).compile();
@@ -249,7 +260,6 @@ describe('ProductService', () => {
 
       expect(prismaService.product.create).toHaveBeenCalledWith({
         data: createProductDto,
-        select: mockProductSelect,
       });
 
       expect(result).toEqual(mockProduct);
@@ -283,17 +293,11 @@ describe('ProductService', () => {
 
       const result = await service.update(productId, updateProductDto);
 
-      expect(prismaService.product.findUnique).toHaveBeenCalledWith({
-        where: { id: productId },
-        select: mockProductSelect,
-      });
-
       expect(validateRequiredFields).toHaveBeenCalledWith(updateProductDto, ['name', 'description']);
 
       expect(prismaService.product.update).toHaveBeenCalledWith({
         where: { id: productId },
         data: updateProductDto,
-        select: mockProductSelect,
       });
 
       expect(result).toEqual({ ...mockProduct, ...updateProductDto });
@@ -336,10 +340,9 @@ describe('ProductService', () => {
 
       expect(prismaService.product.delete).toHaveBeenCalledWith({
         where: { id: productId },
-        select: mockProductSelect,
       });
 
-      expect(result).toEqual(mockProduct);
+      expect(result).toEqual({ message: 'Product deleted successfully' });
     });
 
     it('should throw BadRequestException when product not found', async () => {
