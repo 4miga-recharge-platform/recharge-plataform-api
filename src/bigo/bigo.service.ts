@@ -1,4 +1,4 @@
- 
+
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -36,27 +36,19 @@ export class BigoService {
       throw new BadRequestException(`seqid '${dto.seqid}' has already been used`);
     }
 
-    // Create log entry
-    const logEntry = await this.prisma.bigoRecharge.create({
-      data: {
-        seqid: dto.seqid,
-        endpoint: '/sign/agent/recharge_pre_check',
-        status: 'REQUESTED',
-        requestBody: dto as any,
-      },
-    });
-
     try {
       const response = await this.makeSignedRequest(
         '/sign/agent/recharge_pre_check',
         dto,
       );
 
-      // Update log with success
-      await this.prisma.bigoRecharge.update({
-        where: { id: logEntry.id },
+      // Create log entry ONLY on success
+      await this.prisma.bigoRecharge.create({
         data: {
+          seqid: dto.seqid,
+          endpoint: '/sign/agent/recharge_pre_check',
           status: 'SUCCESS',
+          requestBody: dto as any,
           responseBody: response,
         },
       });
@@ -64,10 +56,6 @@ export class BigoService {
       return response;
     } catch (error) {
       this.logger.error(`Recharge precheck failed: ${error.message}`);
-
-      // Add to retry queue with error code and message
-      const rescode = this.extractRescodeFromError(error);
-      await this.retryService.addToRetryQueue(logEntry.id, rescode, error.message);
 
       // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {

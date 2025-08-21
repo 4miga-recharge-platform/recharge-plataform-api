@@ -142,9 +142,6 @@ describe('BigoService', () => {
         seqid: mockRechargePrecheckDto.seqid,
       });
 
-      // Mock log update
-      prismaService.bigoRecharge.update.mockResolvedValue({});
-
       const result = await service.rechargePrecheck(mockRechargePrecheckDto);
 
       expect(prismaService.bigoRecharge.findFirst).toHaveBeenCalledWith({
@@ -154,8 +151,9 @@ describe('BigoService', () => {
         data: {
           seqid: mockRechargePrecheckDto.seqid,
           endpoint: '/sign/agent/recharge_pre_check',
-          status: 'REQUESTED',
+          status: 'SUCCESS',
           requestBody: mockRechargePrecheckDto,
+          responseBody: mockBigoResponse.data,
         },
       });
       expect(result).toEqual(mockBigoResponse.data);
@@ -177,15 +175,9 @@ describe('BigoService', () => {
       });
     });
 
-    it('should add to retry queue on API failure', async () => {
+    it('should handle API failure without adding to retry queue', async () => {
       // Mock no existing recharge
       prismaService.bigoRecharge.findFirst.mockResolvedValue(null);
-
-      // Mock log entry creation
-      prismaService.bigoRecharge.create.mockResolvedValue({
-        id: 'log-123',
-        seqid: mockRechargePrecheckDto.seqid,
-      });
 
       // Mock API failure
       (firstValueFrom as jest.Mock).mockRejectedValue(
@@ -196,11 +188,11 @@ describe('BigoService', () => {
         .rejects
         .toThrow(BadRequestException);
 
-      expect(retryService.addToRetryQueue).toHaveBeenCalledWith(
-        'log-123',
-        7212012,
-        'Network error: Bigo API Error (7212012): request frequently'
-      );
+      // Verify that no log entry was created (since it only creates on success)
+      expect(prismaService.bigoRecharge.create).not.toHaveBeenCalled();
+      
+      // Verify that retry service was not called (since this method doesn't use it)
+      expect(retryService.addToRetryQueue).not.toHaveBeenCalled();
     });
   });
 
