@@ -5,6 +5,7 @@ import { AuthService } from '../auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../email/email.service';
 import { LoginDto } from '../dto/login.dto';
+import { AdminLoginDto } from '../dto/admin-login.dto';
 import { VerifyCodeDto } from '../dto/verify-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { SseConfirmEmailService } from '../../sse/sse.confirm-email.service';
@@ -47,6 +48,31 @@ describe('AuthService', () => {
     password: 'hashedPassword123',
   };
 
+  const mockAdminUser = {
+    id: 'admin-123',
+    email: 'admin@example.com',
+    name: 'Admin User',
+    role: 'RESELLER_ADMIN_4MIGA_USER',
+    phone: '5511988887777',
+    documentType: 'cpf',
+    documentValue: '123.456.789-00',
+    emailVerified: true,
+    password: 'hashedPassword123',
+    store: {
+      id: 'store-123',
+      name: 'Admin Store',
+      email: 'store@example.com',
+      domain: 'adminstore.com',
+      logoUrl: 'logo.png',
+      miniLogoUrl: 'minilogo.png',
+      bannersUrl: ['banner1.jpg', 'banner2.jpg'],
+      facebookUrl: 'https://facebook.com/adminstore',
+      instagramUrl: 'https://instagram.com/adminstore',
+      tiktokUrl: 'https://tiktok.com/adminstore',
+      wppNumber: '5511988887777',
+    },
+  };
+
   const mockUserData = {
     id: mockUser.id,
     storeId: mockUser.storeId,
@@ -56,6 +82,17 @@ describe('AuthService', () => {
     documentValue: mockUser.documentValue,
     name: mockUser.name,
     role: mockUser.role,
+  };
+
+  const mockAdminUserData = {
+    id: mockAdminUser.id,
+    email: mockAdminUser.email,
+    phone: mockAdminUser.phone,
+    documentType: mockAdminUser.documentType,
+    documentValue: mockAdminUser.documentValue,
+    name: mockAdminUser.name,
+    role: mockAdminUser.role,
+    store: mockAdminUser.store,
   };
 
   const mockAuthUser = {
@@ -71,6 +108,35 @@ describe('AuthService', () => {
     password: true,
     createdAt: false,
     updatedAt: false,
+  };
+
+  const mockAdminAuthUser = {
+    id: true,
+    email: true,
+    name: true,
+    role: true,
+    phone: true,
+    documentType: true,
+    documentValue: true,
+    emailVerified: true,
+    password: true,
+    createdAt: false,
+    updatedAt: false,
+    store: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        domain: true,
+        logoUrl: true,
+        miniLogoUrl: true,
+        bannersUrl: true,
+        facebookUrl: true,
+        instagramUrl: true,
+        tiktokUrl: true,
+        wppNumber: true,
+      }
+    }
   };
 
   beforeEach(async () => {
@@ -204,6 +270,101 @@ describe('AuthService', () => {
 
       await expect(service.login(loginDto)).rejects.toThrow(
         new UnauthorizedException('Email not verified'),
+      );
+    });
+  });
+
+  describe('adminLogin', () => {
+    const adminLoginDto: AdminLoginDto = {
+      email: 'admin@example.com',
+      password: 'admin123',
+    };
+
+    it('should login admin successfully with valid credentials', async () => {
+      const bcrypt = require('bcrypt');
+      bcrypt.compare.mockResolvedValue(true);
+
+      prismaService.user.findFirst.mockResolvedValue(mockAdminUser);
+      jwtService.signAsync
+        .mockResolvedValueOnce('admin-access-token-123')
+        .mockResolvedValueOnce('admin-refresh-token-123');
+
+      const result = await service.adminLogin(adminLoginDto);
+
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: { email: adminLoginDto.email },
+        select: mockAdminAuthUser,
+      });
+
+      expect(bcrypt.compare).toHaveBeenCalledWith(adminLoginDto.password, mockAdminUser.password);
+
+      // Verify JWT data (should include storeId for token)
+      const expectedJwtData = {
+        id: mockAdminUser.id,
+        email: mockAdminUser.email,
+        phone: mockAdminUser.phone,
+        documentType: mockAdminUser.documentType,
+        documentValue: mockAdminUser.documentValue,
+        name: mockAdminUser.name,
+        role: mockAdminUser.role,
+        storeId: mockAdminUser.store.id,
+      };
+
+      expect(jwtService.signAsync).toHaveBeenCalledWith(expectedJwtData, {
+        expiresIn: '10m',
+      });
+
+      expect(jwtService.signAsync).toHaveBeenCalledWith(expectedJwtData, {
+        expiresIn: '7d',
+      });
+
+      expect(result).toEqual({
+        access: {
+          accessToken: 'admin-access-token-123',
+          refreshToken: 'admin-refresh-token-123',
+          expiresIn: 600,
+        },
+        user: mockAdminUserData,
+      });
+    });
+
+    it('should throw UnauthorizedException when admin user not found', async () => {
+      prismaService.user.findFirst.mockResolvedValue(null);
+
+      await expect(service.adminLogin(adminLoginDto)).rejects.toThrow(
+        new UnauthorizedException('User or password invalid'),
+      );
+    });
+
+    it('should throw UnauthorizedException when user is not admin', async () => {
+      const regularUser = { ...mockAdminUser, role: 'USER' };
+      prismaService.user.findFirst.mockResolvedValue(regularUser);
+
+      await expect(service.adminLogin(adminLoginDto)).rejects.toThrow(
+        new UnauthorizedException('Access denied - Admin role required'),
+      );
+    });
+
+    it('should throw UnauthorizedException when admin email is not verified', async () => {
+      const bcrypt = require('bcrypt');
+      bcrypt.compare.mockResolvedValue(true);
+
+      const unverifiedAdmin = { ...mockAdminUser, emailVerified: false };
+      prismaService.user.findFirst.mockResolvedValue(unverifiedAdmin);
+
+      await expect(service.adminLogin(adminLoginDto)).rejects.toThrow(
+        new UnauthorizedException('Email not verified'),
+      );
+    });
+
+    it('should throw UnauthorizedException when admin password is invalid', async () => {
+      const bcrypt = require('bcrypt');
+      bcrypt.compare.mockResolvedValue(false);
+
+      prismaService.user.findFirst.mockResolvedValue(mockAdminUser);
+
+      await expect(service.adminLogin(adminLoginDto)).rejects.toThrow(
+        new UnauthorizedException('User or password invalid'),
       );
     });
   });

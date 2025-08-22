@@ -23,6 +23,7 @@ model Store {
   tiktokUrl    String?
   wppNumber    String?      @unique
   domain       String       @unique
+
   coupons      Coupon[]
   influencers  Influencer[]
   orders       Order[]
@@ -227,8 +228,8 @@ enum BigoRechargeStatus {
 }
 
 enum UserRole {
-  MASTER_ADMIN
-  ADMIN
+  MASTER_ADMIN_4MIGA_USER
+  RESELLER_ADMIN_4MIGA_USER
   USER
 }
 

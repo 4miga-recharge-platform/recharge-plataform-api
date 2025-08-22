@@ -5,6 +5,7 @@ import { AuthService } from '../auth.service';
 import { EmailService } from '../../email/email.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from '../dto/login.dto';
+import { AdminLoginDto } from '../dto/admin-login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { VerifyCodeDto } from '../dto/verify-code.dto';
@@ -48,6 +49,7 @@ describe('AuthController', () => {
   beforeEach(async () => {
     const mockAuthService = {
       login: jest.fn(),
+      adminLogin: jest.fn(),
       refreshAccessToken: jest.fn(),
       forgotPassword: jest.fn(),
       verifyCode: jest.fn(),
@@ -121,6 +123,60 @@ describe('AuthController', () => {
 
       await expect(controller.login(loginDto)).rejects.toThrow('Login failed');
       expect(authService.login).toHaveBeenCalledWith(loginDto);
+    });
+  });
+
+  describe('adminLogin', () => {
+    const adminLoginDto: AdminLoginDto = {
+      email: 'admin@example.com',
+      password: 'admin123',
+    };
+
+    const mockAdminLoginResponse = {
+      access: {
+        accessToken: 'admin-access-token-123',
+        refreshToken: 'admin-refresh-token-123',
+        expiresIn: 600,
+      },
+      user: {
+        id: 'admin-123',
+        email: 'admin@example.com',
+        name: 'Admin User',
+        role: 'RESELLER_ADMIN_4MIGA_USER',
+        phone: '5511988887777',
+        documentType: 'cpf',
+        documentValue: '123.456.789-00',
+        store: {
+          id: 'store-123',
+          name: 'Admin Store',
+          email: 'store@example.com',
+          domain: 'adminstore.com',
+          logoUrl: 'logo.png',
+          miniLogoUrl: 'minilogo.png',
+          bannersUrl: ['banner1.jpg', 'banner2.jpg'],
+          facebookUrl: 'https://facebook.com/adminstore',
+          instagramUrl: 'https://instagram.com/adminstore',
+          tiktokUrl: 'https://tiktok.com/adminstore',
+          wppNumber: '5511988887777',
+        },
+      },
+    };
+
+    it('should login admin successfully', async () => {
+      authService.adminLogin.mockResolvedValue(mockAdminLoginResponse);
+
+      const result = await controller.adminLogin(adminLoginDto);
+
+      expect(authService.adminLogin).toHaveBeenCalledWith(adminLoginDto);
+      expect(result).toEqual(mockAdminLoginResponse);
+    });
+
+    it('should handle admin login errors', async () => {
+      const error = new Error('Admin login failed');
+      authService.adminLogin.mockRejectedValue(error);
+
+      await expect(controller.adminLogin(adminLoginDto)).rejects.toThrow('Admin login failed');
+      expect(authService.adminLogin).toHaveBeenCalledWith(adminLoginDto);
     });
   });
 

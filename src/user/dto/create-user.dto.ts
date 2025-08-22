@@ -63,7 +63,7 @@ export class CreateUserDto {
     enum: ['MASTER_ADMIN', 'ADMIN', 'USER'],
     example: 'USER',
   })
-  role?: 'MASTER_ADMIN' | 'ADMIN' | 'USER';
+  role?: 'MASTER_ADMIN_4MIGA_USER' | 'RESELLER_ADMIN_4MIGA_USER' | 'USER';
 
   @IsString()
   @IsNotEmpty({ message: 'Store ID is required' })

@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailService } from '../email/email.service';
@@ -38,6 +39,35 @@ export class AuthService {
     password: true,
     createdAt: false,
     updatedAt: false,
+  };
+
+  private adminAuthUser = {
+    id: true,
+    email: true,
+    name: true,
+    role: true,
+    phone: true,
+    documentType: true,
+    documentValue: true,
+    emailVerified: true,
+    password: true,
+    createdAt: false,
+    updatedAt: false,
+    store: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        domain: true,
+        logoUrl: true,
+        miniLogoUrl: true,
+        bannersUrl: true,
+        facebookUrl: true,
+        instagramUrl: true,
+        tiktokUrl: true,
+        wppNumber: true,
+      }
+    }
   };
 
   async login(loginDto: LoginDto) {
@@ -87,6 +117,76 @@ export class AuthService {
         expiresIn,
       },
       user: data,
+    };
+  }
+
+  async adminLogin(adminLoginDto: AdminLoginDto) {
+    const { email, password } = adminLoginDto;
+
+    // Find user by email (without storeId) with store data
+    const user = await this.prisma.user.findFirst({
+      where: { email },
+      select: this.adminAuthUser,
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User or password invalid');
+    }
+
+    // Validate if user is admin
+    if (user.role !== 'RESELLER_ADMIN_4MIGA_USER') {
+      throw new UnauthorizedException('Access denied - Admin role required');
+    }
+
+    if (user.emailVerified === false) {
+      throw new UnauthorizedException('Email not verified');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('User or password invalid');
+    }
+
+    // Data for JWT token (keep it lightweight)
+    const jwtData = {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      documentType: user.documentType,
+      documentValue: user.documentValue,
+      name: user.name,
+      role: user.role,
+      storeId: user.store.id,
+    };
+
+    // Complete data for response (including store details)
+    const responseData = {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      documentType: user.documentType,
+      documentValue: user.documentValue,
+      name: user.name,
+      role: user.role,
+      store: user.store,
+    };
+
+    const accessToken = await this.jwtService.signAsync(jwtData, {
+      expiresIn: '10m',
+    });
+    const refreshToken = await this.jwtService.signAsync(jwtData, {
+      expiresIn: '7d',
+    });
+
+    const expiresIn = 10 * 60;
+
+    return {
+      access: {
+        accessToken,
+        refreshToken,
+        expiresIn,
+      },
+      user: responseData,
     };
   }
 
