@@ -190,7 +190,7 @@ describe('BigoService', () => {
 
       // Verify that no log entry was created (since it only creates on success)
       expect(prismaService.bigoRecharge.create).not.toHaveBeenCalled();
-      
+
       // Verify that retry service was not called (since this method doesn't use it)
       expect(retryService.addToRetryQueue).not.toHaveBeenCalled();
     });
