@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { PackageService } from '../package.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { WebhookService } from '../../webhook/webhook.service';
 import { CreatePackageDto } from '../dto/create-package.dto';
 import { UpdatePackageDto } from '../dto/update-package.dto';
 
@@ -74,12 +75,22 @@ describe('PackageService', () => {
       },
     };
 
+    const mockWebhookService = {
+      notifyProductUpdate: jest.fn(),
+      notifyPackageUpdate: jest.fn(),
+      notifyStoreUpdate: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PackageService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: WebhookService,
+          useValue: mockWebhookService,
         },
       ],
     }).compile();
