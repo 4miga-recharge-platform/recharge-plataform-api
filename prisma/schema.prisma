@@ -43,9 +43,24 @@ model Influencer {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   coupons       Coupon[]
+  monthlySales  InfluencerMonthlySales[]
   store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([name, storeId])
+}
+
+model InfluencerMonthlySales {
+  id            String   @id @default(uuid())
+  influencerId  String
+  month         Int      // 1-12
+  year          Int      // ex: 2024
+  totalSales    Decimal  @db.Decimal(10, 2) @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  influencer    Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+
+  @@unique([influencerId, month, year])
 }
 
 model User {

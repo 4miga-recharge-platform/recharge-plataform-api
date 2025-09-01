@@ -11,4 +11,15 @@ export class Influencer {
   updatedAt: Date;
   // store?: Store;
   // coupons?: Coupon[];
+  monthlySales?: InfluencerMonthlySales[];
+}
+
+export class InfluencerMonthlySales {
+  id: string;
+  influencerId: string;
+  month: number;
+  year: number;
+  totalSales: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
