@@ -26,7 +26,6 @@ describe('AuthController', () => {
     id: 'user-123',
     email: 'john@example.com',
     name: 'John Doe',
-    role: 'USER' as const,
     storeId: 'store-123',
     phone: '5511988887777',
     documentType: 'cpf' as const,
@@ -138,28 +137,27 @@ describe('AuthController', () => {
         refreshToken: 'admin-refresh-token-123',
         expiresIn: 600,
       },
-      user: {
-        id: 'admin-123',
-        email: 'admin@example.com',
-        name: 'Admin User',
-        role: 'RESELLER_ADMIN_4MIGA_USER',
-        phone: '5511988887777',
-        documentType: 'cpf',
-        documentValue: '123.456.789-00',
-        store: {
-          id: 'store-123',
-          name: 'Admin Store',
-          email: 'store@example.com',
-          domain: 'adminstore.com',
-          logoUrl: 'logo.png',
-          miniLogoUrl: 'minilogo.png',
-          bannersUrl: ['banner1.jpg', 'banner2.jpg'],
-          facebookUrl: 'https://facebook.com/adminstore',
-          instagramUrl: 'https://instagram.com/adminstore',
-          tiktokUrl: 'https://tiktok.com/adminstore',
-          wppNumber: '5511988887777',
+              user: {
+          id: 'admin-123',
+          email: 'admin@example.com',
+          name: 'Admin User',
+          phone: '5511988887777',
+          documentType: 'cpf',
+          documentValue: '123.456.789-00',
+          store: {
+            id: 'store-123',
+            name: 'Admin Store',
+            email: 'store@example.com',
+            domain: 'adminstore.com',
+            logoUrl: 'logo.png',
+            miniLogoUrl: 'minilogo.png',
+            bannersUrl: ['banner1.jpg', 'banner2.jpg'],
+            facebookUrl: 'https://facebook.com/adminstore',
+            instagramUrl: 'https://instagram.com/adminstore',
+            tiktokUrl: 'https://tiktok.com/adminstore',
+            wppNumber: '5511988887777',
+          },
         },
-      },
     };
 
     it('should login admin successfully', async () => {
@@ -498,8 +496,8 @@ describe('AuthController', () => {
         phone: mockUser.phone,
         documentType: mockUser.documentType,
         documentValue: mockUser.documentValue,
-        role: mockUser.role,
         storeId: mockUser.storeId,
+        store: null,
       };
 
       expect(result).toEqual({
@@ -526,8 +524,8 @@ describe('AuthController', () => {
         phone: mockUser.phone,
         documentType: mockUser.documentType,
         documentValue: mockUser.documentValue,
-        role: mockUser.role,
         storeId: mockUser.storeId,
+        store: null,
       };
 
       expect(result).toEqual({

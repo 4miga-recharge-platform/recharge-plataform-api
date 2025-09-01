@@ -98,7 +98,6 @@ export class AuthService {
       documentType: user.documentType,
       documentValue: user.documentValue,
       name: user.name,
-      role: user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(data, {
@@ -167,7 +166,6 @@ export class AuthService {
       documentType: user.documentType,
       documentValue: user.documentValue,
       name: user.name,
-      role: user.role,
       store: user.store,
     };
 
@@ -195,6 +193,44 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync(refreshToken);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { iat, exp, ...userData } = payload;
+
+      // Check if user is admin to include store data
+      if (userData.role === 'RESELLER_ADMIN_4MIGA_USER' || userData.role === 'MASTER_ADMIN_4MIGA_USER') {
+        // Fetch user with store data for admin
+        const adminUser = await this.prisma.user.findFirst({
+          where: { email: userData.email },
+          select: this.adminAuthUser,
+        });
+
+        if (adminUser) {
+          const adminData = {
+            id: adminUser.id,
+            storeId: adminUser.store.id,
+            email: adminUser.email,
+            phone: adminUser.phone,
+            documentType: adminUser.documentType,
+            documentValue: adminUser.documentValue,
+            name: adminUser.name,
+            store: adminUser.store,
+          };
+
+          const accessToken = await this.jwtService.signAsync(userData, {
+            expiresIn: '10m',
+          });
+          const expiresIn = 10 * 60;
+
+          return {
+            access: {
+              accessToken,
+              refreshToken,
+              expiresIn,
+            },
+            user: adminData,
+          };
+        }
+      }
+
+      // For regular users, return data without role
       const accessToken = await this.jwtService.signAsync(userData, {
         expiresIn: '10m',
       });
@@ -207,8 +243,8 @@ export class AuthService {
         documentType: userData.documentType,
         documentValue: userData.documentValue,
         name: userData.name,
-        role: userData.role,
       };
+
       return {
         access: {
           accessToken,
@@ -356,7 +392,6 @@ export class AuthService {
       documentType: updatedUser.documentType,
       documentValue: updatedUser.documentValue,
       name: updatedUser.name,
-      role: updatedUser.role,
     };
 
     const accessToken = await this.jwtService.signAsync(data, {
@@ -455,7 +490,6 @@ export class AuthService {
       documentType: user.documentType,
       documentValue: user.documentValue,
       name: user.name,
-      role: user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(userData, {

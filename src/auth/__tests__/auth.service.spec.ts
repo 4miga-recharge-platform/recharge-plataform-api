@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
@@ -53,6 +54,7 @@ describe('AuthService', () => {
     email: 'admin@example.com',
     name: 'Admin User',
     role: 'RESELLER_ADMIN_4MIGA_USER',
+    storeId: 'store-123',
     phone: '5511988887777',
     documentType: 'cpf',
     documentValue: '123.456.789-00',
@@ -81,7 +83,6 @@ describe('AuthService', () => {
     documentType: mockUser.documentType,
     documentValue: mockUser.documentValue,
     name: mockUser.name,
-    role: mockUser.role,
   };
 
   const mockAdminUserData = {
@@ -91,7 +92,6 @@ describe('AuthService', () => {
     documentType: mockAdminUser.documentType,
     documentValue: mockAdminUser.documentValue,
     name: mockAdminUser.name,
-    role: mockAdminUser.role,
     store: mockAdminUser.store,
   };
 
@@ -370,9 +370,9 @@ describe('AuthService', () => {
   });
 
   describe('refreshAccessToken', () => {
-    it('should refresh access token successfully', async () => {
+    it('should refresh access token successfully for regular user', async () => {
       const refreshToken = 'valid-refresh-token';
-      const payload = { ...mockUserData, iat: 1234567890, exp: 1234567890 };
+      const payload = { ...mockUserData, role: 'USER', iat: 1234567890, exp: 1234567890 };
 
       jwtService.verifyAsync.mockResolvedValue(payload);
       jwtService.signAsync.mockResolvedValue('new-access-token');
@@ -380,7 +380,9 @@ describe('AuthService', () => {
       const result = await service.refreshAccessToken(refreshToken);
 
       expect(jwtService.verifyAsync).toHaveBeenCalledWith(refreshToken);
-      expect(jwtService.signAsync).toHaveBeenCalledWith(mockUserData, { expiresIn: '10m' });
+      // Remove iat and exp from payload before calling signAsync
+      const { iat, exp, ...userData } = payload;
+      expect(jwtService.signAsync).toHaveBeenCalledWith(userData, { expiresIn: '10m' });
 
       expect(result).toEqual({
         access: {
@@ -389,6 +391,44 @@ describe('AuthService', () => {
           expiresIn: 600,
         },
         user: mockUserData,
+      });
+    });
+
+    it('should refresh access token successfully for admin user with store data', async () => {
+      const refreshToken = 'valid-admin-refresh-token';
+      const payload = {
+        id: mockAdminUser.id,
+        email: mockAdminUser.email,
+        role: 'RESELLER_ADMIN_4MIGA_USER',
+        iat: 1234567890,
+        exp: 1234567890
+      };
+
+      jwtService.verifyAsync.mockResolvedValue(payload);
+      jwtService.signAsync.mockResolvedValue('new-admin-access-token');
+      prismaService.user.findFirst.mockResolvedValue(mockAdminUser);
+
+      const result = await service.refreshAccessToken(refreshToken);
+
+      expect(jwtService.verifyAsync).toHaveBeenCalledWith(refreshToken);
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: { email: mockAdminUser.email },
+        select: mockAdminAuthUser,
+      });
+      // Remove iat and exp from payload before calling signAsync
+      const { iat, exp, ...userData } = payload;
+      expect(jwtService.signAsync).toHaveBeenCalledWith(userData, { expiresIn: '10m' });
+
+      expect(result).toEqual({
+        access: {
+          accessToken: 'new-admin-access-token',
+          refreshToken: 'valid-admin-refresh-token',
+          expiresIn: 600,
+        },
+        user: {
+          ...mockAdminUserData,
+          storeId: mockAdminUser.store.id,
+        },
       });
     });
 
