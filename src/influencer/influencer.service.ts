@@ -3,7 +3,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { validateRequiredFields } from 'src/utils/validation.util';
 import { CreateInfluencerDto } from './dto/create-influencer.dto';
 import { UpdateInfluencerDto } from './dto/update-influencer.dto';
-import { Influencer } from './entities/influencer.entity';
 
 @Injectable()
 export class InfluencerService {
@@ -22,14 +21,13 @@ export class InfluencerService {
     monthlySales: true,
     createdAt: true,
     updatedAt: true,
-
   };
 
   async findAll(
     page = 1,
     limit = 10,
   ): Promise<{
-    data: Influencer[];
+    data: any[];
     totalInfluencers: number;
     page: number;
     totalPages: number;
@@ -60,7 +58,7 @@ export class InfluencerService {
     }
   }
 
-  async findOne(id: string, storeId: string): Promise<Influencer> {
+  async findOne(id: string, storeId: string): Promise<any> {
     try {
       const data = await this.prisma.influencer.findFirst({
         where: {
@@ -84,7 +82,7 @@ export class InfluencerService {
     page = 1,
     limit = 10,
   ): Promise<{
-    data: Influencer[];
+    data: any[];
     totalInfluencers: number;
     page: number;
     totalPages: number;
@@ -118,7 +116,7 @@ export class InfluencerService {
     }
   }
 
-  async create(dto: CreateInfluencerDto): Promise<Influencer> {
+  async create(dto: CreateInfluencerDto): Promise<any> {
     try {
       validateRequiredFields(dto, ['name', 'storeId']);
 
@@ -130,7 +128,7 @@ export class InfluencerService {
         throw new BadRequestException('Store not found');
       }
 
-      // Check if influencer name already exists for this store
+      // Check if influencer with this name already exists for this store
       const existingInfluencer = await this.prisma.influencer.findFirst({
         where: {
           name: dto.name,
@@ -159,7 +157,7 @@ export class InfluencerService {
     id: string,
     dto: UpdateInfluencerDto,
     storeId: string,
-  ): Promise<Influencer> {
+  ): Promise<any> {
     try {
       await this.findOne(id, storeId);
 
@@ -207,7 +205,7 @@ export class InfluencerService {
     }
   }
 
-  async remove(id: string, storeId: string): Promise<Influencer> {
+  async remove(id: string, storeId: string): Promise<any> {
     try {
       await this.findOne(id, storeId);
 
@@ -232,6 +230,4 @@ export class InfluencerService {
       throw new BadRequestException('Failed to remove influencer');
     }
   }
-
-
 }
