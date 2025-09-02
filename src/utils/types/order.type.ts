@@ -6,7 +6,6 @@ export interface OrderType {
   price: number;
   orderStatus: OrderStatus;
   storeId: string;
-  createdAt: string;
   payment: {
     name: string;
     status: PaymentStatus;

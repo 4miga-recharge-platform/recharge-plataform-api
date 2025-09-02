@@ -6,7 +6,7 @@ export class User {
   password: string;
   documentType: 'cpf' | 'cnpj';
   documentValue: string;
-  role: 'MASTER_ADMIN' | 'ADMIN' | 'USER';
+  role?: 'MASTER_ADMIN_4MIGA_USER' | 'RESELLER_ADMIN_4MIGA_USER' | 'USER';
   createdAt: Date;
   updatedAt: Date;
   storeId: string;

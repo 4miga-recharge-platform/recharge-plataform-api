@@ -1,10 +1,14 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
-import { OrderService } from '../order.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { ValidateCouponDto } from '../dto/validate-coupon.dto';
+import { OrderService } from '../order.service';
 
 // Mock validation utility
 jest.mock('../../utils/validation.util', () => ({
@@ -85,15 +89,16 @@ describe('OrderService', () => {
   const mockCoupon = {
     id: 'coupon-123',
     title: 'WELCOME10',
-    discountPercentage: 10.00,
+    discountPercentage: 10.0,
     discountAmount: null,
     expiresAt: new Date('2025-12-31'),
     timesUsed: 5,
     maxUses: 100,
-    minOrderAmount: 10.00,
+    minOrderAmount: 10.0,
     isActive: true,
     isFirstPurchase: false,
     storeId: 'store-123',
+    influencerId: 'influencer-123',
   };
 
   beforeEach(async () => {
@@ -128,6 +133,11 @@ describe('OrderService', () => {
         update: jest.fn(),
       },
       couponUsage: {
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      influencerMonthlySales: {
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
       },
@@ -199,9 +209,9 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
-                }
-              }
-            }
+                },
+              },
+            },
           },
         },
         orderBy: {
@@ -229,16 +239,22 @@ describe('OrderService', () => {
     it('should throw ForbiddenException when user does not belong to store', async () => {
       prismaService.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.findAll(storeId, userId, page, limit)).rejects.toThrow(
+      await expect(
+        service.findAll(storeId, userId, page, limit),
+      ).rejects.toThrow(
         new ForbiddenException('User does not belong to this store'),
       );
     });
 
     it('should handle database errors', async () => {
       prismaService.user.findFirst.mockResolvedValue(mockUser);
-      prismaService.order.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.order.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.findAll(storeId, userId, page, limit)).rejects.toThrow('Database error');
+      await expect(
+        service.findAll(storeId, userId, page, limit),
+      ).rejects.toThrow('Database error');
     });
   });
 
@@ -273,9 +289,9 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
-                }
-              }
-            }
+                },
+              },
+            },
           },
         },
       });
@@ -292,9 +308,13 @@ describe('OrderService', () => {
     });
 
     it('should handle database errors', async () => {
-      prismaService.order.findFirst.mockRejectedValue(new Error('Database error'));
+      prismaService.order.findFirst.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.findOne(orderId, userId)).rejects.toThrow('Database error');
+      await expect(service.findOne(orderId, userId)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -419,10 +439,15 @@ describe('OrderService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      const packageFromDifferentStore = { ...mockPackage, storeId: 'different-store-123' };
+      const packageFromDifferentStore = {
+        ...mockPackage,
+        storeId: 'different-store-123',
+      };
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
-      prismaService.package.findUnique.mockResolvedValue(packageFromDifferentStore);
+      prismaService.package.findUnique.mockResolvedValue(
+        packageFromDifferentStore,
+      );
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow(
         new BadRequestException('Package does not belong to this store'),
@@ -433,10 +458,15 @@ describe('OrderService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      const packageWithoutPaymentMethods = { ...mockPackage, paymentMethods: [] };
+      const packageWithoutPaymentMethods = {
+        ...mockPackage,
+        paymentMethods: [],
+      };
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
-      prismaService.package.findUnique.mockResolvedValue(packageWithoutPaymentMethods);
+      prismaService.package.findUnique.mockResolvedValue(
+        packageWithoutPaymentMethods,
+      );
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow(
         new NotFoundException('Payment method not available for this package'),
@@ -451,14 +481,196 @@ describe('OrderService', () => {
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.$transaction.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow('Database error');
+      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+        'Database error',
+      );
+    });
+
+    it('should create an order with coupon and update influencer monthly sales', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {});
+
+      const createOrderWithCouponDto = {
+        ...createOrderDto,
+        couponTitle: 'WELCOME10',
+      };
+
+      // Mock the validateCoupon method
+      jest.spyOn(service, 'validateCoupon').mockResolvedValue({
+        valid: true,
+        discountAmount: 2.0,
+        finalAmount: 17.99,
+        coupon: mockCoupon,
+      });
+
+      const mockTransaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          packageInfo: {
+            create: jest.fn().mockResolvedValue({
+              id: 'package-info-123',
+              packageId: mockPackage.id,
+              name: mockPackage.name,
+              userIdForRecharge: createOrderDto.userIdForRecharge,
+              imgCardUrl: mockPackage.imgCardUrl,
+            }),
+          },
+          recharge: {
+            create: jest.fn().mockResolvedValue({
+              id: 'recharge-123',
+              userIdForRecharge: createOrderDto.userIdForRecharge,
+              status: RechargeStatus.RECHARGE_PENDING,
+              amountCredits: mockPackage.amountCredits,
+            }),
+          },
+          orderItem: {
+            create: jest.fn().mockResolvedValue({
+              id: 'order-item-123',
+              productId: mockPackage.productId,
+              productName: mockPackage.product.name,
+              packageId: 'package-info-123',
+              rechargeId: 'recharge-123',
+            }),
+          },
+          payment: {
+            create: jest.fn().mockResolvedValue({
+              id: 'payment-123',
+              name: mockPackage.paymentMethods[0].name,
+              status: PaymentStatus.PAYMENT_PENDING,
+              qrCode: 'qrcode17.99',
+              qrCodetextCopyPaste: 'qrcode-copypaste17.99',
+            }),
+          },
+          order: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue(mockOrder),
+          },
+          couponUsage: {
+            create: jest.fn().mockResolvedValue({ id: 'coupon-usage-123' }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          coupon: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+          influencerMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({
+              id: 'monthly-sales-123',
+              influencerId: 'influencer-123',
+              month: new Date().getMonth() + 1,
+              year: new Date().getFullYear(),
+              totalSales: 17.99,
+            }),
+          },
+        };
+        return await callback(tx);
+      });
+
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      prismaService.$transaction.mockImplementation(mockTransaction);
+
+      const result = await service.create(createOrderWithCouponDto, userId);
+
+      expect(result).toEqual(mockOrder);
+    });
+
+    it('should update existing influencer monthly sales when record exists', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {});
+
+      const createOrderWithCouponDto = {
+        ...createOrderDto,
+        couponTitle: 'WELCOME10',
+      };
+       // Mock the validateCoupon method
+      jest.spyOn(service, 'validateCoupon').mockResolvedValue({
+        valid: true,
+        discountAmount: 2.0,
+        finalAmount: 17.99,
+        coupon: mockCoupon,
+      });
+
+      const existingMonthlySales = {
+        id: 'monthly-sales-123',
+        influencerId: 'influencer-123',
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+        totalSales: 50.0,
+      };
+
+      const mockTransaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          packageInfo: {
+            create: jest.fn().mockResolvedValue({
+              id: 'package-info-123',
+              packageId: mockPackage.id,
+              name: mockPackage.name,
+              userIdForRecharge: createOrderDto.userIdForRecharge,
+              imgCardUrl: mockPackage.imgCardUrl,
+            }),
+          },
+          recharge: {
+            create: jest.fn().mockResolvedValue({
+              id: 'recharge-123',
+              userIdForRecharge: createOrderDto.userIdForRecharge,
+              status: RechargeStatus.RECHARGE_PENDING,
+              amountCredits: mockPackage.amountCredits,
+            }),
+          },
+          orderItem: {
+            create: jest.fn().mockResolvedValue({
+              id: 'order-item-123',
+              productId: mockPackage.productId,
+              productName: mockPackage.product.name,
+              packageId: 'package-info-123',
+              rechargeId: 'recharge-123',
+            }),
+          },
+          payment: {
+            create: jest.fn().mockResolvedValue({
+              id: 'payment-123',
+              name: mockPackage.paymentMethods[0].name,
+              status: PaymentStatus.PAYMENT_PENDING,
+              qrCode: 'qrcode17.99',
+              qrCodetextCopyPaste: 'qrcode-copypaste17.99',
+            }),
+          },
+          order: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue(mockOrder),
+          },
+          couponUsage: {
+            create: jest.fn().mockResolvedValue({ id: 'coupon-usage-123' }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          coupon: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+          influencerMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(existingMonthlySales),
+            update: jest.fn().mockResolvedValue({
+              ...existingMonthlySales,
+              totalSales: 67.99, // 50.00 + 17.99
+            }),
+          },
+        };
+        return await callback(tx);
+      });
+
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      prismaService.$transaction.mockImplementation(mockTransaction);
+
+      const result = await service.create(createOrderWithCouponDto, userId);
+
+      expect(result).toEqual(mockOrder);
     });
   });
 
   describe('validateCoupon', () => {
     const validateCouponDto: ValidateCouponDto = {
       couponTitle: 'WELCOME10',
-      orderAmount: 50.00,
+      orderAmount: 50.0,
     };
     const storeId = 'store-123';
     const userId = 'user-123';
@@ -466,7 +678,11 @@ describe('OrderService', () => {
     it('should validate a valid coupon successfully', async () => {
       prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(prismaService.coupon.findFirst).toHaveBeenCalledWith({
         where: {
@@ -485,18 +701,23 @@ describe('OrderService', () => {
           isActive: true,
           isFirstPurchase: true,
           storeId: true,
+          influencerId: true,
         },
       });
 
       expect(result.valid).toBe(true);
-      expect(result.discountAmount).toBe(5.00); // 10% of 50.00
-      expect(result.finalAmount).toBe(45.00);
+      expect(result.discountAmount).toBe(5.0); // 10% of 50.00
+      expect(result.finalAmount).toBe(45.0);
     });
 
     it('should return invalid when coupon not found', async () => {
       prismaService.coupon.findFirst.mockResolvedValue(null);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(false);
       expect(result.message).toBe('Coupon not found');
@@ -506,17 +727,28 @@ describe('OrderService', () => {
       const inactiveCoupon = { ...mockCoupon, isActive: false };
       prismaService.coupon.findFirst.mockResolvedValue(inactiveCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(false);
       expect(result.message).toBe('Coupon is not active');
     });
 
     it('should return invalid when coupon has expired', async () => {
-      const expiredCoupon = { ...mockCoupon, expiresAt: new Date('2020-12-31') };
+      const expiredCoupon = {
+        ...mockCoupon,
+        expiresAt: new Date('2020-12-31'),
+      };
       prismaService.coupon.findFirst.mockResolvedValue(expiredCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(false);
       expect(result.message).toBe('Coupon has expired');
@@ -526,17 +758,25 @@ describe('OrderService', () => {
       const maxUsesCoupon = { ...mockCoupon, maxUses: 5, timesUsed: 5 };
       prismaService.coupon.findFirst.mockResolvedValue(maxUsesCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(false);
       expect(result.message).toBe('Coupon usage limit reached');
     });
 
     it('should return invalid when order amount is below minimum', async () => {
-      const minOrderCoupon = { ...mockCoupon, minOrderAmount: 100.00 };
+      const minOrderCoupon = { ...mockCoupon, minOrderAmount: 100.0 };
       prismaService.coupon.findFirst.mockResolvedValue(minOrderCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(false);
       expect(result.message).toBe('Minimum order amount required: 100');
@@ -547,10 +787,16 @@ describe('OrderService', () => {
       prismaService.coupon.findFirst.mockResolvedValue(firstPurchaseCoupon);
       prismaService.order.count.mockResolvedValue(2); // User has 2 previous orders
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(false);
-      expect(result.message).toBe('First purchase coupon can only be used by new customers');
+      expect(result.message).toBe(
+        'First purchase coupon can only be used by new customers',
+      );
     });
 
     it('should return valid for first purchase coupon when user has no previous orders', async () => {
@@ -558,67 +804,100 @@ describe('OrderService', () => {
       prismaService.coupon.findFirst.mockResolvedValue(firstPurchaseCoupon);
       prismaService.order.count.mockResolvedValue(0); // User has no previous orders
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(true);
     });
 
     it('should handle percentage discount correctly', async () => {
-      const percentageCoupon = { ...mockCoupon, discountPercentage: 20.00, discountAmount: null };
+      const percentageCoupon = {
+        ...mockCoupon,
+        discountPercentage: 20.0,
+        discountAmount: null,
+      };
       prismaService.coupon.findFirst.mockResolvedValue(percentageCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(true);
-      expect(result.discountAmount).toBe(10.00); // 20% of 50.00
-      expect(result.finalAmount).toBe(40.00);
+      expect(result.discountAmount).toBe(10.0); // 20% of 50.00
+      expect(result.finalAmount).toBe(40.0);
     });
 
     it('should handle amount discount correctly', async () => {
-      const amountCoupon = { ...mockCoupon, discountPercentage: null, discountAmount: 15.00 };
+      const amountCoupon = {
+        ...mockCoupon,
+        discountPercentage: null,
+        discountAmount: 15.0,
+      };
       prismaService.coupon.findFirst.mockResolvedValue(amountCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(true);
-      expect(result.discountAmount).toBe(15.00);
-      expect(result.finalAmount).toBe(35.00);
+      expect(result.discountAmount).toBe(15.0);
+      expect(result.finalAmount).toBe(35.0);
     });
 
     it('should limit amount discount to order amount', async () => {
-      const amountCoupon = { ...mockCoupon, discountPercentage: null, discountAmount: 100.00 };
+      const amountCoupon = {
+        ...mockCoupon,
+        discountPercentage: null,
+        discountAmount: 100.0,
+      };
       prismaService.coupon.findFirst.mockResolvedValue(amountCoupon);
 
-      const result = await service.validateCoupon(validateCouponDto, storeId, userId);
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
 
       expect(result.valid).toBe(true);
-      expect(result.discountAmount).toBe(50.00); // Limited to order amount
-      expect(result.finalAmount).toBe(0.00);
+      expect(result.discountAmount).toBe(50.0); // Limited to order amount
+      expect(result.finalAmount).toBe(0.0);
     });
   });
 
   describe('applyCoupon', () => {
     const couponTitle = 'WELCOME10';
-    const orderAmount = 50.00;
+    const orderAmount = 50.0;
     const storeId = 'store-123';
     const userId = 'user-123';
 
     it('should apply a valid coupon successfully', async () => {
       const mockValidation = {
         valid: true,
-        discountAmount: 5.00,
-        finalAmount: 45.00,
+        discountAmount: 5.0,
+        finalAmount: 45.0,
         coupon: mockCoupon,
       };
 
       jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
 
-      const result = await service.applyCoupon(couponTitle, orderAmount, storeId, userId);
+      const result = await service.applyCoupon(
+        couponTitle,
+        orderAmount,
+        storeId,
+        userId,
+      );
 
       expect(service.validateCoupon).toHaveBeenCalledWith(
         { couponTitle, orderAmount },
         storeId,
-        userId
+        userId,
       );
       expect(result).toEqual(mockValidation);
     });
@@ -631,17 +910,212 @@ describe('OrderService', () => {
 
       jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
 
-      await expect(service.applyCoupon(couponTitle, orderAmount, storeId, userId)).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        service.applyCoupon(couponTitle, orderAmount, storeId, userId),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should handle validation errors', async () => {
-      jest.spyOn(service, 'validateCoupon').mockRejectedValue(new Error('Validation error'));
+      jest
+        .spyOn(service, 'validateCoupon')
+        .mockRejectedValue(new Error('Validation error'));
 
-      await expect(service.applyCoupon(couponTitle, orderAmount, storeId, userId)).rejects.toThrow(
-        BadRequestException
+      await expect(
+        service.applyCoupon(couponTitle, orderAmount, storeId, userId),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('confirmCouponUsage', () => {
+    it('should confirm coupon usage and update influencer monthly sales', async () => {
+      const orderWithCoupon = {
+        id: 'order-123',
+        price: 17.99,
+        couponUsages: [
+          {
+            id: 'coupon-usage-123',
+            coupon: {
+              id: 'coupon-123',
+              influencerId: 'influencer-123',
+            },
+          },
+        ],
+      };
+
+      const mockTransaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          coupon: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+          influencerMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({
+              id: 'monthly-sales-123',
+              influencerId: 'influencer-123',
+              month: new Date().getMonth() + 1,
+              year: new Date().getFullYear(),
+              totalSales: 17.99,
+            }),
+          },
+        };
+        return await callback(tx);
+      });
+
+      prismaService.order.findUnique.mockResolvedValue(orderWithCoupon);
+      prismaService.$transaction.mockImplementation(mockTransaction);
+
+      await service.confirmCouponUsage('order-123');
+
+      expect(prismaService.order.findUnique).toHaveBeenCalledWith({
+        where: { id: 'order-123' },
+        include: {
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  influencerId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      expect(mockTransaction).toHaveBeenCalled();
+    });
+
+    it('should do nothing when order has no coupon usage', async () => {
+      const orderWithoutCoupon = {
+        id: 'order-123',
+        price: 19.99,
+        couponUsages: [],
+      };
+
+      prismaService.order.findUnique.mockResolvedValue(orderWithoutCoupon);
+
+      await service.confirmCouponUsage('order-123');
+
+      expect(prismaService.order.findUnique).toHaveBeenCalledWith({
+        where: { id: 'order-123' },
+        include: {
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  influencerId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      expect(prismaService.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully without breaking payment flow', async () => {
+      prismaService.order.findUnique.mockRejectedValue(new Error('Database error'));
+
+      // Should not throw error
+      await expect(service.confirmCouponUsage('order-123')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('updateInfluencerMonthlySales', () => {
+    it('should create new monthly sales record when none exists', async () => {
+      const mockTx = {
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue({
+            id: 'monthly-sales-123',
+            influencerId: 'influencer-123',
+            month: 12,
+            year: 2024,
+            totalSales: 100.0,
+          }),
+        },
+      };
+
+      const saleDate = new Date('2024-12-15');
+      const influencerId = 'influencer-123';
+      const saleAmount = 100.0;
+
+      await service['updateInfluencerMonthlySales'](
+        mockTx,
+        influencerId,
+        saleAmount,
+        saleDate,
       );
+
+      expect(mockTx.influencerMonthlySales.findFirst).toHaveBeenCalledWith({
+        where: {
+          influencerId,
+          month: 12,
+          year: 2024,
+        },
+      });
+
+      expect(mockTx.influencerMonthlySales.create).toHaveBeenCalledWith({
+        data: {
+          influencerId,
+          month: 12,
+          year: 2024,
+          totalSales: saleAmount,
+        },
+      });
+    });
+
+    it('should update existing monthly sales record when one exists', async () => {
+      const existingRecord = {
+        id: 'monthly-sales-123',
+        influencerId: 'influencer-123',
+        month: 12,
+        year: 2024,
+        totalSales: 50.0,
+      };
+
+      const mockTx = {
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue(existingRecord),
+          update: jest.fn().mockResolvedValue({
+            ...existingRecord,
+            totalSales: 150.0, // 50.00 + 100.00
+          }),
+        },
+      };
+
+      const saleDate = new Date('2024-12-15');
+      const influencerId = 'influencer-123';
+      const saleAmount = 100.0;
+
+      await service['updateInfluencerMonthlySales'](
+        mockTx,
+        influencerId,
+        saleAmount,
+        saleDate,
+      );
+
+      expect(mockTx.influencerMonthlySales.findFirst).toHaveBeenCalledWith({
+        where: {
+          influencerId,
+          month: 12,
+          year: 2024,
+        },
+      });
+
+      expect(mockTx.influencerMonthlySales.update).toHaveBeenCalledWith({
+        where: {
+          id: existingRecord.id,
+        },
+        data: {
+          totalSales: {
+            increment: saleAmount,
+          },
+          updatedAt: expect.any(Date),
+        },
+      });
     });
   });
 });

@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
@@ -24,6 +25,7 @@ import { LoggedUser } from './logged-user.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RequestEmailChangeDto } from './dto/request-email-change.dto';
 import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
+import { Store } from 'src/store/entities/store.entity';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -39,6 +41,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Make login and get auth token' })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Admin login - no storeId required' })
+  adminLogin(@Body() adminLoginDto: AdminLoginDto) {
+    return this.authService.adminLogin(adminLoginDto);
   }
 
   @Post('refresh')
@@ -87,7 +96,18 @@ export class AuthController {
   @ApiOperation({
     summary: 'Return auth user',
   })
-  profile(@LoggedUser() user: User) {
+  async profile(@LoggedUser() user: User) {
+    let store: Store | null = null;
+    if (
+      user.role === 'RESELLER_ADMIN_4MIGA_USER' ||
+      user.role === 'MASTER_ADMIN_4MIGA_USER'
+    ) {
+      store = await this.prisma.store.findUnique({
+        where: {
+          id: user.storeId,
+        },
+      });
+    }
     const filteredUser = {
       id: user.id,
       name: user.name,
@@ -95,8 +115,8 @@ export class AuthController {
       phone: user.phone,
       documentType: user.documentType,
       documentValue: user.documentValue,
-      role: user.role,
       storeId: user.storeId,
+      store,
     };
 
     return {
@@ -108,9 +128,18 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Solicitar alteração de e-mail (envia código para o novo e-mail)' })
-  async requestEmailChange(@LoggedUser() user: User, @Body() dto: RequestEmailChangeDto) {
-    return this.authService.requestEmailChange(user.email, dto.newEmail, user.storeId);
+  @ApiOperation({
+    summary: 'Solicitar alteração de e-mail (envia código para o novo e-mail)',
+  })
+  async requestEmailChange(
+    @LoggedUser() user: User,
+    @Body() dto: RequestEmailChangeDto,
+  ) {
+    return this.authService.requestEmailChange(
+      user.email,
+      dto.newEmail,
+      user.storeId,
+    );
   }
 
   @Post('confirm-email-change')
@@ -118,9 +147,17 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Confirmar alteração de e-mail com código' })
-  async confirmEmailChange(@LoggedUser() user: User, @Body() dto: ConfirmEmailChangeDto) {
+  async confirmEmailChange(
+    @LoggedUser() user: User,
+    @Body() dto: ConfirmEmailChangeDto,
+  ) {
     // Preferimos `user` do token para currentEmail e storeId
-    return this.authService.confirmEmailChange(user.email, dto.newEmail, dto.code, user.storeId);
+    return this.authService.confirmEmailChange(
+      user.email,
+      dto.newEmail,
+      dto.code,
+      user.storeId,
+    );
   }
 
   @Post('change-password')
@@ -128,7 +165,10 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar senha do usuário autenticado' })
-  async changePassword(@LoggedUser() user: User, @Body() dto: ChangePasswordDto) {
+  async changePassword(
+    @LoggedUser() user: User,
+    @Body() dto: ChangePasswordDto,
+  ) {
     return this.authService.changePassword(user.id, dto);
   }
 }

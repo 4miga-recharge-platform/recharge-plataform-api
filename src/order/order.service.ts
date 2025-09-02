@@ -1,10 +1,20 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus, PaymentStatus, Prisma, RechargeStatus } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  OrderStatus,
+  PaymentStatus,
+  Prisma,
+  RechargeStatus,
+} from '@prisma/client';
 import { randomInt } from 'crypto';
+import { validateRequiredFields } from 'src/utils/validation.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
-import { validateRequiredFields } from 'src/utils/validation.util';
 
 @Injectable()
 export class OrderService {
@@ -28,7 +38,7 @@ export class OrderService {
         this.prisma.order.findMany({
           where: {
             storeId: user.storeId,
-            userId
+            userId,
           },
           include: {
             payment: true,
@@ -47,9 +57,9 @@ export class OrderService {
                     discountPercentage: true,
                     discountAmount: true,
                     isFirstPurchase: true,
-                  }
-                }
-              }
+                  },
+                },
+              },
             },
           },
           orderBy: {
@@ -106,9 +116,9 @@ export class OrderService {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
-                }
-              }
-            }
+                },
+              },
+            },
           },
         },
       });
@@ -133,7 +143,13 @@ export class OrderService {
       'paymentMethodId',
       'userIdForRecharge',
     ]);
-    const { storeId, packageId, paymentMethodId, userIdForRecharge, couponTitle } = createOrderDto;
+    const {
+      storeId,
+      packageId,
+      paymentMethodId,
+      userIdForRecharge,
+      couponTitle,
+    } = createOrderDto;
 
     try {
       // Check if user belongs to the store
@@ -155,8 +171,8 @@ export class OrderService {
           product: true,
           paymentMethods: {
             where: {
-              id: paymentMethodId
-            }
+              id: paymentMethodId,
+            },
           },
         },
       });
@@ -216,17 +232,23 @@ export class OrderService {
             name: paymentMethod.name,
             status: PaymentStatus.PAYMENT_PENDING,
             statusUpdatedAt: new Date(),
-            qrCode: paymentMethod.name === 'pix' ? await this.generatePixQRCode(Number(paymentMethod.price)) : null,
-            qrCodetextCopyPaste: paymentMethod.name === 'pix' ? await this.generatePixCopyPaste(Number(paymentMethod.price)) : null,
+            qrCode:
+              paymentMethod.name === 'pix'
+                ? await this.generatePixQRCode(Number(paymentMethod.price))
+                : null,
+            qrCodetextCopyPaste:
+              paymentMethod.name === 'pix'
+                ? await this.generatePixCopyPaste(Number(paymentMethod.price))
+                : null,
           },
         });
 
         let orderNumber;
         let existingOrder;
         do {
-        // Generate a random 12-digit number
-        orderNumber = this.generateOrderNumber();
-        // Check if it already exists
+          // Generate a random 12-digit number
+          orderNumber = this.generateOrderNumber();
+          // Check if it already exists
           existingOrder = await tx.order.findUnique({
             where: { orderNumber },
           });
@@ -241,7 +263,7 @@ export class OrderService {
           couponValidation = await this.validateCoupon(
             { couponTitle, orderAmount: Number(paymentMethod.price) },
             storeId,
-            userId
+            userId,
           );
 
           if (!couponValidation.valid) {
@@ -281,20 +303,11 @@ export class OrderService {
           },
         });
 
-        // 7. Update coupon usage and increment usage count if coupon was applied
+        // 7. Update coupon usage with orderId (but don't confirm usage yet)
         if (couponUsage) {
           await tx.couponUsage.update({
             where: { id: couponUsage.id },
             data: { orderId: order.id },
-          });
-
-          // Increment coupon usage count
-          await tx.coupon.update({
-            where: { id: couponValidation.coupon.id },
-            data: {
-              timesUsed: { increment: 1 },
-              totalSalesAmount: { increment: finalPrice }
-            },
           });
         }
 
@@ -315,10 +328,108 @@ export class OrderService {
     }
   }
 
+  private async updateInfluencerMonthlySales(
+    tx: any,
+    influencerId: string,
+    saleAmount: number,
+    saleDate: Date,
+  ): Promise<void> {
+    const month = saleDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+    const year = saleDate.getFullYear();
+
+    // Try to find existing monthly sales record
+    const existingRecord = await tx.influencerMonthlySales.findFirst({
+      where: {
+        influencerId,
+        month,
+        year,
+      },
+    });
+
+    if (existingRecord) {
+      // Update existing record
+      await tx.influencerMonthlySales.update({
+        where: {
+          id: existingRecord.id,
+        },
+        data: {
+          totalSales: {
+            increment: saleAmount,
+          },
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      // Create new record
+      await tx.influencerMonthlySales.create({
+        data: {
+          influencerId,
+          month,
+          year,
+          totalSales: saleAmount,
+        },
+      });
+    }
+  }
+
+  /**
+   * Confirm coupon usage after payment is confirmed
+   * This method should be called when payment status changes to PAYMENT_APPROVED
+   */
+  async confirmCouponUsage(orderId: string): Promise<void> {
+    try {
+      // Find the order with coupon usage
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  influencerId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!order || order.couponUsages.length === 0) {
+        return; // No coupon usage to confirm
+      }
+
+      // Use transaction to ensure data consistency
+      await this.prisma.$transaction(async (tx) => {
+        for (const couponUsage of order.couponUsages) {
+          // Increment coupon usage count
+          await tx.coupon.update({
+            where: { id: couponUsage.coupon.id },
+            data: {
+              timesUsed: { increment: 1 },
+              totalSalesAmount: { increment: order.price },
+            },
+          });
+
+          // Update influencer monthly sales
+          await this.updateInfluencerMonthlySales(
+            tx,
+            couponUsage.coupon.influencerId,
+            Number(order.price),
+            new Date(),
+          );
+        }
+      });
+    } catch (error) {
+      // Log error but don't throw to avoid breaking payment flow
+      console.error('Error confirming coupon usage:', error);
+    }
+  }
+
   private generateOrderNumber(): string {
-  // Generate a random 12-digit number
-  const min = 100000000000; // 12 digits (starting with 1)
-  const max = 999999999999; // 12 digits (all 9s)
+    // Generate a random 12-digit number
+    const min = 100000000000; // 12 digits (starting with 1)
+    const max = 999999999999; // 12 digits (all 9s)
     return randomInt(min, max).toString();
   }
 
@@ -342,7 +453,11 @@ export class OrderService {
     return `qrcode-copypaste${amount}`;
   }
 
-  async validateCoupon(validateCouponDto: ValidateCouponDto, storeId: string, userId: string): Promise<any> {
+  async validateCoupon(
+    validateCouponDto: ValidateCouponDto,
+    storeId: string,
+    userId: string,
+  ): Promise<any> {
     try {
       const { couponTitle, orderAmount } = validateCouponDto;
 
@@ -350,7 +465,7 @@ export class OrderService {
       const coupon = await this.prisma.coupon.findFirst({
         where: {
           title: couponTitle,
-          storeId
+          storeId,
         },
         select: {
           id: true,
@@ -364,6 +479,7 @@ export class OrderService {
           isActive: true,
           isFirstPurchase: true,
           storeId: true,
+          influencerId: true,
         },
       });
 
@@ -387,10 +503,13 @@ export class OrderService {
       }
 
       // Check minimum order amount
-      if (coupon.minOrderAmount && orderAmount < Number(coupon.minOrderAmount)) {
+      if (
+        coupon.minOrderAmount &&
+        orderAmount < Number(coupon.minOrderAmount)
+      ) {
         return {
           valid: false,
-          message: `Minimum order amount required: ${coupon.minOrderAmount}`
+          message: `Minimum order amount required: ${coupon.minOrderAmount}`,
         };
       }
 
@@ -401,15 +520,15 @@ export class OrderService {
             userId: userId, // We need to pass userId to this method
             storeId: storeId,
             orderStatus: {
-              not: 'EXPIRED' // Exclude expired orders
-            }
-          }
+              not: 'EXPIRED', // Exclude expired orders
+            },
+          },
         });
 
         if (userOrderCount > 0) {
           return {
             valid: false,
-            message: 'First purchase coupon can only be used by new customers'
+            message: 'First purchase coupon can only be used by new customers',
           };
         }
       }
@@ -417,7 +536,8 @@ export class OrderService {
       // Calculate discount
       let discountAmount = 0;
       if (coupon.discountPercentage) {
-        discountAmount = (orderAmount * Number(coupon.discountPercentage)) / 100;
+        discountAmount =
+          (orderAmount * Number(coupon.discountPercentage)) / 100;
       } else if (coupon.discountAmount) {
         discountAmount = Math.min(Number(coupon.discountAmount), orderAmount);
       }
@@ -441,12 +561,17 @@ export class OrderService {
     }
   }
 
-  async applyCoupon(couponTitle: string, orderAmount: number, storeId: string, userId: string): Promise<any> {
+  async applyCoupon(
+    couponTitle: string,
+    orderAmount: number,
+    storeId: string,
+    userId: string,
+  ): Promise<any> {
     try {
       const validation = await this.validateCoupon(
         { couponTitle, orderAmount },
         storeId,
-        userId
+        userId,
       );
 
       if (!validation.valid) {

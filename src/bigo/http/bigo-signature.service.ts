@@ -50,13 +50,19 @@ export class BigoSignatureService {
   }
 
   private async signWithPrivateKey(messageHash: Buffer): Promise<string> {
-    const privateKey = env.BIGO_PRIVATE_KEY;
+    let privateKey = env.BIGO_PRIVATE_KEY;
 
     if (!privateKey) {
       throw new Error('BIGO_PRIVATE_KEY is required for signature generation');
     }
 
     try {
+      // Check if private key is base64 encoded
+      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        // Decode from base64
+        privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+      }
+
       // Create sign object with RSA-SHA256
       const sign = createSign('RSA-SHA256');
       sign.update(messageHash);

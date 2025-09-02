@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { EmailService } from '../email/email.service';
@@ -40,6 +41,35 @@ export class AuthService {
     updatedAt: false,
   };
 
+  private adminAuthUser = {
+    id: true,
+    email: true,
+    name: true,
+    role: true,
+    phone: true,
+    documentType: true,
+    documentValue: true,
+    emailVerified: true,
+    password: true,
+    createdAt: false,
+    updatedAt: false,
+    store: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        domain: true,
+        logoUrl: true,
+        miniLogoUrl: true,
+        bannersUrl: true,
+        facebookUrl: true,
+        instagramUrl: true,
+        tiktokUrl: true,
+        wppNumber: true,
+      }
+    }
+  };
+
   async login(loginDto: LoginDto) {
     const { email, password, storeId } = loginDto;
     const user = await this.prisma.user.findFirst({
@@ -68,7 +98,6 @@ export class AuthService {
       documentType: user.documentType,
       documentValue: user.documentValue,
       name: user.name,
-      role: user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(data, {
@@ -90,11 +119,118 @@ export class AuthService {
     };
   }
 
+  async adminLogin(adminLoginDto: AdminLoginDto) {
+    const { email, password } = adminLoginDto;
+
+    // Find user by email (without storeId) with store data
+    const user = await this.prisma.user.findFirst({
+      where: { email },
+      select: this.adminAuthUser,
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User or password invalid');
+    }
+
+    // Validate if user is admin
+    if (user.role !== 'RESELLER_ADMIN_4MIGA_USER') {
+      throw new UnauthorizedException('Access denied - Admin role required');
+    }
+
+    if (user.emailVerified === false) {
+      throw new UnauthorizedException('Email not verified');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('User or password invalid');
+    }
+
+    // Data for JWT token (keep it lightweight)
+    const jwtData = {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      documentType: user.documentType,
+      documentValue: user.documentValue,
+      name: user.name,
+      role: user.role,
+      storeId: user.store.id,
+    };
+
+    // Complete data for response (including store details)
+    const responseData = {
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      documentType: user.documentType,
+      documentValue: user.documentValue,
+      name: user.name,
+      store: user.store,
+    };
+
+    const accessToken = await this.jwtService.signAsync(jwtData, {
+      expiresIn: '10m',
+    });
+    const refreshToken = await this.jwtService.signAsync(jwtData, {
+      expiresIn: '7d',
+    });
+
+    const expiresIn = 10 * 60;
+
+    return {
+      access: {
+        accessToken,
+        refreshToken,
+        expiresIn,
+      },
+      user: responseData,
+    };
+  }
+
   async refreshAccessToken(refreshToken: string) {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { iat, exp, ...userData } = payload;
+
+      // Check if user is admin to include store data
+      if (userData.role === 'RESELLER_ADMIN_4MIGA_USER' || userData.role === 'MASTER_ADMIN_4MIGA_USER') {
+        // Fetch user with store data for admin
+        const adminUser = await this.prisma.user.findFirst({
+          where: { email: userData.email },
+          select: this.adminAuthUser,
+        });
+
+        if (adminUser) {
+          const adminData = {
+            id: adminUser.id,
+            storeId: adminUser.store.id,
+            email: adminUser.email,
+            phone: adminUser.phone,
+            documentType: adminUser.documentType,
+            documentValue: adminUser.documentValue,
+            name: adminUser.name,
+            store: adminUser.store,
+          };
+
+          const accessToken = await this.jwtService.signAsync(userData, {
+            expiresIn: '10m',
+          });
+          const expiresIn = 10 * 60;
+
+          return {
+            access: {
+              accessToken,
+              refreshToken,
+              expiresIn,
+            },
+            user: adminData,
+          };
+        }
+      }
+
+      // For regular users, return data without role
       const accessToken = await this.jwtService.signAsync(userData, {
         expiresIn: '10m',
       });
@@ -107,8 +243,8 @@ export class AuthService {
         documentType: userData.documentType,
         documentValue: userData.documentValue,
         name: userData.name,
-        role: userData.role,
       };
+
       return {
         access: {
           accessToken,
@@ -256,7 +392,6 @@ export class AuthService {
       documentType: updatedUser.documentType,
       documentValue: updatedUser.documentValue,
       name: updatedUser.name,
-      role: updatedUser.role,
     };
 
     const accessToken = await this.jwtService.signAsync(data, {
@@ -355,7 +490,6 @@ export class AuthService {
       documentType: user.documentType,
       documentValue: user.documentValue,
       name: user.name,
-      role: user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(userData, {

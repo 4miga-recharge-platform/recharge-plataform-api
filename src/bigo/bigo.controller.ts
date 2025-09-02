@@ -11,7 +11,7 @@ import { AuthGuard } from '@nestjs/passport';
 export class BigoController {
   constructor(private readonly bigoService: BigoService) {}
 
-  @Post('recharge-precheck')
+    @Post('recharge-precheck')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
@@ -21,6 +21,37 @@ export class BigoController {
   async rechargePrecheck(@Body() dto: RechargePrecheckDto) {
     return this.bigoService.rechargePrecheck(dto);
   }
+
+  // TODO: Remove this after testing (it returns the debug info)
+  //
+  // async rechargePrecheck(@Body() dto: RechargePrecheckDto, @Req() req: any) {
+  //   // Get client IP for debugging
+  //   const clientIp = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+  //   const forwardedFor = req.headers['x-forwarded-for'];
+  //   const realIp = req.headers['x-real-ip'];
+
+  //   // Add debug info to response
+  //   const debugInfo = {
+  //     clientIp,
+  //     forwardedFor,
+  //     realIp,
+  //     headers: req.headers,
+  //     timestamp: new Date().toISOString()
+  //   };
+
+  //   try {
+  //     const result = await this.bigoService.rechargePrecheck(dto);
+  //     return {
+  //       ...result,
+  //       debug: debugInfo
+  //     };
+  //   } catch (error) {
+  //     return {
+  //       error: error.message,
+  //       debug: debugInfo
+  //     };
+  //   }
+  // }
 
   @Post('diamond-recharge')
   @HttpCode(HttpStatus.OK)
