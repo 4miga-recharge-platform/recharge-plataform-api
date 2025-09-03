@@ -165,15 +165,14 @@ describe('InfluencerController', () => {
       paymentMethod: 'pix',
       paymentData: 'PIX_JOAO123',
       isActive: true,
-      storeId: 'store-123',
     };
 
     it('should create an influencer successfully', async () => {
       influencerService.create.mockResolvedValue(mockInfluencer);
 
-      const result = await controller.create(createInfluencerDto);
+      const result = await controller.create(createInfluencerDto, mockRequest);
 
-      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto);
+      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto, 'store-123');
       expect(result).toEqual(mockInfluencer);
     });
 
@@ -181,8 +180,8 @@ describe('InfluencerController', () => {
       const error = new Error('Failed to create influencer');
       influencerService.create.mockRejectedValue(error);
 
-      await expect(controller.create(createInfluencerDto)).rejects.toThrow('Failed to create influencer');
-      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto);
+      await expect(controller.create(createInfluencerDto, mockRequest)).rejects.toThrow('Failed to create influencer');
+      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto, 'store-123');
     });
   });
 

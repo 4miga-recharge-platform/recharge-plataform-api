@@ -336,7 +336,6 @@ describe('InfluencerService', () => {
       paymentMethod: 'pix',
       paymentData: 'PIX_JOAO123',
       isActive: true,
-      storeId: 'store-123',
     };
 
     it('should create an influencer successfully', async () => {
@@ -344,7 +343,7 @@ describe('InfluencerService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(null);
       prismaService.influencer.create.mockResolvedValue(mockInfluencer);
 
-      const result = await service.create(createInfluencerDto);
+      const result = await service.create(createInfluencerDto, 'store-123');
 
       expect(prismaService.store.findUnique).toHaveBeenCalledWith({
         where: { id: 'store-123' },
@@ -356,7 +355,11 @@ describe('InfluencerService', () => {
         },
       });
       expect(prismaService.influencer.create).toHaveBeenCalledWith({
-        data: createInfluencerDto,
+        data: {
+          ...createInfluencerDto,
+          storeId: 'store-123',
+          isActive: true,
+        },
         select: mockInfluencerSelect,
       });
       expect(result).toEqual(mockInfluencer);
@@ -365,7 +368,7 @@ describe('InfluencerService', () => {
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createInfluencerDto)).rejects.toThrow(
+      await expect(service.create(createInfluencerDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
       expect(prismaService.store.findUnique).toHaveBeenCalledWith({
@@ -377,7 +380,7 @@ describe('InfluencerService', () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
 
-      await expect(service.create(createInfluencerDto)).rejects.toThrow(
+      await expect(service.create(createInfluencerDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
@@ -391,7 +394,31 @@ describe('InfluencerService', () => {
     it('should handle errors', async () => {
       prismaService.store.findUnique.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.create(createInfluencerDto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createInfluencerDto, 'store-123')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should set isActive to true by default when not provided', async () => {
+      const dtoWithoutIsActive = {
+        name: 'João Silva',
+        paymentMethod: 'pix',
+        paymentData: 'PIX_JOAO123',
+      };
+
+      prismaService.store.findUnique.mockResolvedValue(mockStore);
+      prismaService.influencer.findFirst.mockResolvedValue(null);
+      prismaService.influencer.create.mockResolvedValue(mockInfluencer);
+
+      const result = await service.create(dtoWithoutIsActive, 'store-123');
+
+      expect(prismaService.influencer.create).toHaveBeenCalledWith({
+        data: {
+          ...dtoWithoutIsActive,
+          storeId: 'store-123',
+          isActive: true,
+        },
+        select: mockInfluencerSelect,
+      });
+      expect(result).toEqual(mockInfluencer);
     });
   });
 

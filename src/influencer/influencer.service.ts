@@ -96,13 +96,13 @@ export class InfluencerService {
     }
   }
 
-  async create(dto: CreateInfluencerDto): Promise<any> {
+  async create(dto: CreateInfluencerDto, storeId: string): Promise<any> {
     try {
-      validateRequiredFields(dto, ['name', 'storeId']);
+      validateRequiredFields(dto, ['name', 'paymentMethod', 'paymentData']);
 
       // Check if store exists
       const store = await this.prisma.store.findUnique({
-        where: { id: dto.storeId },
+        where: { id: storeId },
       });
       if (!store) {
         throw new BadRequestException('Store not found');
@@ -112,7 +112,7 @@ export class InfluencerService {
       const existingInfluencer = await this.prisma.influencer.findFirst({
         where: {
           name: dto.name,
-          storeId: dto.storeId,
+          storeId: storeId,
         },
       });
       if (existingInfluencer) {
@@ -122,7 +122,11 @@ export class InfluencerService {
       }
 
       return await this.prisma.influencer.create({
-        data: dto,
+        data: {
+          ...dto,
+          storeId: storeId,
+          isActive: dto.isActive ?? true,
+        },
         select: this.influencerSelect,
       });
     } catch (error) {
@@ -146,22 +150,12 @@ export class InfluencerService {
       );
       validateRequiredFields(dto, fieldsToValidate);
 
-      // If updating storeId, check if new store exists
-      if (dto.storeId) {
-        const store = await this.prisma.store.findUnique({
-          where: { id: dto.storeId },
-        });
-        if (!store) {
-          throw new BadRequestException('Store not found');
-        }
-      }
-
       // If updating name, check if new name already exists for the store
       if (dto.name) {
         const existingInfluencer = await this.prisma.influencer.findFirst({
           where: {
             name: dto.name,
-            storeId: dto.storeId || storeId,
+            storeId: storeId,
             id: { not: id },
           },
         });

@@ -91,8 +91,8 @@ export class InfluencerController {
   @Post()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Create a new influencer' })
-  create(@Body() createInfluencerDto: CreateInfluencerDto) {
-    return this.influencerService.create(createInfluencerDto);
+  create(@Body() createInfluencerDto: CreateInfluencerDto, @Request() req) {
+    return this.influencerService.create(createInfluencerDto, req.user.storeId);
   }
 
   @Get(':id')
