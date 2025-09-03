@@ -11,7 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { CreateInfluencerDto } from './dto/create-influencer.dto';
@@ -27,9 +33,22 @@ export class InfluencerController {
 
   @Get()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
-  @ApiOperation({ summary: 'Get all influencers with pagination' })
+  @ApiOperation({ summary: 'Get all influencers with pagination and filters' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by name or email',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Filter by status: all, active, or inactive',
+    enum: ['all', 'active', 'inactive'],
+  })
   @ApiResponse({
     status: 200,
     description: 'Paginated list of influencers returned successfully.',
@@ -48,14 +67,31 @@ export class InfluencerController {
     @Request() req,
     @Query('page') page = 1,
     @Query('limit') limit = 10,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
   ) {
-    return this.influencerService.findByStore(req.user.storeId, Number(page), Number(limit));
+    // Converter status para boolean se necessário
+    let isActiveBoolean: boolean | undefined;
+    if (status === 'active') {
+      isActiveBoolean = true;
+    } else if (status === 'inactive') {
+      isActiveBoolean = false;
+    }
+    // Se status for 'all' ou undefined, isActiveBoolean fica undefined (retorna todos)
+
+    return this.influencerService.findByStore(
+      req.user.storeId,
+      Number(page),
+      Number(limit),
+      search,
+      isActiveBoolean,
+    );
   }
 
   @Post()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Create a new influencer' })
-  create(@Body() createInfluencerDto: CreateInfluencerDto, @Request() req) {
+  create(@Body() createInfluencerDto: CreateInfluencerDto) {
     return this.influencerService.create(createInfluencerDto);
   }
 
@@ -74,7 +110,11 @@ export class InfluencerController {
     @Body() updateInfluencerDto: UpdateInfluencerDto,
     @Request() req,
   ) {
-    return this.influencerService.update(id, updateInfluencerDto, req.user.storeId);
+    return this.influencerService.update(
+      id,
+      updateInfluencerDto,
+      req.user.storeId,
+    );
   }
 
   @Delete(':id')

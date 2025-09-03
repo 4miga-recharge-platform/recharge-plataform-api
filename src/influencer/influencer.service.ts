@@ -23,41 +23,6 @@ export class InfluencerService {
     updatedAt: true,
   };
 
-  async findAll(
-    page = 1,
-    limit = 10,
-  ): Promise<{
-    data: any[];
-    totalInfluencers: number;
-    page: number;
-    totalPages: number;
-  }> {
-    try {
-      const [data, totalInfluencers] = await Promise.all([
-        this.prisma.influencer.findMany({
-          select: this.influencerSelect,
-          orderBy: {
-            createdAt: 'desc',
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        this.prisma.influencer.count(),
-      ]);
-
-      const totalPages = Math.ceil(totalInfluencers / limit);
-
-      return {
-        data,
-        totalInfluencers,
-        page,
-        totalPages,
-      };
-    } catch {
-      throw new BadRequestException('Failed to fetch influencers');
-    }
-  }
-
   async findOne(id: string, storeId: string): Promise<any> {
     try {
       const data = await this.prisma.influencer.findFirst({
@@ -81,6 +46,8 @@ export class InfluencerService {
     storeId: string,
     page = 1,
     limit = 10,
+    search?: string,
+    isActive?: boolean,
   ): Promise<{
     data: any[];
     totalInfluencers: number;
@@ -88,9 +55,22 @@ export class InfluencerService {
     totalPages: number;
   }> {
     try {
+      const where: any = { storeId };
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      if (isActive !== undefined) {
+        where.isActive = isActive;
+      }
+
       const [data, totalInfluencers] = await Promise.all([
         this.prisma.influencer.findMany({
-          where: { storeId },
+          where,
           select: this.influencerSelect,
           orderBy: {
             createdAt: 'desc',
@@ -99,7 +79,7 @@ export class InfluencerService {
           take: limit,
         }),
         this.prisma.influencer.count({
-          where: { storeId },
+          where,
         }),
       ]);
 
