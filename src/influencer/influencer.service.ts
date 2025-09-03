@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { validateRequiredFields } from 'src/utils/validation.util';
 import { CreateInfluencerDto } from './dto/create-influencer.dto';
 import { UpdateInfluencerDto } from './dto/update-influencer.dto';
 
@@ -60,7 +59,7 @@ export class InfluencerService {
       if (search) {
         where.OR = [
           { name: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } }
+          { email: { contains: search, mode: 'insensitive' } },
         ];
       }
 
@@ -98,7 +97,37 @@ export class InfluencerService {
 
   async create(dto: CreateInfluencerDto, storeId: string): Promise<any> {
     try {
-      validateRequiredFields(dto, ['name', 'paymentMethod', 'paymentData']);
+      // Validate required fields with specific messages
+      if (!dto.name || dto.name.trim() === '') {
+        throw new BadRequestException(
+          'Influencer name is required and cannot be empty',
+        );
+      }
+
+      if (!dto.paymentMethod || dto.paymentMethod.trim() === '') {
+        throw new BadRequestException(
+          'Payment method is required and cannot be empty',
+        );
+      }
+
+      if (!dto.paymentData || dto.paymentData.trim() === '') {
+        throw new BadRequestException(
+          'Payment data is required and cannot be empty',
+        );
+      }
+
+      // Validate name length
+      if (dto.name.length < 2) {
+        throw new BadRequestException(
+          'Influencer name must be at least 2 characters long',
+        );
+      }
+
+      if (dto.name.length > 100) {
+        throw new BadRequestException(
+          'Influencer name cannot exceed 100 characters',
+        );
+      }
 
       // Check if store exists
       const store = await this.prisma.store.findUnique({
@@ -131,7 +160,7 @@ export class InfluencerService {
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error;
+        throw error; // Preserva a mensagem específica
       }
       throw new BadRequestException('Failed to create influencer');
     }
@@ -145,13 +174,25 @@ export class InfluencerService {
     try {
       await this.findOne(id, storeId);
 
-      const fieldsToValidate = Object.keys(dto).filter(
-        (key) => dto[key] !== undefined,
-      );
-      validateRequiredFields(dto, fieldsToValidate);
+      // Validate fields if they are provided
+      if (dto.name !== undefined) {
+        if (dto.name.trim() === '') {
+          throw new BadRequestException('Influencer name cannot be empty');
+        }
 
-      // If updating name, check if new name already exists for the store
-      if (dto.name) {
+        if (dto.name.length < 2) {
+          throw new BadRequestException(
+            'Influencer name must be at least 2 characters long',
+          );
+        }
+
+        if (dto.name.length > 100) {
+          throw new BadRequestException(
+            'Influencer name cannot exceed 100 characters',
+          );
+        }
+
+        // Check if new name already exists for the store
         const existingInfluencer = await this.prisma.influencer.findFirst({
           where: {
             name: dto.name,
@@ -166,6 +207,14 @@ export class InfluencerService {
         }
       }
 
+      if (dto.paymentMethod !== undefined && dto.paymentMethod.trim() === '') {
+        throw new BadRequestException('Payment method cannot be empty');
+      }
+
+      if (dto.paymentData !== undefined && dto.paymentData.trim() === '') {
+        throw new BadRequestException('Payment data cannot be empty');
+      }
+
       return await this.prisma.influencer.update({
         where: { id },
         data: dto,
@@ -173,7 +222,7 @@ export class InfluencerService {
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error;
+        throw error; // Preserva a mensagem específica
       }
       throw new BadRequestException('Failed to update influencer');
     }
@@ -199,7 +248,7 @@ export class InfluencerService {
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error;
+        throw error; // Preserva a mensagem específica
       }
       throw new BadRequestException('Failed to remove influencer');
     }
