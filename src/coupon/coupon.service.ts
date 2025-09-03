@@ -55,13 +55,80 @@ export class CouponService {
     }
   }
 
-  async findByStore(storeId: string): Promise<any[]> {
+  async findByStore(
+    storeId: string,
+    page = 1,
+    limit = 10,
+    search?: string,
+    type?: string,
+    isActive?: boolean,
+  ): Promise<{
+    data: any[];
+    totalCoupons: number;
+    page: number;
+    totalPages: number;
+  }> {
     try {
-      const data = await this.prisma.coupon.findMany({
-        where: { storeId },
-        select: this.couponSelect,
-      });
-      return data;
+      const where: any = { storeId };
+
+      // Add search filter (title OR influencer name)
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { influencer: { name: { contains: search, mode: 'insensitive' } } }
+        ];
+      }
+
+      // Add type filter
+      if (type && type !== 'all') {
+        if (type === 'percentage') {
+          where.discountPercentage = { not: null };
+          where.discountAmount = null;
+        } else if (type === 'fixed') {
+          where.discountAmount = { not: null };
+          where.discountPercentage = null;
+        } else if (type === 'first-purchase') {
+          where.isFirstPurchase = true;
+        }
+      }
+
+      // Add status filter
+      if (isActive !== undefined) {
+        where.isActive = isActive;
+      }
+
+      const [data, totalCoupons] = await Promise.all([
+        this.prisma.coupon.findMany({
+          where,
+          select: {
+            ...this.couponSelect,
+            influencer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.coupon.count({
+          where,
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalCoupons / limit);
+
+      return {
+        data,
+        totalCoupons,
+        page,
+        totalPages,
+      };
     } catch {
       throw new BadRequestException('Failed to fetch coupons by store');
     }

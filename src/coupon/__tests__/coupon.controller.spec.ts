@@ -10,18 +10,31 @@ describe('CouponController', () => {
 
   const mockCoupon = {
     id: 'coupon-123',
-    title: 'WELCOME10',
-    influencerId: 'influencer-123',
-    discountPercentage: 10.00,
+    title: 'Desconto 10%',
+    discountPercentage: 10,
     discountAmount: null,
-    expiresAt: new Date('2055-12-31'),
+    expiresAt: new Date('2024-12-31'),
     timesUsed: 5,
-    totalSalesAmount: 150.00,
+    totalSalesAmount: 1000,
     maxUses: 100,
-    minOrderAmount: 20.00,
+    minOrderAmount: 50,
     isActive: true,
-    isFirstPurchase: true,
+    isFirstPurchase: false,
     storeId: 'store-123',
+    influencerId: 'influencer-123',
+    influencer: {
+      id: 'influencer-123',
+      name: 'João Silva',
+      email: 'joao@exemplo.com',
+    },
+  };
+
+  const mockRequest = {
+    user: {
+      storeId: 'store-123',
+      id: 'user-123',
+      role: 'RESELLER_ADMIN_4MIGA_USER',
+    },
   };
 
   beforeEach(async () => {
@@ -60,58 +73,162 @@ describe('CouponController', () => {
   });
 
   describe('findAll', () => {
-    it('should return all coupons successfully', async () => {
-      const coupons = [mockCoupon];
-      couponService.findAll.mockResolvedValue(coupons);
+    it('should return all coupons with pagination successfully', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll(mockRequest);
 
-      expect(couponService.findAll).toHaveBeenCalled();
-      expect(result).toEqual(coupons);
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, undefined);
+      expect(result).toEqual(paginatedResponse);
     });
 
-    it('should return coupons filtered by store when storeId is provided', async () => {
-      const coupons = [mockCoupon];
-      couponService.findByStore.mockResolvedValue(coupons);
+    it('should return coupons with custom pagination parameters', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 2,
+        totalPages: 2
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll('store-123');
+      const result = await controller.findAll(mockRequest, 2, 5);
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123');
-      expect(result).toEqual(coupons);
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 2, 5, undefined, undefined, undefined);
+      expect(result).toEqual(paginatedResponse);
     });
 
-    it('should return coupons filtered by influencer when influencerId is provided', async () => {
-      const coupons = [mockCoupon];
-      couponService.findByInfluencer.mockResolvedValue(coupons);
+    it('should return coupons with search filter', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(undefined, 'influencer-123');
+      const result = await controller.findAll(mockRequest, 1, 10, 'desconto');
 
-      expect(couponService.findByInfluencer).toHaveBeenCalledWith('influencer-123');
-      expect(result).toEqual(coupons);
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, 'desconto', undefined, undefined);
+      expect(result).toEqual(paginatedResponse);
     });
 
-    it('should handle errors when fetching all coupons', async () => {
+    it('should return coupons with type filter percentage', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'percentage');
+
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'percentage', undefined);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return coupons with type filter fixed', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'fixed');
+
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'fixed', undefined);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return coupons with type filter first-purchase', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'first-purchase');
+
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'first-purchase', undefined);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return coupons with type filter all', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'all');
+
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'all', undefined);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return coupons with active status filter', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, undefined, 'active');
+
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, true);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return coupons with inactive status filter', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, undefined, 'inactive');
+
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, false);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return all coupons when status is all', async () => {
+      const paginatedResponse = {
+        data: [mockCoupon],
+        totalCoupons: 1,
+        page: 1,
+        totalPages: 1
+      };
+      couponService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, undefined, 'all');
+
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, undefined);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should handle errors when fetching coupons', async () => {
       const error = new Error('Failed to fetch coupons');
-      couponService.findAll.mockRejectedValue(error);
-
-      await expect(controller.findAll()).rejects.toThrow('Failed to fetch coupons');
-      expect(couponService.findAll).toHaveBeenCalled();
-    });
-
-    it('should handle errors when fetching coupons by store', async () => {
-      const error = new Error('Failed to fetch coupons by store');
       couponService.findByStore.mockRejectedValue(error);
 
-      await expect(controller.findAll('store-123')).rejects.toThrow('Failed to fetch coupons by store');
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123');
-    });
-
-    it('should handle errors when fetching coupons by influencer', async () => {
-      const error = new Error('Failed to fetch coupons by influencer');
-      couponService.findByInfluencer.mockRejectedValue(error);
-
-      await expect(controller.findAll(undefined, 'influencer-123')).rejects.toThrow('Failed to fetch coupons by influencer');
-      expect(couponService.findByInfluencer).toHaveBeenCalledWith('influencer-123');
+      await expect(controller.findAll(mockRequest)).rejects.toThrow('Failed to fetch coupons');
+      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, undefined);
     });
   });
 
