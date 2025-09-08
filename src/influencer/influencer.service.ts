@@ -39,12 +39,34 @@ export class InfluencerService {
 
   async findOne(id: string, storeId: string): Promise<any> {
     try {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+      const currentYear = currentDate.getFullYear();
+
+      // Calculate previous month
+      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
       const data = await this.prisma.influencer.findFirst({
         where: {
           id,
           storeId, // Ensures the influencer belongs to the user's store
         },
-        select: this.influencerSelectComplete,
+        select: {
+          ...this.influencerSelectComplete,
+          monthlySales: {
+            where: {
+              OR: [
+                { month: currentMonth, year: currentYear },
+                { month: previousMonth, year: previousYear }
+              ]
+            },
+            orderBy: [
+              { year: 'desc' },
+              { month: 'desc' }
+            ]
+          }
+        },
       });
       if (!data) {
         throw new BadRequestException('Influencer not found');

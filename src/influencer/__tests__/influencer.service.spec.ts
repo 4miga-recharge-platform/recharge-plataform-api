@@ -309,12 +309,33 @@ describe('InfluencerService', () => {
 
       const result = await service.findOne('influencer-123', 'store-123');
 
+      // Get current date to calculate expected month/year filters
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
         where: {
           id: 'influencer-123',
           storeId: 'store-123'
         },
-        select: mockInfluencerSelectComplete,
+        select: {
+          ...mockInfluencerSelectComplete,
+          monthlySales: {
+            where: {
+              OR: [
+                { month: currentMonth, year: currentYear },
+                { month: previousMonth, year: previousYear }
+              ]
+            },
+            orderBy: [
+              { year: 'desc' },
+              { month: 'desc' }
+            ]
+          }
+        },
       });
       expect(result).toEqual(mockInfluencer);
     });
@@ -325,12 +346,34 @@ describe('InfluencerService', () => {
       await expect(service.findOne('influencer-123', 'store-123')).rejects.toThrow(
         BadRequestException,
       );
+
+      // Get current date to calculate expected month/year filters
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
         where: {
           id: 'influencer-123',
           storeId: 'store-123'
         },
-        select: mockInfluencerSelectComplete,
+        select: {
+          ...mockInfluencerSelectComplete,
+          monthlySales: {
+            where: {
+              OR: [
+                { month: currentMonth, year: currentYear },
+                { month: previousMonth, year: previousYear }
+              ]
+            },
+            orderBy: [
+              { year: 'desc' },
+              { month: 'desc' }
+            ]
+          }
+        },
       });
     });
 
