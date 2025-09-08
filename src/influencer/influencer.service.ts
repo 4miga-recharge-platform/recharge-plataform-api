@@ -7,7 +7,22 @@ import { UpdateInfluencerDto } from './dto/update-influencer.dto';
 export class InfluencerService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private influencerSelect = {
+  private influencerSelectBasic = {
+    id: true,
+    name: true,
+    email: true,
+    phone: true,
+    paymentMethod: true,
+    paymentData: true,
+    isActive: true,
+    storeId: true,
+    coupons: false,
+    monthlySales: false,
+    createdAt: true,
+    updatedAt: true,
+  };
+
+  private influencerSelectComplete = {
     id: true,
     name: true,
     email: true,
@@ -29,7 +44,7 @@ export class InfluencerService {
           id,
           storeId, // Ensures the influencer belongs to the user's store
         },
-        select: this.influencerSelect,
+        select: this.influencerSelectComplete,
       });
       if (!data) {
         throw new BadRequestException('Influencer not found');
@@ -70,7 +85,7 @@ export class InfluencerService {
       const [data, totalInfluencers] = await Promise.all([
         this.prisma.influencer.findMany({
           where,
-          select: this.influencerSelect,
+          select: this.influencerSelectBasic,
           orderBy: {
             createdAt: 'desc',
           },
@@ -156,7 +171,7 @@ export class InfluencerService {
           storeId: storeId,
           isActive: dto.isActive ?? true,
         },
-        select: this.influencerSelect,
+        select: this.influencerSelectBasic,
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -218,11 +233,11 @@ export class InfluencerService {
       return await this.prisma.influencer.update({
         where: { id },
         data: dto,
-        select: this.influencerSelect,
+        select: this.influencerSelectBasic,
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error; // Preserva a mensagem específica
+        throw error;
       }
       throw new BadRequestException('Failed to update influencer');
     }
@@ -243,8 +258,7 @@ export class InfluencerService {
       }
 
       return await this.prisma.influencer.delete({
-        where: { id },
-        select: this.influencerSelect,
+        where: { id }
       });
     } catch (error) {
       if (error instanceof BadRequestException) {

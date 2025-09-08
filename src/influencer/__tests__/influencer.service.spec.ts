@@ -31,7 +31,22 @@ describe('InfluencerService', () => {
     email: 'loja@exemplo.com',
   };
 
-  const mockInfluencerSelect = {
+  const mockInfluencerSelectBasic = {
+    id: true,
+    name: true,
+    email: true,
+    phone: true,
+    paymentMethod: true,
+    paymentData: true,
+    isActive: true,
+    storeId: true,
+    coupons: false,
+    monthlySales: false,
+    createdAt: true,
+    updatedAt: true,
+  };
+
+  const mockInfluencerSelectComplete = {
     id: true,
     name: true,
     email: true,
@@ -97,7 +112,7 @@ describe('InfluencerService', () => {
 
       expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
         where: { storeId: 'store-123' },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
         orderBy: {
           createdAt: 'desc',
         },
@@ -126,7 +141,7 @@ describe('InfluencerService', () => {
 
       expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
         where: { storeId: 'store-123' },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
         orderBy: {
           createdAt: 'desc',
         },
@@ -161,7 +176,7 @@ describe('InfluencerService', () => {
             { email: { contains: 'joão', mode: 'insensitive' } }
           ]
         },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
         orderBy: {
           createdAt: 'desc',
         },
@@ -199,7 +214,7 @@ describe('InfluencerService', () => {
           storeId: 'store-123',
           isActive: true
         },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
         orderBy: {
           createdAt: 'desc',
         },
@@ -234,7 +249,7 @@ describe('InfluencerService', () => {
           storeId: 'store-123',
           isActive: false
         },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
         orderBy: {
           createdAt: 'desc',
         },
@@ -266,7 +281,7 @@ describe('InfluencerService', () => {
 
       expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
         where: { storeId: 'store-123' },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
         orderBy: {
           createdAt: 'desc',
         },
@@ -299,7 +314,7 @@ describe('InfluencerService', () => {
           id: 'influencer-123',
           storeId: 'store-123'
         },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectComplete,
       });
       expect(result).toEqual(mockInfluencer);
     });
@@ -315,7 +330,7 @@ describe('InfluencerService', () => {
           id: 'influencer-123',
           storeId: 'store-123'
         },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectComplete,
       });
     });
 
@@ -360,7 +375,7 @@ describe('InfluencerService', () => {
           storeId: 'store-123',
           isActive: true,
         },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
       });
       expect(result).toEqual(mockInfluencer);
     });
@@ -416,7 +431,7 @@ describe('InfluencerService', () => {
           storeId: 'store-123',
           isActive: true,
         },
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
       });
       expect(result).toEqual(mockInfluencer);
     });
@@ -445,7 +460,7 @@ describe('InfluencerService', () => {
       expect(prismaService.influencer.update).toHaveBeenCalledWith({
         where: { id: 'influencer-123' },
         data: updateInfluencerDto,
-        select: mockInfluencerSelect,
+        select: mockInfluencerSelectBasic,
       });
       expect(result).toEqual({
         ...mockInfluencer,
@@ -492,7 +507,6 @@ describe('InfluencerService', () => {
       });
       expect(prismaService.influencer.delete).toHaveBeenCalledWith({
         where: { id: 'influencer-123' },
-        select: mockInfluencerSelect,
       });
       expect(result).toEqual(mockInfluencer);
     });
