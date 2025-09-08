@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { validateRequiredFields } from 'src/utils/validation.util';
 import { CreateInfluencerDto } from './dto/create-influencer.dto';
 import { UpdateInfluencerDto } from './dto/update-influencer.dto';
 
@@ -8,7 +7,22 @@ import { UpdateInfluencerDto } from './dto/update-influencer.dto';
 export class InfluencerService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private influencerSelect = {
+  private influencerSelectBasic = {
+    id: true,
+    name: true,
+    email: true,
+    phone: true,
+    paymentMethod: true,
+    paymentData: true,
+    isActive: true,
+    storeId: true,
+    coupons: false,
+    monthlySales: false,
+    createdAt: true,
+    updatedAt: true,
+  };
+
+  private influencerSelectComplete = {
     id: true,
     name: true,
     email: true,
@@ -23,41 +37,6 @@ export class InfluencerService {
     updatedAt: true,
   };
 
-  async findAll(
-    page = 1,
-    limit = 10,
-  ): Promise<{
-    data: any[];
-    totalInfluencers: number;
-    page: number;
-    totalPages: number;
-  }> {
-    try {
-      const [data, totalInfluencers] = await Promise.all([
-        this.prisma.influencer.findMany({
-          select: this.influencerSelect,
-          orderBy: {
-            createdAt: 'desc',
-          },
-          skip: (page - 1) * limit,
-          take: limit,
-        }),
-        this.prisma.influencer.count(),
-      ]);
-
-      const totalPages = Math.ceil(totalInfluencers / limit);
-
-      return {
-        data,
-        totalInfluencers,
-        page,
-        totalPages,
-      };
-    } catch {
-      throw new BadRequestException('Failed to fetch influencers');
-    }
-  }
-
   async findOne(id: string, storeId: string): Promise<any> {
     try {
       const data = await this.prisma.influencer.findFirst({
@@ -65,7 +44,7 @@ export class InfluencerService {
           id,
           storeId, // Ensures the influencer belongs to the user's store
         },
-        select: this.influencerSelect,
+        select: this.influencerSelectComplete,
       });
       if (!data) {
         throw new BadRequestException('Influencer not found');
@@ -81,6 +60,8 @@ export class InfluencerService {
     storeId: string,
     page = 1,
     limit = 10,
+    search?: string,
+    isActive?: boolean,
   ): Promise<{
     data: any[];
     totalInfluencers: number;
@@ -88,10 +69,23 @@ export class InfluencerService {
     totalPages: number;
   }> {
     try {
+      const where: any = { storeId };
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      if (isActive !== undefined) {
+        where.isActive = isActive;
+      }
+
       const [data, totalInfluencers] = await Promise.all([
         this.prisma.influencer.findMany({
-          where: { storeId },
-          select: this.influencerSelect,
+          where,
+          select: this.influencerSelectBasic,
           orderBy: {
             createdAt: 'desc',
           },
@@ -99,7 +93,7 @@ export class InfluencerService {
           take: limit,
         }),
         this.prisma.influencer.count({
-          where: { storeId },
+          where,
         }),
       ]);
 
@@ -116,13 +110,43 @@ export class InfluencerService {
     }
   }
 
-  async create(dto: CreateInfluencerDto): Promise<any> {
+  async create(dto: CreateInfluencerDto, storeId: string): Promise<any> {
     try {
-      validateRequiredFields(dto, ['name', 'storeId']);
+      // Validate required fields with specific messages
+      if (!dto.name || dto.name.trim() === '') {
+        throw new BadRequestException(
+          'Influencer name is required and cannot be empty',
+        );
+      }
+
+      if (!dto.paymentMethod || dto.paymentMethod.trim() === '') {
+        throw new BadRequestException(
+          'Payment method is required and cannot be empty',
+        );
+      }
+
+      if (!dto.paymentData || dto.paymentData.trim() === '') {
+        throw new BadRequestException(
+          'Payment data is required and cannot be empty',
+        );
+      }
+
+      // Validate name length
+      if (dto.name.length < 2) {
+        throw new BadRequestException(
+          'Influencer name must be at least 2 characters long',
+        );
+      }
+
+      if (dto.name.length > 100) {
+        throw new BadRequestException(
+          'Influencer name cannot exceed 100 characters',
+        );
+      }
 
       // Check if store exists
       const store = await this.prisma.store.findUnique({
-        where: { id: dto.storeId },
+        where: { id: storeId },
       });
       if (!store) {
         throw new BadRequestException('Store not found');
@@ -132,7 +156,7 @@ export class InfluencerService {
       const existingInfluencer = await this.prisma.influencer.findFirst({
         where: {
           name: dto.name,
-          storeId: dto.storeId,
+          storeId: storeId,
         },
       });
       if (existingInfluencer) {
@@ -142,12 +166,16 @@ export class InfluencerService {
       }
 
       return await this.prisma.influencer.create({
-        data: dto,
-        select: this.influencerSelect,
+        data: {
+          ...dto,
+          storeId: storeId,
+          isActive: dto.isActive ?? true,
+        },
+        select: this.influencerSelectBasic,
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error;
+        throw error; // Preserva a mensagem específica
       }
       throw new BadRequestException('Failed to create influencer');
     }
@@ -161,27 +189,29 @@ export class InfluencerService {
     try {
       await this.findOne(id, storeId);
 
-      const fieldsToValidate = Object.keys(dto).filter(
-        (key) => dto[key] !== undefined,
-      );
-      validateRequiredFields(dto, fieldsToValidate);
-
-      // If updating storeId, check if new store exists
-      if (dto.storeId) {
-        const store = await this.prisma.store.findUnique({
-          where: { id: dto.storeId },
-        });
-        if (!store) {
-          throw new BadRequestException('Store not found');
+      // Validate fields if they are provided
+      if (dto.name !== undefined) {
+        if (dto.name.trim() === '') {
+          throw new BadRequestException('Influencer name cannot be empty');
         }
-      }
 
-      // If updating name, check if new name already exists for the store
-      if (dto.name) {
+        if (dto.name.length < 2) {
+          throw new BadRequestException(
+            'Influencer name must be at least 2 characters long',
+          );
+        }
+
+        if (dto.name.length > 100) {
+          throw new BadRequestException(
+            'Influencer name cannot exceed 100 characters',
+          );
+        }
+
+        // Check if new name already exists for the store
         const existingInfluencer = await this.prisma.influencer.findFirst({
           where: {
             name: dto.name,
-            storeId: dto.storeId || storeId,
+            storeId: storeId,
             id: { not: id },
           },
         });
@@ -192,10 +222,18 @@ export class InfluencerService {
         }
       }
 
+      if (dto.paymentMethod !== undefined && dto.paymentMethod.trim() === '') {
+        throw new BadRequestException('Payment method cannot be empty');
+      }
+
+      if (dto.paymentData !== undefined && dto.paymentData.trim() === '') {
+        throw new BadRequestException('Payment data cannot be empty');
+      }
+
       return await this.prisma.influencer.update({
         where: { id },
         data: dto,
-        select: this.influencerSelect,
+        select: this.influencerSelectBasic,
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -220,12 +258,11 @@ export class InfluencerService {
       }
 
       return await this.prisma.influencer.delete({
-        where: { id },
-        select: this.influencerSelect,
+        where: { id }
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error;
+        throw error; // Preserva a mensagem específica
       }
       throw new BadRequestException('Failed to remove influencer');
     }

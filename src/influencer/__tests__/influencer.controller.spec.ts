@@ -69,7 +69,7 @@ describe('InfluencerController', () => {
 
       const result = await controller.findAll(mockRequest);
 
-      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10);
+      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined);
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -84,7 +84,67 @@ describe('InfluencerController', () => {
 
       const result = await controller.findAll(mockRequest, 2, 5);
 
-      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 2, 5);
+      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 2, 5, undefined, undefined);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return influencers with search filter', async () => {
+      const paginatedResponse = {
+        data: [mockInfluencer],
+        totalInfluencers: 1,
+        page: 1,
+        totalPages: 1
+      };
+      influencerService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, 'joão');
+
+      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, 'joão', undefined);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return influencers with active status filter', async () => {
+      const paginatedResponse = {
+        data: [mockInfluencer],
+        totalInfluencers: 1,
+        page: 1,
+        totalPages: 1
+      };
+      influencerService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'active');
+
+      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, true);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return influencers with inactive status filter', async () => {
+      const paginatedResponse = {
+        data: [mockInfluencer],
+        totalInfluencers: 1,
+        page: 1,
+        totalPages: 1
+      };
+      influencerService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'inactive');
+
+      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, false);
+      expect(result).toEqual(paginatedResponse);
+    });
+
+    it('should return all influencers when status is all', async () => {
+      const paginatedResponse = {
+        data: [mockInfluencer],
+        totalInfluencers: 1,
+        page: 1,
+        totalPages: 1
+      };
+      influencerService.findByStore.mockResolvedValue(paginatedResponse);
+
+      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'all');
+
+      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined);
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -93,7 +153,7 @@ describe('InfluencerController', () => {
       influencerService.findByStore.mockRejectedValue(error);
 
       await expect(controller.findAll(mockRequest)).rejects.toThrow('Failed to fetch influencers');
-      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10);
+      expect(influencerService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined);
     });
   });
 
@@ -105,7 +165,6 @@ describe('InfluencerController', () => {
       paymentMethod: 'pix',
       paymentData: 'PIX_JOAO123',
       isActive: true,
-      storeId: 'store-123',
     };
 
     it('should create an influencer successfully', async () => {
@@ -113,7 +172,7 @@ describe('InfluencerController', () => {
 
       const result = await controller.create(createInfluencerDto, mockRequest);
 
-      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto);
+      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto, 'store-123');
       expect(result).toEqual(mockInfluencer);
     });
 
@@ -122,7 +181,7 @@ describe('InfluencerController', () => {
       influencerService.create.mockRejectedValue(error);
 
       await expect(controller.create(createInfluencerDto, mockRequest)).rejects.toThrow('Failed to create influencer');
-      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto);
+      expect(influencerService.create).toHaveBeenCalledWith(createInfluencerDto, 'store-123');
     });
   });
 

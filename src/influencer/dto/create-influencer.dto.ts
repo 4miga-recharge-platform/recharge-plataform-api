@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsEmail, IsBoolean } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateInfluencerDto {
   @IsString()
@@ -11,8 +19,10 @@ export class CreateInfluencerDto {
   name: string;
 
   @IsString()
+  @ValidateIf((o) => o.email && o.email.trim() !== '')
   @IsEmail()
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @ApiProperty({
     description: 'Influencer email',
     example: 'joao@exemplo.com',
@@ -21,7 +31,9 @@ export class CreateInfluencerDto {
   email?: string;
 
   @IsString()
+  @ValidateIf((o) => o.phone && o.phone.trim() !== '')
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @ApiProperty({
     description: 'Influencer phone number',
     example: '+5511999999999',
@@ -30,22 +42,20 @@ export class CreateInfluencerDto {
   phone?: string;
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @ApiProperty({
     description: 'Payment method',
     example: 'pix',
-    required: false,
   })
-  paymentMethod?: string;
+  paymentMethod: string;
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @ApiProperty({
     description: 'Payment data (e.g., PIX key, bank account)',
     example: 'PIX_JOAO123',
-    required: false,
   })
-  paymentData?: string;
+  paymentData: string;
 
   @IsBoolean()
   @IsOptional()
@@ -56,12 +66,4 @@ export class CreateInfluencerDto {
     default: true,
   })
   isActive?: boolean;
-
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Store ID where the influencer belongs',
-    example: 'uuid-store-id',
-  })
-  storeId: string;
 }

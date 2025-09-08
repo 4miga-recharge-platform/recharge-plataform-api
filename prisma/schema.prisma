@@ -23,7 +23,6 @@ model Store {
   tiktokUrl    String?
   wppNumber    String?      @unique
   domain       String       @unique
-
   coupons      Coupon[]
   influencers  Influencer[]
   orders       Order[]
@@ -32,33 +31,32 @@ model Store {
 }
 
 model Influencer {
-  id            String   @id @default(uuid())
-  name          String
+  id            String                   @id @default(uuid())
+  name          String                   @unique
   email         String?
   phone         String?
   paymentMethod String?
   paymentData   String?
-  isActive      Boolean  @default(true)
+  isActive      Boolean                  @default(true)
   storeId       String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
   coupons       Coupon[]
+  store         Store                    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   monthlySales  InfluencerMonthlySales[]
-  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@unique([name, storeId])
 }
 
 model InfluencerMonthlySales {
-  id            String   @id @default(uuid())
-  influencerId  String
-  month         Int      // 1-12
-  year          Int      // ex: 2024
-  totalSales    Decimal  @db.Decimal(10, 2) @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  influencer    Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  influencerId String
+  month        Int
+  year         Int
+  totalSales   Decimal    @default(0) @db.Decimal(10, 2)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  influencer   Influencer @relation(fields: [influencerId], references: [id], onDelete: Cascade)
 
   @@unique([influencerId, month, year])
 }
