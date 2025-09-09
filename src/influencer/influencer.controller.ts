@@ -102,6 +102,64 @@ export class InfluencerController {
     return this.influencerService.findOne(id, req.user.storeId);
   }
 
+  @Get(':id/sales-history')
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiOperation({ summary: 'Get sales history for an influencer with pagination and filters' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({
+    name: 'year',
+    required: false,
+    type: Number,
+    description: 'Filter by year (e.g., 2024)',
+  })
+  @ApiQuery({
+    name: 'month',
+    required: false,
+    type: Number,
+    description: 'Filter by month (1-12)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated sales history returned successfully.',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 'sales-123',
+            influencerId: 'influencer-123',
+            month: 12,
+            year: 2024,
+            totalSales: 1500.50,
+            createdAt: '2024-12-01T00:00:00.000Z',
+            updatedAt: '2024-12-01T00:00:00.000Z'
+          }
+        ],
+        totalSales: 25,
+        page: 1,
+        totalPages: 3,
+        influencerName: 'João Silva',
+      },
+    },
+  })
+  getSalesHistory(
+    @Param('id') id: string,
+    @Request() req,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('year') year?: number,
+    @Query('month') month?: number,
+  ) {
+    return this.influencerService.getSalesHistory(
+      id,
+      req.user.storeId,
+      Number(page),
+      Number(limit),
+      year ? Number(year) : undefined,
+      month ? Number(month) : undefined,
+    );
+  }
+
   @Patch(':id')
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Update an influencer by id' })

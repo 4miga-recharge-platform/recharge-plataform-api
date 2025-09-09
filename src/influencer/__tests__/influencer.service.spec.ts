@@ -31,6 +31,27 @@ describe('InfluencerService', () => {
     email: 'loja@exemplo.com',
   };
 
+  const mockSalesHistory = [
+    {
+      id: 'sales-123',
+      influencerId: 'influencer-123',
+      month: 12,
+      year: 2024,
+      totalSales: 1500.50,
+      createdAt: new Date('2024-12-01T00:00:00.000Z'),
+      updatedAt: new Date('2024-12-01T00:00:00.000Z'),
+    },
+    {
+      id: 'sales-124',
+      influencerId: 'influencer-123',
+      month: 11,
+      year: 2024,
+      totalSales: 1200.75,
+      createdAt: new Date('2024-11-01T00:00:00.000Z'),
+      updatedAt: new Date('2024-11-01T00:00:00.000Z'),
+    },
+  ];
+
   const mockInfluencerSelectBasic = {
     id: true,
     name: true,
@@ -77,6 +98,10 @@ describe('InfluencerService', () => {
       },
       coupon: {
         findMany: jest.fn(),
+      },
+      influencerMonthlySales: {
+        findMany: jest.fn(),
+        count: jest.fn(),
       },
     };
 
@@ -309,12 +334,22 @@ describe('InfluencerService', () => {
 
       const result = await service.findOne('influencer-123', 'store-123');
 
-      // Get current date to calculate expected month/year filters
+      // Get current date to calculate expected month/year filters (current + 2 previous)
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
       const currentYear = currentDate.getFullYear();
-      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+      const months: { month: number; year: number }[] = [];
+      for (let i = 0; i < 3; i++) {
+        const month = currentMonth - i;
+        const year = currentYear;
+
+        if (month <= 0) {
+          months.push({ month: month + 12, year: year - 1 });
+        } else {
+          months.push({ month, year });
+        }
+      }
 
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
         where: {
@@ -325,10 +360,7 @@ describe('InfluencerService', () => {
           ...mockInfluencerSelectComplete,
           monthlySales: {
             where: {
-              OR: [
-                { month: currentMonth, year: currentYear },
-                { month: previousMonth, year: previousYear }
-              ]
+              OR: months.map(({ month, year }) => ({ month, year }))
             },
             orderBy: [
               { year: 'desc' },
@@ -347,12 +379,22 @@ describe('InfluencerService', () => {
         BadRequestException,
       );
 
-      // Get current date to calculate expected month/year filters
+      // Get current date to calculate expected month/year filters (current + 2 previous)
       const currentDate = new Date();
       const currentMonth = currentDate.getMonth() + 1;
       const currentYear = currentDate.getFullYear();
-      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+
+      const months: { month: number; year: number }[] = [];
+      for (let i = 0; i < 3; i++) {
+        const month = currentMonth - i;
+        const year = currentYear;
+
+        if (month <= 0) {
+          months.push({ month: month + 12, year: year - 1 });
+        } else {
+          months.push({ month, year });
+        }
+      }
 
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
         where: {
@@ -363,10 +405,7 @@ describe('InfluencerService', () => {
           ...mockInfluencerSelectComplete,
           monthlySales: {
             where: {
-              OR: [
-                { month: currentMonth, year: currentYear },
-                { month: previousMonth, year: previousYear }
-              ]
+              OR: months.map(({ month, year }) => ({ month, year }))
             },
             orderBy: [
               { year: 'desc' },
@@ -574,6 +613,148 @@ describe('InfluencerService', () => {
       prismaService.influencer.findFirst.mockRejectedValue(new Error('Database error'));
 
       await expect(service.remove('influencer-123', 'store-123')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getSalesHistory', () => {
+    it('should return sales history with pagination successfully', async () => {
+      // Mock findOne to verify influencer exists
+      prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue(mockSalesHistory);
+      prismaService.influencerMonthlySales.count.mockResolvedValue(2);
+
+      const result = await service.getSalesHistory('influencer-123', 'store-123');
+
+      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+        where: { influencerId: 'influencer-123' },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' }
+        ],
+        skip: 0,
+        take: 10,
+      });
+      expect(prismaService.influencerMonthlySales.count).toHaveBeenCalledWith({
+        where: { influencerId: 'influencer-123' },
+      });
+      expect(result).toEqual({
+        data: mockSalesHistory,
+        totalSales: 2,
+        page: 1,
+        totalPages: 1,
+        influencerName: mockInfluencer.name,
+      });
+    });
+
+    it('should return sales history with custom pagination parameters', async () => {
+      prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue(mockSalesHistory);
+      prismaService.influencerMonthlySales.count.mockResolvedValue(15);
+
+      const result = await service.getSalesHistory('influencer-123', 'store-123', 2, 5);
+
+      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+        where: { influencerId: 'influencer-123' },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' }
+        ],
+        skip: 5,
+        take: 5,
+      });
+      expect(result).toEqual({
+        data: mockSalesHistory,
+        totalSales: 15,
+        page: 2,
+        totalPages: 3,
+        influencerName: mockInfluencer.name,
+      });
+    });
+
+    it('should return sales history with year filter', async () => {
+      prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue(mockSalesHistory);
+      prismaService.influencerMonthlySales.count.mockResolvedValue(2);
+
+      await service.getSalesHistory('influencer-123', 'store-123', 1, 10, 2024);
+
+      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+        where: {
+          influencerId: 'influencer-123',
+          year: 2024
+        },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' }
+        ],
+        skip: 0,
+        take: 10,
+      });
+      expect(prismaService.influencerMonthlySales.count).toHaveBeenCalledWith({
+        where: {
+          influencerId: 'influencer-123',
+          year: 2024
+        },
+      });
+    });
+
+    it('should return sales history with month filter', async () => {
+      prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue([mockSalesHistory[0]]);
+      prismaService.influencerMonthlySales.count.mockResolvedValue(1);
+
+      await service.getSalesHistory('influencer-123', 'store-123', 1, 10, undefined, 12);
+
+      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+        where: {
+          influencerId: 'influencer-123',
+          month: 12
+        },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' }
+        ],
+        skip: 0,
+        take: 10,
+      });
+    });
+
+    it('should return sales history with both year and month filters', async () => {
+      prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue([mockSalesHistory[0]]);
+      prismaService.influencerMonthlySales.count.mockResolvedValue(1);
+
+      await service.getSalesHistory('influencer-123', 'store-123', 1, 10, 2024, 12);
+
+      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+        where: {
+          influencerId: 'influencer-123',
+          year: 2024,
+          month: 12
+        },
+        orderBy: [
+          { year: 'desc' },
+          { month: 'desc' }
+        ],
+        skip: 0,
+        take: 10,
+      });
+    });
+
+    it('should throw BadRequestException when influencer not found', async () => {
+      prismaService.influencer.findFirst.mockResolvedValue(null);
+
+      await expect(service.getSalesHistory('influencer-123', 'store-123')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should handle errors', async () => {
+      prismaService.influencer.findFirst.mockRejectedValue(new Error('Database error'));
+
+      await expect(service.getSalesHistory('influencer-123', 'store-123')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });
