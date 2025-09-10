@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
+import { CouponService } from '../coupon/coupon.service';
 import { CreateInfluencerDto } from './dto/create-influencer.dto';
 import { UpdateInfluencerDto } from './dto/update-influencer.dto';
 import { InfluencerService } from './influencer.service';
@@ -29,7 +30,10 @@ import { InfluencerService } from './influencer.service';
 @UseGuards(AuthGuard('jwt'), RoleGuard)
 @ApiBearerAuth()
 export class InfluencerController {
-  constructor(private readonly influencerService: InfluencerService) {}
+  constructor(
+    private readonly influencerService: InfluencerService,
+    private readonly couponService: CouponService,
+  ) {}
 
   @Get()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
@@ -157,6 +161,71 @@ export class InfluencerController {
       Number(limit),
       year ? Number(year) : undefined,
       month ? Number(month) : undefined,
+    );
+  }
+
+  @Get(':id/coupons')
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiOperation({ summary: 'Get all coupons for an influencer with pagination and filters' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by coupon title',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Filter by status: all, active, or inactive',
+    enum: ['all', 'active', 'inactive'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of coupons for the influencer returned successfully.',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 'coupon-123',
+            title: 'Desconto 10%',
+            influencerId: 'influencer-123',
+            discountPercentage: 10,
+            discountAmount: null,
+            expiresAt: '2024-12-31T23:59:59.000Z',
+            timesUsed: 5,
+            totalSalesAmount: 500.00,
+            maxUses: 100,
+            minOrderAmount: 50.00,
+            isActive: true,
+            isFirstPurchase: false,
+            storeId: 'store-123',
+          }
+        ],
+        totalCoupons: 15,
+        page: 1,
+        totalPages: 2,
+        influencerName: 'João Silva',
+      },
+    },
+  })
+  getInfluencerCoupons(
+    @Param('id') id: string,
+    @Request() req,
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.couponService.findByInfluencerWithPagination(
+      id,
+      req.user.storeId,
+      Number(page),
+      Number(limit),
+      search,
+      status,
     );
   }
 
