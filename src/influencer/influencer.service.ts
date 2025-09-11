@@ -293,6 +293,27 @@ export class InfluencerService {
     }
   }
 
+  async findAllByStoreSimple(storeId: string): Promise<{ id: string; name: string }[]> {
+    try {
+      const influencers = await this.prisma.influencer.findMany({
+        where: {
+          storeId
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+
+      return influencers;
+    } catch {
+      throw new BadRequestException('Failed to fetch influencers list');
+    }
+  }
+
   async getSalesHistory(
     id: string,
     storeId: string,

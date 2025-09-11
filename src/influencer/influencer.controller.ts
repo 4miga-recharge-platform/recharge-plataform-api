@@ -92,6 +92,17 @@ export class InfluencerController {
     );
   }
 
+  @Get('name-id-list')
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiOperation({ summary: 'Get all influencers list (id and name only, not paginated)' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of all influencers returned successfully.',
+  })
+  findAllSimple(@Request() req) {
+    return this.influencerService.findAllByStoreSimple(req.user.storeId);
+  }
+
   @Post()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Create a new influencer' })

@@ -616,6 +616,60 @@ describe('InfluencerService', () => {
     });
   });
 
+  describe('findAllByStoreSimple', () => {
+    it('should return all influencers with only id and name successfully', async () => {
+      const mockSimpleInfluencers = [
+        { id: 'influencer-123', name: 'João Silva' },
+        { id: 'influencer-456', name: 'Maria Santos' },
+        { id: 'influencer-789', name: 'Pedro Costa' },
+      ];
+
+      prismaService.influencer.findMany.mockResolvedValue(mockSimpleInfluencers);
+
+      const result = await service.findAllByStoreSimple('store-123');
+
+      expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
+        where: {
+          storeId: 'store-123',
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+      expect(result).toEqual(mockSimpleInfluencers);
+    });
+
+    it('should return empty array when no influencers found', async () => {
+      prismaService.influencer.findMany.mockResolvedValue([]);
+
+      const result = await service.findAllByStoreSimple('store-123');
+
+      expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
+        where: {
+          storeId: 'store-123',
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+      expect(result).toEqual([]);
+    });
+
+    it('should handle errors', async () => {
+      prismaService.influencer.findMany.mockRejectedValue(new Error('Database error'));
+
+      await expect(service.findAllByStoreSimple('store-123')).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('getSalesHistory', () => {
     it('should return sales history with pagination successfully', async () => {
       // Mock findOne to verify influencer exists
