@@ -23,6 +23,9 @@ async function bootstrap() {
     .addTag('product')
     .addTag('package')
     .addTag('bigo')
+    .addTag('influencer')
+    .addTag('coupon')
+    .addTag('orders')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
