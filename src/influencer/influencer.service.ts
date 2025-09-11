@@ -39,12 +39,37 @@ export class InfluencerService {
 
   async findOne(id: string, storeId: string): Promise<any> {
     try {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+      const currentYear = currentDate.getFullYear();
+
+      // Calculate previous months (current + 2 previous)
+      const months: { month: number; year: number }[] = [];
+      for (let i = 0; i < 3; i++) {
+        const month = currentMonth - i;
+        const year = currentYear;
+
+        if (month <= 0) {
+          months.push({ month: month + 12, year: year - 1 });
+        } else {
+          months.push({ month, year });
+        }
+      }
+
       const data = await this.prisma.influencer.findFirst({
         where: {
           id,
           storeId, // Ensures the influencer belongs to the user's store
         },
-        select: this.influencerSelectComplete,
+        select: {
+          ...this.influencerSelectComplete,
+          monthlySales: {
+            where: {
+              OR: months.map(({ month, year }) => ({ month, year })),
+            },
+            orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          },
+        },
       });
       if (!data) {
         throw new BadRequestException('Influencer not found');
@@ -258,13 +283,72 @@ export class InfluencerService {
       }
 
       return await this.prisma.influencer.delete({
-        where: { id }
+        where: { id },
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error; // Preserva a mensagem específica
       }
       throw new BadRequestException('Failed to remove influencer');
+    }
+  }
+
+  async getSalesHistory(
+    id: string,
+    storeId: string,
+    page = 1,
+    limit = 10,
+    year?: number,
+    month?: number,
+  ): Promise<{
+    data: any[];
+    totalSales: number;
+    page: number;
+    totalPages: number;
+    influencerName: string;
+  }> {
+    try {
+      // First, verify that the influencer exists and belongs to the store
+      const influencer = await this.findOne(id, storeId);
+
+      const where: any = { influencerId: id };
+
+      // Add year filter if provided
+      if (year !== undefined) {
+        where.year = year;
+      }
+
+      // Add month filter if provided
+      if (month !== undefined) {
+        where.month = month;
+      }
+
+      const [data, totalSales] = await Promise.all([
+        this.prisma.influencerMonthlySales.findMany({
+          where,
+          orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.influencerMonthlySales.count({
+          where,
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalSales / limit);
+
+      return {
+        data,
+        totalSales,
+        page,
+        totalPages,
+        influencerName: influencer.name,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to fetch sales history');
     }
   }
 }

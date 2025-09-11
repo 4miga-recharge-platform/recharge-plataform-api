@@ -146,6 +146,88 @@ export class CouponService {
     }
   }
 
+  async findByInfluencerWithPagination(
+    influencerId: string,
+    storeId: string,
+    page = 1,
+    limit = 10,
+    search?: string,
+    status?: string,
+  ): Promise<{
+    data: any[];
+    totalCoupons: number;
+    page: number;
+    totalPages: number;
+    influencerName: string;
+  }> {
+    try {
+      // Verify influencer exists and belongs to the store
+      const influencer = await this.prisma.influencer.findFirst({
+        where: {
+          id: influencerId,
+          storeId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      if (!influencer) {
+        throw new BadRequestException('Influencer not found or does not belong to this store');
+      }
+
+      const where: any = {
+        influencerId,
+        storeId
+      };
+
+      // Add search filter (title)
+      if (search) {
+        where.title = { contains: search, mode: 'insensitive' };
+      }
+
+      // Add status filter
+      if (status && status !== 'all') {
+        if (status === 'active') {
+          where.isActive = true;
+        } else if (status === 'inactive') {
+          where.isActive = false;
+        }
+      }
+
+      const [data, totalCoupons] = await Promise.all([
+        this.prisma.coupon.findMany({
+          where,
+          select: this.couponSelect,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.coupon.count({
+          where,
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalCoupons / limit);
+
+      return {
+        data,
+        totalCoupons,
+        page,
+        totalPages,
+        influencerName: influencer.name,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to fetch coupons by influencer');
+    }
+  }
+
   async findActiveByStore(storeId: string): Promise<any[]> {
     try {
       const data = await this.prisma.coupon.findMany({
