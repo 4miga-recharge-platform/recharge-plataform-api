@@ -88,8 +88,8 @@ describe('CouponService', () => {
     isActive: true,
     isFirstPurchase: true,
     storeId: true,
-    createdAt: false,
-    updatedAt: false,
+    createdAt: true,
+    updatedAt: true,
   };
 
   beforeEach(async () => {
@@ -157,7 +157,7 @@ describe('CouponService', () => {
   });
 
   describe('findOne', () => {
-    it('should return a coupon by id', async () => {
+    it('should return a coupon by id with influencer data', async () => {
       prismaService.coupon.findUnique.mockResolvedValue(mockCoupon);
 
       const result = await service.findOne('coupon-123');
@@ -165,7 +165,16 @@ describe('CouponService', () => {
       expect(result).toEqual(mockCoupon);
       expect(prismaService.coupon.findUnique).toHaveBeenCalledWith({
         where: { id: 'coupon-123' },
-        select: expect.any(Object),
+        select: {
+          ...mockCouponSelect,
+          influencer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
       });
     });
 
@@ -698,7 +707,6 @@ describe('CouponService', () => {
       minOrderAmount: 20.00,
       isActive: true,
       isFirstPurchase: true,
-      storeId: 'store-123',
     };
 
     it('should create a coupon successfully', async () => {
@@ -707,13 +715,20 @@ describe('CouponService', () => {
       prismaService.coupon.findFirst.mockResolvedValue(null);
       prismaService.coupon.create.mockResolvedValue(mockCoupon);
 
-      const result = await service.create(createCouponDto);
+      const result = await service.create(createCouponDto, 'store-123');
 
       expect(result).toEqual(mockCoupon);
       expect(prismaService.coupon.create).toHaveBeenCalledWith({
         data: {
-          ...createCouponDto,
-          expiresAt: createCouponDto.expiresAt ? new Date(createCouponDto.expiresAt) : undefined,
+          title: 'WELCOME10',
+          influencerId: 'influencer-123',
+          storeId: 'store-123',
+          isActive: true,
+          isFirstPurchase: true,
+          discountPercentage: 10.00,
+          expiresAt: new Date('2025-12-31T23:59:59.000Z'),
+          maxUses: 100,
+          minOrderAmount: 20.00,
         },
         select: expect.any(Object),
       });
@@ -722,7 +737,7 @@ describe('CouponService', () => {
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createCouponDto)).rejects.toThrow(
+      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -731,7 +746,7 @@ describe('CouponService', () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(createCouponDto)).rejects.toThrow(
+      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -741,7 +756,7 @@ describe('CouponService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
 
-      await expect(service.create(createCouponDto)).rejects.toThrow(
+      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -752,7 +767,7 @@ describe('CouponService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(invalidDto)).rejects.toThrow(
+      await expect(service.create(invalidDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -763,7 +778,7 @@ describe('CouponService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(invalidDto)).rejects.toThrow(
+      await expect(service.create(invalidDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });

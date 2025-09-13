@@ -22,8 +22,8 @@ export class CouponService {
     isActive: true,
     isFirstPurchase: true,
     storeId: true,
-    createdAt: false,
-    updatedAt: false,
+    createdAt: true,
+    updatedAt: true,
     // store: false,
     // influencer: false,
     // couponUsages: false,
@@ -44,7 +44,16 @@ export class CouponService {
     try {
       const data = await this.prisma.coupon.findUnique({
         where: { id },
-        select: this.couponSelect,
+        select: {
+          ...this.couponSelect,
+          influencer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
       });
       if (!data) {
         throw new BadRequestException('Coupon not found');
@@ -75,7 +84,7 @@ export class CouponService {
       if (search) {
         where.OR = [
           { title: { contains: search, mode: 'insensitive' } },
-          { influencer: { name: { contains: search, mode: 'insensitive' } } }
+          { influencer: { name: { contains: search, mode: 'insensitive' } } },
         ];
       }
 
@@ -107,8 +116,8 @@ export class CouponService {
                 id: true,
                 name: true,
                 email: true,
-              }
-            }
+              },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -174,12 +183,14 @@ export class CouponService {
       });
 
       if (!influencer) {
-        throw new BadRequestException('Influencer not found or does not belong to this store');
+        throw new BadRequestException(
+          'Influencer not found or does not belong to this store',
+        );
       }
 
       const where: any = {
         influencerId,
-        storeId
+        storeId,
       };
 
       // Add search filter (title)
@@ -234,10 +245,7 @@ export class CouponService {
         where: {
           storeId,
           isActive: true,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } }
-          ]
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         select: this.couponSelect,
       });
@@ -254,26 +262,49 @@ export class CouponService {
           storeId,
           isFirstPurchase: true,
           isActive: true,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: new Date() } }
-          ]
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         select: this.couponSelect,
       });
       return data;
     } catch {
-      throw new BadRequestException('Failed to fetch first purchase coupons by store');
+      throw new BadRequestException(
+        'Failed to fetch first purchase coupons by store',
+      );
     }
   }
 
-  async create(dto: CreateCouponDto): Promise<any> {
+  async create(dto: CreateCouponDto, storeId: string): Promise<any> {
     try {
-      validateRequiredFields(dto, ['title', 'influencerId', 'storeId']);
+      // Validate required fields with specific messages
+      if (!dto.title || dto.title.trim() === '') {
+        throw new BadRequestException(
+          'Coupon title is required and cannot be empty',
+        );
+      }
+
+      if (!dto.influencerId || dto.influencerId.trim() === '') {
+        throw new BadRequestException(
+          'Influencer ID is required and cannot be empty',
+        );
+      }
+
+      // Validate title length
+      if (dto.title.length < 2) {
+        throw new BadRequestException(
+          'Coupon title must be at least 2 characters long',
+        );
+      }
+
+      if (dto.title.length > 20) {
+        throw new BadRequestException(
+          'Coupon title cannot exceed 20 characters',
+        );
+      }
 
       // Check if store exists
       const store = await this.prisma.store.findUnique({
-        where: { id: dto.storeId },
+        where: { id: storeId },
       });
       if (!store) {
         throw new BadRequestException('Store not found');
@@ -283,38 +314,73 @@ export class CouponService {
       const influencer = await this.prisma.influencer.findFirst({
         where: {
           id: dto.influencerId,
-          storeId: dto.storeId,
+          storeId: storeId,
         },
       });
       if (!influencer) {
-        throw new BadRequestException('Influencer not found or does not belong to this store');
+        throw new BadRequestException(
+          'Influencer not found or does not belong to this store',
+        );
       }
 
       // Check if coupon title already exists for this store
       const existingCoupon = await this.prisma.coupon.findFirst({
         where: {
           title: dto.title,
-          storeId: dto.storeId,
+          storeId: storeId,
         },
       });
       if (existingCoupon) {
-        throw new BadRequestException('Coupon with this title already exists for this store');
+        throw new BadRequestException(
+          'Coupon with this title already exists for this store',
+        );
       }
 
       // Validate discount logic
       if (dto.discountPercentage && dto.discountAmount) {
-        throw new BadRequestException('Cannot have both discount percentage and amount');
+        throw new BadRequestException(
+          'Cannot have both discount percentage and amount',
+        );
       }
 
       if (!dto.discountPercentage && !dto.discountAmount) {
-        throw new BadRequestException('Must have either discount percentage or amount');
+        throw new BadRequestException(
+          'Must have either discount percentage or amount',
+        );
       }
 
-      // Convert expiresAt string to Date if provided
-      const couponData = {
-        ...dto,
-        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+      // Filter out empty strings and null values for optional fields
+      const couponData: any = {
+        title: dto.title,
+        influencerId: dto.influencerId,
+        storeId: storeId,
+        isActive: dto.isActive ?? true,
+        isFirstPurchase: dto.isFirstPurchase ?? false,
       };
+
+      // Only add fields that have valid values
+      if (
+        dto.discountPercentage !== undefined &&
+        dto.discountPercentage !== null
+      ) {
+        couponData.discountPercentage = dto.discountPercentage;
+      }
+
+      if (dto.discountAmount !== undefined && dto.discountAmount !== null) {
+        couponData.discountAmount = dto.discountAmount;
+      }
+
+      if (dto.expiresAt && dto.expiresAt.trim() !== '') {
+        couponData.expiresAt = new Date(dto.expiresAt);
+      }
+
+      if (dto.maxUses !== undefined && dto.maxUses !== null) {
+        couponData.maxUses = dto.maxUses;
+      }
+
+      if (dto.minOrderAmount !== undefined && dto.minOrderAmount !== null) {
+        couponData.minOrderAmount = dto.minOrderAmount;
+      }
 
       return await this.prisma.coupon.create({
         data: couponData,
@@ -322,7 +388,7 @@ export class CouponService {
       });
     } catch (error) {
       if (error instanceof BadRequestException) {
-        throw error;
+        throw error; // Preserva a mensagem específica
       }
       throw new BadRequestException('Failed to create coupon');
     }
@@ -337,48 +403,44 @@ export class CouponService {
       );
       validateRequiredFields(dto, fieldsToValidate);
 
-      // If updating storeId, check if new store exists
-      if (dto.storeId) {
-        const store = await this.prisma.store.findUnique({
-          where: { id: dto.storeId },
-        });
-        if (!store) {
-          throw new BadRequestException('Store not found');
-        }
-      }
-
       // If updating influencerId, check if new influencer exists and belongs to the store
       if (dto.influencerId) {
-        const storeId = dto.storeId || (await this.findOne(id)).storeId;
+        const currentCoupon = await this.findOne(id);
         const influencer = await this.prisma.influencer.findFirst({
           where: {
             id: dto.influencerId,
-            storeId,
+            storeId: currentCoupon.storeId,
           },
         });
         if (!influencer) {
-          throw new BadRequestException('Influencer not found or does not belong to this store');
+          throw new BadRequestException(
+            'Influencer not found or does not belong to this store',
+          );
         }
       }
 
       // If updating title, check if new title already exists for the store
       if (dto.title) {
-        const storeId = dto.storeId || (await this.findOne(id)).storeId;
+        const currentCoupon = await this.findOne(id);
         const existingCoupon = await this.prisma.coupon.findFirst({
           where: {
             title: dto.title,
-            storeId,
+            storeId: currentCoupon.storeId,
             id: { not: id },
           },
         });
         if (existingCoupon) {
-          throw new BadRequestException('Coupon with this title already exists for this store');
+          throw new BadRequestException(
+            'Coupon with this title already exists for this store',
+          );
         }
       }
 
       // Validate discount logic
       if (dto.discountPercentage && dto.discountAmount) {
-        throw new BadRequestException('Cannot have both discount percentage and amount');
+        throw new BadRequestException(
+          'Cannot have both discount percentage and amount',
+        );
       }
 
       // Convert expiresAt string to Date if provided
@@ -409,7 +471,9 @@ export class CouponService {
         where: { couponId: id },
       });
       if (couponUsages.length > 0) {
-        throw new BadRequestException('Cannot delete coupon with associated usages');
+        throw new BadRequestException(
+          'Cannot delete coupon with associated usages',
+        );
       }
 
       return await this.prisma.coupon.delete({
@@ -424,7 +488,10 @@ export class CouponService {
     }
   }
 
-  async validateCoupon(couponId: string, orderAmount: number): Promise<{ valid: boolean; message?: string }> {
+  async validateCoupon(
+    couponId: string,
+    orderAmount: number,
+  ): Promise<{ valid: boolean; message?: string }> {
     try {
       const coupon = await this.findOne(couponId);
 
@@ -441,7 +508,10 @@ export class CouponService {
       }
 
       if (coupon.minOrderAmount && orderAmount < coupon.minOrderAmount) {
-        return { valid: false, message: `Minimum order amount required: ${coupon.minOrderAmount}` };
+        return {
+          valid: false,
+          message: `Minimum order amount required: ${coupon.minOrderAmount}`,
+        };
       }
 
       return { valid: true };
@@ -450,7 +520,10 @@ export class CouponService {
     }
   }
 
-  async applyCoupon(couponId: string, orderAmount: number): Promise<{ discountAmount: number; finalAmount: number }> {
+  async applyCoupon(
+    couponId: string,
+    orderAmount: number,
+  ): Promise<{ discountAmount: number; finalAmount: number }> {
     try {
       const coupon = await this.findOne(couponId);
       const validation = await this.validateCoupon(couponId, orderAmount);

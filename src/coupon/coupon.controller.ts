@@ -114,9 +114,10 @@ export class CouponController {
   }
 
   @Post()
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Create a new coupon' })
-  create(@Body() createCouponDto: CreateCouponDto) {
-    return this.couponService.create(createCouponDto);
+  create(@Body() createCouponDto: CreateCouponDto, @Request() req) {
+    return this.couponService.create(createCouponDto, req.user.storeId);
   }
 
   @Get(':id')

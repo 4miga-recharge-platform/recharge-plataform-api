@@ -283,15 +283,14 @@ describe('CouponController', () => {
       minOrderAmount: 20.00,
       isActive: true,
       isFirstPurchase: true,
-      storeId: 'store-123',
     };
 
     it('should create a coupon successfully', async () => {
       couponService.create.mockResolvedValue(mockCoupon);
 
-      const result = await controller.create(createCouponDto);
+      const result = await controller.create(createCouponDto, mockRequest);
 
-      expect(couponService.create).toHaveBeenCalledWith(createCouponDto);
+      expect(couponService.create).toHaveBeenCalledWith(createCouponDto, 'store-123');
       expect(result).toEqual(mockCoupon);
     });
 
@@ -299,8 +298,8 @@ describe('CouponController', () => {
       const error = new Error('Failed to create coupon');
       couponService.create.mockRejectedValue(error);
 
-      await expect(controller.create(createCouponDto)).rejects.toThrow('Failed to create coupon');
-      expect(couponService.create).toHaveBeenCalledWith(createCouponDto);
+      await expect(controller.create(createCouponDto, mockRequest)).rejects.toThrow('Failed to create coupon');
+      expect(couponService.create).toHaveBeenCalledWith(createCouponDto, 'store-123');
     });
   });
 

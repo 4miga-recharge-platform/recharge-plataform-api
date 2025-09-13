@@ -14,7 +14,11 @@ export class Coupon {
   storeId: string;
   createdAt: Date;
   updatedAt: Date;
+  influencer?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   // store?: Store;
-  // influencer?: Influencer;
   // couponUsages?: CouponUsage[];
 }

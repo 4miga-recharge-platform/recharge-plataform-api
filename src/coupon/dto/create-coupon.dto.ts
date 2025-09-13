@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateCouponDto {
   @IsString()
@@ -24,7 +34,7 @@ export class CreateCouponDto {
   @Max(100)
   @ApiProperty({
     description: 'Discount percentage (0-100)',
-    example: 10.00,
+    example: 10.0,
     required: false,
     minimum: 0,
     maximum: 100,
@@ -36,16 +46,17 @@ export class CreateCouponDto {
   @Min(0)
   @ApiProperty({
     description: 'Discount amount in currency',
-    example: 5.00,
+    example: 5.0,
     required: false,
     minimum: 0,
   })
   discountAmount?: number | null;
 
+  @ValidateIf((o) => o.expiresAt && o.expiresAt.trim() !== '')
   @IsDateString()
   @IsOptional()
   @ApiProperty({
-    description: 'Expiration date',
+    description: 'Expiration date in ISO 8601 format (e.g., 2024-12-31T23:59:59.000Z). Leave empty or null for no expiration.',
     example: '2024-12-31T23:59:59.000Z',
     required: false,
   })
@@ -67,7 +78,7 @@ export class CreateCouponDto {
   @Min(0)
   @ApiProperty({
     description: 'Minimum order amount required',
-    example: 20.00,
+    example: 20.0,
     required: false,
     minimum: 0,
   })
@@ -92,12 +103,4 @@ export class CreateCouponDto {
     default: false,
   })
   isFirstPurchase?: boolean;
-
-  @IsString()
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Store ID where the coupon belongs',
-    example: 'uuid-store-id',
-  })
-  storeId: string;
 }
