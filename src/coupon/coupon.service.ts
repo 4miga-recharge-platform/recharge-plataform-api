@@ -349,6 +349,13 @@ export class CouponService {
         );
       }
 
+      // Validate that fixed discount amount is not greater than minimum order amount
+      if (dto.discountAmount && dto.minOrderAmount && dto.discountAmount > dto.minOrderAmount) {
+        throw new BadRequestException(
+          'Fixed discount amount cannot be greater than minimum order amount',
+        );
+      }
+
       // Filter out empty strings and null values for optional fields
       const couponData: any = {
         title: dto.title,
@@ -398,8 +405,37 @@ export class CouponService {
     try {
       await this.findOne(id);
 
+      // Handle discount logic - allow switching between percentage and amount
+      if (dto.discountPercentage !== undefined || dto.discountAmount !== undefined) {
+        // If both are provided and both are not null, throw error
+        if (dto.discountPercentage !== undefined && dto.discountAmount !== undefined &&
+            dto.discountPercentage !== null && dto.discountAmount !== null) {
+          throw new BadRequestException(
+            'Cannot have both discount percentage and amount',
+          );
+        }
+
+        // If switching to percentage, clear amount
+        if (dto.discountPercentage !== undefined && dto.discountPercentage !== null) {
+          dto.discountAmount = null;
+        }
+
+        // If switching to amount, clear percentage
+        if (dto.discountAmount !== undefined && dto.discountAmount !== null) {
+          dto.discountPercentage = null;
+        }
+      }
+
+      // Validate that fixed discount amount is not greater than minimum order amount
+      if (dto.discountAmount && dto.minOrderAmount && dto.discountAmount > dto.minOrderAmount) {
+        throw new BadRequestException(
+          'Fixed discount amount cannot be greater than minimum order amount',
+        );
+      }
+
+      // Validate only fields that have actual values (not undefined or null)
       const fieldsToValidate = Object.keys(dto).filter(
-        (key) => dto[key] !== undefined,
+        (key) => dto[key] !== undefined && dto[key] !== null,
       );
       validateRequiredFields(dto, fieldsToValidate);
 
@@ -434,13 +470,6 @@ export class CouponService {
             'Coupon with this title already exists for this store',
           );
         }
-      }
-
-      // Validate discount logic
-      if (dto.discountPercentage && dto.discountAmount) {
-        throw new BadRequestException(
-          'Cannot have both discount percentage and amount',
-        );
       }
 
       // Convert expiresAt string to Date if provided

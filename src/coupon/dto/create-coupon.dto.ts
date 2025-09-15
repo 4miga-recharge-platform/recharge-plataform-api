@@ -28,6 +28,7 @@ export class CreateCouponDto {
   })
   influencerId: string;
 
+  @ValidateIf((o) => o.discountPercentage !== null && o.discountPercentage !== undefined)
   @IsNumber()
   @IsOptional()
   @Min(0)
@@ -41,6 +42,7 @@ export class CreateCouponDto {
   })
   discountPercentage?: number | null;
 
+  @ValidateIf((o) => o.discountAmount !== null && o.discountAmount !== undefined)
   @IsNumber()
   @IsOptional()
   @Min(0)
@@ -56,7 +58,7 @@ export class CreateCouponDto {
   @IsDateString()
   @IsOptional()
   @ApiProperty({
-    description: 'Expiration date in ISO 8601 format (e.g., 2024-12-31T23:59:59.000Z). Leave empty or null for no expiration.',
+    description: 'Expiration date',
     example: '2024-12-31T23:59:59.000Z',
     required: false,
   })
