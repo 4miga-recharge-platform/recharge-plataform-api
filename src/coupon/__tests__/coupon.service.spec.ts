@@ -88,8 +88,8 @@ describe('CouponService', () => {
     isActive: true,
     isFirstPurchase: true,
     storeId: true,
-    createdAt: false,
-    updatedAt: false,
+    createdAt: true,
+    updatedAt: true,
   };
 
   beforeEach(async () => {
@@ -157,7 +157,7 @@ describe('CouponService', () => {
   });
 
   describe('findOne', () => {
-    it('should return a coupon by id', async () => {
+    it('should return a coupon by id with influencer data', async () => {
       prismaService.coupon.findUnique.mockResolvedValue(mockCoupon);
 
       const result = await service.findOne('coupon-123');
@@ -165,7 +165,16 @@ describe('CouponService', () => {
       expect(result).toEqual(mockCoupon);
       expect(prismaService.coupon.findUnique).toHaveBeenCalledWith({
         where: { id: 'coupon-123' },
-        select: expect.any(Object),
+        select: {
+          ...mockCouponSelect,
+          influencer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
       });
     });
 
@@ -698,7 +707,6 @@ describe('CouponService', () => {
       minOrderAmount: 20.00,
       isActive: true,
       isFirstPurchase: true,
-      storeId: 'store-123',
     };
 
     it('should create a coupon successfully', async () => {
@@ -707,13 +715,20 @@ describe('CouponService', () => {
       prismaService.coupon.findFirst.mockResolvedValue(null);
       prismaService.coupon.create.mockResolvedValue(mockCoupon);
 
-      const result = await service.create(createCouponDto);
+      const result = await service.create(createCouponDto, 'store-123');
 
       expect(result).toEqual(mockCoupon);
       expect(prismaService.coupon.create).toHaveBeenCalledWith({
         data: {
-          ...createCouponDto,
-          expiresAt: createCouponDto.expiresAt ? new Date(createCouponDto.expiresAt) : undefined,
+          title: 'WELCOME10',
+          influencerId: 'influencer-123',
+          storeId: 'store-123',
+          isActive: true,
+          isFirstPurchase: true,
+          discountPercentage: 10.00,
+          expiresAt: new Date('2025-12-31T23:59:59.000Z'),
+          maxUses: 100,
+          minOrderAmount: 20.00,
         },
         select: expect.any(Object),
       });
@@ -722,7 +737,7 @@ describe('CouponService', () => {
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createCouponDto)).rejects.toThrow(
+      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -731,7 +746,7 @@ describe('CouponService', () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(createCouponDto)).rejects.toThrow(
+      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -741,7 +756,7 @@ describe('CouponService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
 
-      await expect(service.create(createCouponDto)).rejects.toThrow(
+      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -752,7 +767,7 @@ describe('CouponService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(invalidDto)).rejects.toThrow(
+      await expect(service.create(invalidDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -763,7 +778,23 @@ describe('CouponService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(invalidDto)).rejects.toThrow(
+      await expect(service.create(invalidDto, 'store-123')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw BadRequestException when fixed discount amount is greater than minimum order amount', async () => {
+      const invalidDto = {
+        ...createCouponDto,
+        discountAmount: 50.0,
+        minOrderAmount: 30.0,
+        discountPercentage: null
+      };
+      prismaService.store.findUnique.mockResolvedValue(mockStore);
+      prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
+      prismaService.coupon.findFirst.mockResolvedValue(null);
+
+      await expect(service.create(invalidDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -795,6 +826,171 @@ describe('CouponService', () => {
       await expect(service.update('invalid-id', updateCouponDto)).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it('should switch from percentage to amount discount', async () => {
+      const currentCoupon = { ...mockCoupon, discountPercentage: 15.0, discountAmount: null };
+      const updateDto = { discountAmount: 10.0 };
+      const expectedResult = { ...currentCoupon, discountAmount: 10.0, discountPercentage: null };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+      prismaService.coupon.update.mockResolvedValue(expectedResult);
+
+      const result = await service.update('coupon-123', updateDto);
+
+      expect(result).toEqual(expectedResult);
+      expect(prismaService.coupon.update).toHaveBeenCalledWith({
+        where: { id: 'coupon-123' },
+        data: { discountAmount: 10.0, discountPercentage: null },
+        select: expect.any(Object),
+      });
+    });
+
+    it('should switch from amount to percentage discount', async () => {
+      const currentCoupon = { ...mockCoupon, discountAmount: 10.0, discountPercentage: null };
+      const updateDto = { discountPercentage: 15.0 };
+      const expectedResult = { ...currentCoupon, discountPercentage: 15.0, discountAmount: null };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+      prismaService.coupon.update.mockResolvedValue(expectedResult);
+
+      const result = await service.update('coupon-123', updateDto);
+
+      expect(result).toEqual(expectedResult);
+      expect(prismaService.coupon.update).toHaveBeenCalledWith({
+        where: { id: 'coupon-123' },
+        data: { discountPercentage: 15.0, discountAmount: null },
+        select: expect.any(Object),
+      });
+    });
+
+    it('should throw error when both discount types are provided with values', async () => {
+      const currentCoupon = { ...mockCoupon, discountPercentage: 15.0, discountAmount: null };
+      const updateDto = { discountPercentage: 20.0, discountAmount: 10.0 };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+
+      await expect(service.update('coupon-123', updateDto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should not throw validation error when switching discount types', async () => {
+      const currentCoupon = { ...mockCoupon, discountPercentage: 15.0, discountAmount: null };
+      const updateDto = { discountAmount: 10.0 };
+      const expectedResult = { ...currentCoupon, discountAmount: 10.0, discountPercentage: null };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+      prismaService.coupon.update.mockResolvedValue(expectedResult);
+
+      // This should not throw any validation errors
+      const result = await service.update('coupon-123', updateDto);
+
+      expect(result).toEqual(expectedResult);
+      expect(prismaService.coupon.update).toHaveBeenCalledWith({
+        where: { id: 'coupon-123' },
+        data: { discountAmount: 10.0, discountPercentage: null },
+        select: expect.any(Object),
+      });
+    });
+
+    it('should handle real-world scenario: percentage to amount switch', async () => {
+      // Simulate a coupon that was saved with percentage discount
+      const currentCoupon = {
+        ...mockCoupon,
+        discountPercentage: 20.0,
+        discountAmount: null,
+        storeId: 'store-123'
+      };
+
+      // User wants to change to fixed amount (only sends discountAmount)
+      const updateDto = { discountAmount: 15.0 };
+      const expectedResult = {
+        ...currentCoupon,
+        discountAmount: 15.0,
+        discountPercentage: null
+      };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+      prismaService.coupon.update.mockResolvedValue(expectedResult);
+
+      // This should work without any validation errors
+      const result = await service.update('coupon-123', updateDto);
+
+      expect(result).toEqual(expectedResult);
+      expect(prismaService.coupon.update).toHaveBeenCalledWith({
+        where: { id: 'coupon-123' },
+        data: { discountAmount: 15.0, discountPercentage: null },
+        select: expect.any(Object),
+      });
+    });
+
+    it('should debug: check what happens when only discountAmount is sent', async () => {
+      const currentCoupon = {
+        ...mockCoupon,
+        discountPercentage: 20.0,
+        discountAmount: null,
+        storeId: 'store-123'
+      };
+
+      // Only send discountAmount, discountPercentage should not be in the DTO
+      const updateDto = { discountAmount: 15.0 };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+      prismaService.coupon.update.mockResolvedValue({ ...currentCoupon, ...updateDto });
+
+      // This should not throw any errors
+      expect(async () => {
+        await service.update('coupon-123', updateDto);
+      }).not.toThrow();
+    });
+
+    it('should throw BadRequestException when fixed discount amount is greater than minimum order amount in update', async () => {
+      const currentCoupon = {
+        ...mockCoupon,
+        discountPercentage: 20.0,
+        discountAmount: null,
+        storeId: 'store-123'
+      };
+
+      const updateDto = {
+        discountAmount: 50.0,
+        minOrderAmount: 30.0
+      };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+
+      await expect(service.update('coupon-123', updateDto)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should allow fixed discount amount equal to minimum order amount', async () => {
+      const currentCoupon = {
+        ...mockCoupon,
+        discountPercentage: 20.0,
+        discountAmount: null,
+        storeId: 'store-123'
+      };
+
+      const updateDto = {
+        discountAmount: 30.0,
+        minOrderAmount: 30.0
+      };
+
+      const expectedResult = {
+        ...currentCoupon,
+        discountAmount: 30.0,
+        minOrderAmount: 30.0,
+        discountPercentage: null
+      };
+
+      prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
+      prismaService.coupon.update.mockResolvedValue(expectedResult);
+
+      const result = await service.update('coupon-123', updateDto);
+
+      expect(result).toEqual(expectedResult);
     });
   });
 

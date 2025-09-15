@@ -32,7 +32,7 @@ model Store {
 
 model Influencer {
   id            String                   @id @default(uuid())
-  name          String                   @unique
+  name          String                   
   email         String?
   phone         String?
   paymentMethod String?
