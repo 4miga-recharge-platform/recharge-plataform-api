@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CreateProductDto } from '../dto/create-product.dto';
+import { CreateStoreProductSettingsDto } from '../dto/create-store-product-settings.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
+import { UpdateStoreProductSettingsDto } from '../dto/update-store-product-settings.dto';
 import { ProductController } from '../product.controller';
 import { ProductService } from '../product.service';
-import { CreateProductDto } from '../dto/create-product.dto';
-import { UpdateProductDto } from '../dto/update-product.dto';
 
 describe('ProductController', () => {
   let controller: ProductController;
@@ -26,19 +28,32 @@ describe('ProductController', () => {
         amountCredits: 10,
         imgCardUrl: 'https://example.com/package-card.png',
         isOffer: false,
-        basePrice: 10.00,
+        basePrice: 10.0,
         productId: 'product-123',
         storeId: 'store-123',
         paymentMethods: [
           {
             id: 'payment-123',
             name: 'Credit Card',
-            price: 10.00,
+            price: 10.0,
             packageId: 'package-123',
           },
         ],
       },
     ],
+    storeCustomization: null,
+  };
+
+  const mockStoreProductSettings = {
+    id: 'customization-123',
+    storeId: 'store-123',
+    productId: 'product-123',
+    description: 'Custom description for our store',
+    instructions: 'Custom instructions for our store',
+    imgBannerUrl: 'https://custom-banner.com',
+    imgCardUrl: 'https://custom-card.com',
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   beforeEach(async () => {
@@ -49,6 +64,12 @@ describe('ProductController', () => {
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      // StoreProductSettings methods
+      createStoreProductSettings: jest.fn(),
+      findAllStoreProductSettings: jest.fn(),
+      findOneStoreProductSettings: jest.fn(),
+      updateStoreProductSettings: jest.fn(),
+      removeStoreProductSettings: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -86,7 +107,9 @@ describe('ProductController', () => {
       const error = new Error('Failed to fetch products');
       productService.findAllForAdmin.mockRejectedValue(error);
 
-      await expect(controller.findAllForAdmin()).rejects.toThrow('Failed to fetch products');
+      await expect(controller.findAllForAdmin()).rejects.toThrow(
+        'Failed to fetch products',
+      );
       expect(productService.findAllForAdmin).toHaveBeenCalled();
     });
   });
@@ -108,7 +131,9 @@ describe('ProductController', () => {
       const error = new Error('Failed to fetch products');
       productService.findAll.mockRejectedValue(error);
 
-      await expect(controller.findAll(storeId)).rejects.toThrow('Failed to fetch products');
+      await expect(controller.findAll(storeId)).rejects.toThrow(
+        'Failed to fetch products',
+      );
       expect(productService.findAll).toHaveBeenCalledWith(storeId);
     });
   });
@@ -130,7 +155,9 @@ describe('ProductController', () => {
       const error = new Error('Product not found');
       productService.findOne.mockRejectedValue(error);
 
-      await expect(controller.findOne(productId, storeId)).rejects.toThrow('Product not found');
+      await expect(controller.findOne(productId, storeId)).rejects.toThrow(
+        'Product not found',
+      );
       expect(productService.findOne).toHaveBeenCalledWith(productId, storeId);
     });
   });
@@ -157,7 +184,9 @@ describe('ProductController', () => {
       const error = new Error('Failed to create product');
       productService.create.mockRejectedValue(error);
 
-      await expect(controller.create(createProductDto)).rejects.toThrow('Failed to create product');
+      await expect(controller.create(createProductDto)).rejects.toThrow(
+        'Failed to create product',
+      );
       expect(productService.create).toHaveBeenCalledWith(createProductDto);
     });
   });
@@ -175,7 +204,10 @@ describe('ProductController', () => {
 
       const result = await controller.update(productId, updateProductDto);
 
-      expect(productService.update).toHaveBeenCalledWith(productId, updateProductDto);
+      expect(productService.update).toHaveBeenCalledWith(
+        productId,
+        updateProductDto,
+      );
       expect(result).toEqual(updatedProduct);
     });
 
@@ -183,8 +215,13 @@ describe('ProductController', () => {
       const error = new Error('Failed to update product');
       productService.update.mockRejectedValue(error);
 
-      await expect(controller.update(productId, updateProductDto)).rejects.toThrow('Failed to update product');
-      expect(productService.update).toHaveBeenCalledWith(productId, updateProductDto);
+      await expect(
+        controller.update(productId, updateProductDto),
+      ).rejects.toThrow('Failed to update product');
+      expect(productService.update).toHaveBeenCalledWith(
+        productId,
+        updateProductDto,
+      );
     });
   });
 
@@ -204,8 +241,127 @@ describe('ProductController', () => {
       const error = new Error('Failed to remove product');
       productService.remove.mockRejectedValue(error);
 
-      await expect(controller.remove(productId)).rejects.toThrow('Failed to remove product');
+      await expect(controller.remove(productId)).rejects.toThrow(
+        'Failed to remove product',
+      );
       expect(productService.remove).toHaveBeenCalledWith(productId);
+    });
+  });
+
+  // StoreProductSettings routes tests
+  describe('StoreProductSettings routes', () => {
+    const createStoreProductSettingsDto: CreateStoreProductSettingsDto = {
+      storeId: 'store-123',
+      productId: 'product-123',
+      description: 'Custom description for our store',
+      instructions: 'Custom instructions for our store',
+      imgBannerUrl: 'https://custom-banner.com',
+      imgCardUrl: 'https://custom-card.com',
+    };
+
+    const updateStoreProductSettingsDto: UpdateStoreProductSettingsDto = {
+      description: 'Updated custom description',
+    };
+
+    describe('createCustomization', () => {
+      it('should create product customization successfully', async () => {
+        productService.createStoreProductSettings.mockResolvedValue(
+          mockStoreProductSettings,
+        );
+
+        const result = await controller.createCustomization(
+          createStoreProductSettingsDto,
+        );
+
+        expect(productService.createStoreProductSettings).toHaveBeenCalledWith(
+          createStoreProductSettingsDto,
+        );
+        expect(result).toEqual(mockStoreProductSettings);
+      });
+
+      it('should handle creation errors', async () => {
+        const error = new Error('Failed to create product customization');
+        productService.createStoreProductSettings.mockRejectedValue(error);
+
+        await expect(
+          controller.createCustomization(createStoreProductSettingsDto),
+        ).rejects.toThrow('Failed to create product customization');
+        expect(productService.createStoreProductSettings).toHaveBeenCalledWith(
+          createStoreProductSettingsDto,
+        );
+      });
+    });
+    describe('updateCustomization', () => {
+      const customizationId = 'customization-123';
+
+      it('should update a product customization successfully', async () => {
+        const updatedCustomization = {
+          ...mockStoreProductSettings,
+          ...updateStoreProductSettingsDto,
+        };
+        productService.updateStoreProductSettings.mockResolvedValue(
+          updatedCustomization,
+        );
+
+        const result = await controller.updateCustomization(
+          customizationId,
+          updateStoreProductSettingsDto,
+        );
+
+        expect(productService.updateStoreProductSettings).toHaveBeenCalledWith(
+          customizationId,
+          updateStoreProductSettingsDto,
+        );
+        expect(result).toEqual(updatedCustomization);
+      });
+
+      it('should handle update errors', async () => {
+        const error = new Error('Failed to update product customization');
+        productService.updateStoreProductSettings.mockRejectedValue(error);
+
+        await expect(
+          controller.updateCustomization(
+            customizationId,
+            updateStoreProductSettingsDto,
+          ),
+        ).rejects.toThrow('Failed to update product customization');
+        expect(productService.updateStoreProductSettings).toHaveBeenCalledWith(
+          customizationId,
+          updateStoreProductSettingsDto,
+        );
+      });
+    });
+
+    describe('removeCustomization', () => {
+      const customizationId = 'customization-123';
+
+      it('should remove a product customization successfully', async () => {
+        const successMessage = {
+          message: 'Product customization deleted successfully',
+        };
+        productService.removeStoreProductSettings.mockResolvedValue(
+          successMessage,
+        );
+
+        const result = await controller.removeCustomization(customizationId);
+
+        expect(productService.removeStoreProductSettings).toHaveBeenCalledWith(
+          customizationId,
+        );
+        expect(result).toEqual(successMessage);
+      });
+
+      it('should handle remove errors', async () => {
+        const error = new Error('Failed to remove product customization');
+        productService.removeStoreProductSettings.mockRejectedValue(error);
+
+        await expect(
+          controller.removeCustomization(customizationId),
+        ).rejects.toThrow('Failed to remove product customization');
+        expect(productService.removeStoreProductSettings).toHaveBeenCalledWith(
+          customizationId,
+        );
+      });
     });
   });
 });

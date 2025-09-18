@@ -12,6 +12,8 @@ import {
 import { ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateStoreProductSettingsDto } from './dto/create-store-product-settings.dto';
+import { UpdateStoreProductSettingsDto } from './dto/update-store-product-settings.dto';
 import { ProductService } from './product.service';
 
 @ApiTags('product')
@@ -34,6 +36,26 @@ export class ProductController {
   })
   findAll(@Query('storeId') storeId: string) {
     return this.productService.findAll(storeId);
+  }
+
+  // StoreProductSettings routes
+  @Post('customize')
+  @ApiOperation({ summary: 'Create product customization for a store' })
+  createCustomization(@Body() createStoreProductSettingsDto: CreateStoreProductSettingsDto) {
+    return this.productService.createStoreProductSettings(createStoreProductSettingsDto);
+  }
+
+
+  @Patch('customize/:id')
+  @ApiOperation({ summary: 'Update product customization by id' })
+  updateCustomization(@Param('id') id: string, @Body() updateStoreProductSettingsDto: UpdateStoreProductSettingsDto) {
+    return this.productService.updateStoreProductSettings(id, updateStoreProductSettingsDto);
+  }
+
+  @Delete('customize/:id')
+  @ApiOperation({ summary: 'Delete product customization by id' })
+  removeCustomization(@Param('id') id: string) {
+    return this.productService.removeStoreProductSettings(id);
   }
 
   @Get(':id')
