@@ -8,31 +8,32 @@ datasource db {
 }
 
 model Store {
-  id           String       @id @default(uuid())
-  name         String
-  email        String       @unique
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  bannersUrl   String[]
-  faviconUrl   String?
-  logoUrl      String?
-  miniLogoUrl  String?
-  onSaleUrlImg String?
-  facebookUrl  String?
-  instagramUrl String?
-  tiktokUrl    String?
-  wppNumber    String?      @unique
-  domain       String       @unique
-  coupons      Coupon[]
-  influencers  Influencer[]
-  orders       Order[]
-  packages     Package[]
-  users        User[]
+  id              String                 @id @default(uuid())
+  name            String
+  email           String                 @unique
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  bannersUrl      String[]
+  faviconUrl      String?
+  logoUrl         String?
+  miniLogoUrl     String?
+  onSaleUrlImg    String?
+  facebookUrl     String?
+  instagramUrl    String?
+  tiktokUrl       String?
+  wppNumber       String?                @unique
+  domain          String                 @unique
+  coupons         Coupon[]
+  influencers     Influencer[]
+  orders          Order[]
+  packages        Package[]
+  productSettings StoreProductSettings[]
+  users           User[]
 }
 
 model Influencer {
   id            String                   @id @default(uuid())
-  name          String                   
+  name          String
   email         String?
   phone         String?
   paymentMethod String?
@@ -86,15 +87,32 @@ model User {
 }
 
 model Product {
-  id           String    @id @default(uuid())
-  name         String
-  description  String
-  instructions String
-  imgBannerUrl String
-  imgCardUrl   String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  packages     Package[]
+  id            String                 @id @default(uuid())
+  name          String
+  description   String
+  instructions  String
+  imgBannerUrl  String
+  imgCardUrl    String
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  packages      Package[]
+  storeSettings StoreProductSettings[]
+}
+
+model StoreProductSettings {
+  id           String   @id @default(uuid())
+  storeId      String
+  productId    String
+  description  String?
+  instructions String?
+  imgBannerUrl String?
+  imgCardUrl   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId])
 }
 
 model Package {

@@ -30,14 +30,14 @@ describe('ProductService', () => {
     amountCredits: 10,
     imgCardUrl: 'https://example.com/package-card.png',
     isOffer: false,
-    basePrice: 10.00,
+    basePrice: 10.0,
     productId: 'product-123',
     storeId: 'store-123',
     paymentMethods: [
       {
         id: 'payment-123',
         name: 'Credit Card',
-        price: 10.00,
+        price: 10.0,
         packageId: 'package-123',
       },
     ],
@@ -66,6 +66,17 @@ describe('ProductService', () => {
       },
       package: {
         findMany: jest.fn(),
+      },
+      storeProductSettings: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      store: {
+        findUnique: jest.fn(),
       },
     };
 
@@ -105,9 +116,13 @@ describe('ProductService', () => {
     it('should return all products with packages successfully', async () => {
       const products = [mockProduct];
       const packages = [mockPackage];
+      const mockCustomization = null; // No customization for this test
 
       prismaService.product.findMany.mockResolvedValue(products);
       prismaService.package.findMany.mockResolvedValue(packages);
+      prismaService.storeProductSettings.findFirst.mockResolvedValue(
+        mockCustomization,
+      );
 
       const result = await service.findAll(storeId);
 
@@ -144,11 +159,28 @@ describe('ProductService', () => {
         },
       });
 
-      expect(result).toEqual([{ ...mockProduct, packages }]);
+      expect(prismaService.storeProductSettings.findFirst).toHaveBeenCalledWith(
+        {
+          where: {
+            productId: mockProduct.id,
+            storeId: storeId,
+          },
+        },
+      );
+
+      expect(result).toEqual([
+        {
+          ...mockProduct,
+          packages,
+          storeCustomization: null,
+        },
+      ]);
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      prismaService.product.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.product.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAll(storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch products'),
@@ -170,7 +202,9 @@ describe('ProductService', () => {
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      prismaService.product.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.product.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAllForAdmin()).rejects.toThrow(
         new BadRequestException('Failed to fetch products'),
@@ -184,9 +218,13 @@ describe('ProductService', () => {
 
     it('should return a product with packages successfully', async () => {
       const packages = [mockPackage];
+      const mockCustomization = null; // No customization for this test
 
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
       prismaService.package.findMany.mockResolvedValue(packages);
+      prismaService.storeProductSettings.findFirst.mockResolvedValue(
+        mockCustomization,
+      );
 
       const result = await service.findOne(productId, storeId);
 
@@ -213,7 +251,20 @@ describe('ProductService', () => {
         },
       });
 
-      expect(result).toEqual({ ...mockProduct, packages });
+      expect(prismaService.storeProductSettings.findFirst).toHaveBeenCalledWith(
+        {
+          where: {
+            productId: productId,
+            storeId: storeId,
+          },
+        },
+      );
+
+      expect(result).toEqual({
+        ...mockProduct,
+        packages,
+        storeCustomization: null,
+      });
     });
 
     it('should throw BadRequestException when product not found', async () => {
@@ -225,7 +276,9 @@ describe('ProductService', () => {
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      prismaService.product.findUnique.mockRejectedValue(new Error('Database error'));
+      prismaService.product.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findOne(productId, storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch product'),
@@ -269,7 +322,9 @@ describe('ProductService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      prismaService.product.create.mockRejectedValue(new Error('Database error'));
+      prismaService.product.create.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.create(createProductDto)).rejects.toThrow(
         new BadRequestException('Failed to create product'),
@@ -289,11 +344,17 @@ describe('ProductService', () => {
       validateRequiredFields.mockImplementation(() => {});
 
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
-      prismaService.product.update.mockResolvedValue({ ...mockProduct, ...updateProductDto });
+      prismaService.product.update.mockResolvedValue({
+        ...mockProduct,
+        ...updateProductDto,
+      });
 
       const result = await service.update(productId, updateProductDto);
 
-      expect(validateRequiredFields).toHaveBeenCalledWith(updateProductDto, ['name', 'description']);
+      expect(validateRequiredFields).toHaveBeenCalledWith(updateProductDto, [
+        'name',
+        'description',
+      ]);
 
       expect(prismaService.product.update).toHaveBeenCalledWith({
         where: { id: productId },
@@ -316,7 +377,9 @@ describe('ProductService', () => {
       validateRequiredFields.mockImplementation(() => {});
 
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
-      prismaService.product.update.mockRejectedValue(new Error('Database error'));
+      prismaService.product.update.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.update(productId, updateProductDto)).rejects.toThrow(
         new BadRequestException('Failed to update product'),
@@ -355,11 +418,268 @@ describe('ProductService', () => {
 
     it('should throw BadRequestException when database error occurs', async () => {
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
-      prismaService.product.delete.mockRejectedValue(new Error('Database error'));
+      prismaService.product.delete.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.remove(productId)).rejects.toThrow(
         new BadRequestException('Failed to remove product'),
       );
+    });
+  });
+
+  // StoreProductSettings tests
+  describe('StoreProductSettings CRUD', () => {
+    const mockStoreProductSettings = {
+      id: 'customization-123',
+      storeId: 'store-123',
+      productId: 'product-123',
+      description: 'Custom description',
+      instructions: 'Custom instructions',
+      imgBannerUrl: 'https://custom-banner.com',
+      imgCardUrl: 'https://custom-card.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const createStoreProductSettingsDto = {
+      storeId: 'store-123',
+      productId: 'product-123',
+      description: 'Custom description',
+      instructions: 'Custom instructions',
+      imgBannerUrl: 'https://custom-banner.com',
+      imgCardUrl: 'https://custom-card.com',
+    };
+
+    describe('createStoreProductSettings', () => {
+      it('should create store product settings successfully', async () => {
+        const {
+          validateRequiredFields,
+        } = require('../../utils/validation.util');
+        validateRequiredFields.mockImplementation(() => {});
+
+        prismaService.store.findUnique.mockResolvedValue({ id: 'store-123' });
+        prismaService.product.findUnique.mockResolvedValue({
+          id: 'product-123',
+        });
+        prismaService.storeProductSettings.findFirst.mockResolvedValue(null);
+        prismaService.storeProductSettings.create.mockResolvedValue(
+          mockStoreProductSettings,
+        );
+
+        const result = await service.createStoreProductSettings(
+          createStoreProductSettingsDto,
+        );
+
+        expect(validateRequiredFields).toHaveBeenCalledWith(
+          createStoreProductSettingsDto,
+          ['storeId', 'productId'],
+        );
+        expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+          where: { id: 'store-123' },
+        });
+        expect(prismaService.product.findUnique).toHaveBeenCalledWith({
+          where: { id: 'product-123' },
+        });
+        expect(prismaService.storeProductSettings.create).toHaveBeenCalledWith({
+          data: createStoreProductSettingsDto,
+        });
+        expect(result).toEqual(mockStoreProductSettings);
+      });
+
+      it('should throw BadRequestException when store not found', async () => {
+        const {
+          validateRequiredFields,
+        } = require('../../utils/validation.util');
+        validateRequiredFields.mockImplementation(() => {});
+
+        prismaService.store.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.createStoreProductSettings(createStoreProductSettingsDto),
+        ).rejects.toThrow(new BadRequestException('Store not found'));
+      });
+
+      it('should throw BadRequestException when product not found', async () => {
+        const {
+          validateRequiredFields,
+        } = require('../../utils/validation.util');
+        validateRequiredFields.mockImplementation(() => {});
+
+        prismaService.store.findUnique.mockResolvedValue({ id: 'store-123' });
+        prismaService.product.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.createStoreProductSettings(createStoreProductSettingsDto),
+        ).rejects.toThrow(new BadRequestException('Product not found'));
+      });
+
+      it('should throw BadRequestException when customization already exists', async () => {
+        const {
+          validateRequiredFields,
+        } = require('../../utils/validation.util');
+        validateRequiredFields.mockImplementation(() => {});
+
+        prismaService.store.findUnique.mockResolvedValue({ id: 'store-123' });
+        prismaService.product.findUnique.mockResolvedValue({
+          id: 'product-123',
+        });
+        prismaService.storeProductSettings.findFirst.mockResolvedValue(
+          mockStoreProductSettings,
+        );
+
+        await expect(
+          service.createStoreProductSettings(createStoreProductSettingsDto),
+        ).rejects.toThrow(
+          new BadRequestException(
+            'Product customization already exists for this store',
+          ),
+        );
+      });
+    });
+
+    describe('findAllStoreProductSettings', () => {
+      it('should return all store product settings for a store', async () => {
+        const settings = [mockStoreProductSettings];
+        prismaService.storeProductSettings.findMany.mockResolvedValue(settings);
+
+        const result = await service.findAllStoreProductSettings('store-123');
+
+        expect(
+          prismaService.storeProductSettings.findMany,
+        ).toHaveBeenCalledWith({
+          where: { storeId: 'store-123' },
+          orderBy: { createdAt: 'desc' },
+        });
+        expect(result).toEqual(settings);
+      });
+
+      it('should throw BadRequestException when storeId is not provided', async () => {
+        await expect(service.findAllStoreProductSettings('')).rejects.toThrow(
+          new BadRequestException('Store ID is required'),
+        );
+      });
+
+      it('should throw BadRequestException when storeId is null', async () => {
+        await expect(service.findAllStoreProductSettings(null as any)).rejects.toThrow(
+          new BadRequestException('Store ID is required'),
+        );
+      });
+    });
+
+    describe('findOneStoreProductSettings', () => {
+      it('should return store product settings by id', async () => {
+        prismaService.storeProductSettings.findFirst.mockResolvedValue(
+          mockStoreProductSettings,
+        );
+
+        const result =
+          await service.findOneStoreProductSettings('customization-123', 'store-123');
+
+        expect(
+          prismaService.storeProductSettings.findFirst,
+        ).toHaveBeenCalledWith({
+          where: {
+            id: 'customization-123',
+            storeId: 'store-123'
+          },
+        });
+        expect(result).toEqual(mockStoreProductSettings);
+      });
+
+      it('should throw BadRequestException when customization not found', async () => {
+        prismaService.storeProductSettings.findFirst.mockResolvedValue(null);
+
+        await expect(
+          service.findOneStoreProductSettings('customization-123', 'store-123'),
+        ).rejects.toThrow(
+          new BadRequestException('Product customization not found'),
+        );
+      });
+    });
+
+    describe('updateStoreProductSettings', () => {
+      const updateDto = { description: 'Updated description' };
+
+      it('should update store product settings successfully', async () => {
+        const {
+          validateRequiredFields,
+        } = require('../../utils/validation.util');
+        validateRequiredFields.mockImplementation(() => {});
+
+        prismaService.storeProductSettings.findUnique.mockResolvedValue(
+          mockStoreProductSettings,
+        );
+        prismaService.storeProductSettings.update.mockResolvedValue({
+          ...mockStoreProductSettings,
+          ...updateDto,
+        });
+
+        const result = await service.updateStoreProductSettings(
+          'customization-123',
+          updateDto,
+        );
+
+        expect(validateRequiredFields).toHaveBeenCalledWith(updateDto, [
+          'description',
+        ]);
+        expect(prismaService.storeProductSettings.update).toHaveBeenCalledWith({
+          where: { id: 'customization-123' },
+          data: updateDto,
+        });
+        expect(result).toEqual({ ...mockStoreProductSettings, ...updateDto });
+      });
+
+      it('should throw BadRequestException when customization not found', async () => {
+        const {
+          validateRequiredFields,
+        } = require('../../utils/validation.util');
+        validateRequiredFields.mockImplementation(() => {});
+
+        prismaService.storeProductSettings.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.updateStoreProductSettings('customization-123', updateDto),
+        ).rejects.toThrow(
+          new BadRequestException('Product customization not found'),
+        );
+      });
+    });
+
+    describe('removeStoreProductSettings', () => {
+      it('should remove store product settings successfully', async () => {
+        prismaService.storeProductSettings.findUnique.mockResolvedValue(
+          mockStoreProductSettings,
+        );
+        prismaService.storeProductSettings.delete.mockResolvedValue(
+          mockStoreProductSettings,
+        );
+
+        const result =
+          await service.removeStoreProductSettings('customization-123');
+
+        expect(
+          prismaService.storeProductSettings.findUnique,
+        ).toHaveBeenCalledWith({
+          where: { id: 'customization-123' },
+        });
+        expect(prismaService.storeProductSettings.delete).toHaveBeenCalledWith({
+          where: { id: 'customization-123' },
+        });
+        expect(result).toEqual({
+          message: 'Product customization deleted successfully',
+        });
+      });
+
+      it('should throw BadRequestException when customization not found', async () => {
+        prismaService.storeProductSettings.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.removeStoreProductSettings('customization-123'),
+        ).rejects.toThrow(
+          new BadRequestException('Product customization not found'),
+        );
+      });
     });
   });
 });
