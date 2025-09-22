@@ -5,6 +5,7 @@ export class Package {
   name: string;
   amountCredits: number;
   imgCardUrl: string;
+  isActive: boolean;
   isOffer: boolean;
   basePrice: number;
   productId: string;

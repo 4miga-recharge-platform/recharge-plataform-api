@@ -126,6 +126,7 @@ model Package {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   storeId        String
+  isActive       Boolean         @default(true)
   product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   store          Store           @relation(fields: [storeId], references: [id])
   paymentMethods PaymentMethod[]

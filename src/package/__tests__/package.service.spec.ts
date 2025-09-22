@@ -20,6 +20,7 @@ describe('PackageService', () => {
     name: 'Premium Package',
     amountCredits: 100,
     imgCardUrl: 'https://example.com/package-card.png',
+    isActive: true,
     isOffer: false,
     basePrice: 19.99,
     productId: 'product-123',
@@ -49,6 +50,7 @@ describe('PackageService', () => {
     name: true,
     amountCredits: true,
     imgCardUrl: true,
+    isActive: true,
     isOffer: true,
     basePrice: true,
     productId: true,
@@ -167,6 +169,7 @@ describe('PackageService', () => {
       name: 'New Package',
       amountCredits: 50,
       imgCardUrl: 'https://example.com/new-package-card.png',
+      isActive: true,
       isOffer: true,
       basePrice: 15.99,
       productId: 'product-123',
@@ -201,6 +204,7 @@ describe('PackageService', () => {
           name: createPackageDto.name,
           amountCredits: createPackageDto.amountCredits,
           imgCardUrl: createPackageDto.imgCardUrl,
+          isActive: createPackageDto.isActive,
           isOffer: createPackageDto.isOffer,
           basePrice: createPackageDto.basePrice,
           productId: createPackageDto.productId,
@@ -234,6 +238,7 @@ describe('PackageService', () => {
           name: dtoWithoutPaymentMethods.name,
           amountCredits: dtoWithoutPaymentMethods.amountCredits,
           imgCardUrl: dtoWithoutPaymentMethods.imgCardUrl,
+          isActive: dtoWithoutPaymentMethods.isActive,
           isOffer: dtoWithoutPaymentMethods.isOffer,
           basePrice: dtoWithoutPaymentMethods.basePrice,
           productId: dtoWithoutPaymentMethods.productId,
@@ -243,6 +248,39 @@ describe('PackageService', () => {
       });
 
       expect(result).toEqual(mockPackage);
+    });
+
+    it('should create a package with isActive field successfully', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {});
+
+      const dtoWithIsActive = { ...createPackageDto, isActive: false };
+
+      prismaService.package.create.mockResolvedValue({ ...mockPackage, isActive: false });
+
+      const result = await service.create(dtoWithIsActive);
+
+      expect(prismaService.package.create).toHaveBeenCalledWith({
+        data: {
+          name: dtoWithIsActive.name,
+          amountCredits: dtoWithIsActive.amountCredits,
+          imgCardUrl: dtoWithIsActive.imgCardUrl,
+          isActive: dtoWithIsActive.isActive,
+          isOffer: dtoWithIsActive.isOffer,
+          basePrice: dtoWithIsActive.basePrice,
+          productId: dtoWithIsActive.productId,
+          storeId: dtoWithIsActive.storeId,
+          paymentMethods: {
+            create: dtoWithIsActive.paymentMethods?.map(pm => ({
+              name: pm.name,
+              price: pm.price,
+            })) || [],
+          },
+        },
+        select: mockPackageSelect,
+      });
+
+      expect(result).toEqual({ ...mockPackage, isActive: false });
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
@@ -261,6 +299,7 @@ describe('PackageService', () => {
     const packageId = 'package-123';
     const updatePackageDto: UpdatePackageDto = {
       name: 'Updated Package',
+      isActive: false,
       basePrice: 25.99,
       paymentMethods: [
         {
@@ -284,12 +323,13 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(validateRequiredFields).toHaveBeenCalledWith(updatePackageDto, ['name', 'basePrice', 'paymentMethods']);
+      expect(validateRequiredFields).toHaveBeenCalledWith(updatePackageDto, ['name', 'isActive', 'basePrice', 'paymentMethods']);
 
       expect(prismaService.package.update).toHaveBeenCalledWith({
         where: { id: packageId },
         data: {
           name: updatePackageDto.name,
+          isActive: updatePackageDto.isActive,
           basePrice: updatePackageDto.basePrice,
           paymentMethods: {
             deleteMany: {},

@@ -17,6 +17,7 @@ export class PackageService {
     name: true,
     amountCredits: true,
     imgCardUrl: true,
+    isActive: true,
     isOffer: true,
     basePrice: true,
     productId: true,

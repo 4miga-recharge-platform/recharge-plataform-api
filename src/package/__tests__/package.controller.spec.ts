@@ -13,6 +13,7 @@ describe('PackageController', () => {
     name: 'Premium Package',
     amountCredits: 100,
     imgCardUrl: 'https://example.com/package-card.png',
+    isActive: true,
     isOffer: false,
     basePrice: 19.99,
     productId: 'product-123',
@@ -83,6 +84,7 @@ describe('PackageController', () => {
       name: 'New Package',
       amountCredits: 50,
       imgCardUrl: 'https://example.com/new-package-card.png',
+      isActive: true,
       isOffer: true,
       basePrice: 15.99,
       productId: 'product-123',
@@ -102,6 +104,17 @@ describe('PackageController', () => {
 
       expect(packageService.create).toHaveBeenCalledWith(createPackageDto);
       expect(result).toEqual(mockPackage);
+    });
+
+    it('should create a package with isActive field successfully', async () => {
+      const createDtoWithIsActive = { ...createPackageDto, isActive: false };
+      const mockPackageWithIsActive = { ...mockPackage, isActive: false };
+      packageService.create.mockResolvedValue(mockPackageWithIsActive);
+
+      const result = await controller.create(createDtoWithIsActive);
+
+      expect(packageService.create).toHaveBeenCalledWith(createDtoWithIsActive);
+      expect(result).toEqual(mockPackageWithIsActive);
     });
 
     it('should handle creation errors', async () => {
@@ -138,6 +151,7 @@ describe('PackageController', () => {
     const packageId = 'package-123';
     const updatePackageDto: UpdatePackageDto = {
       name: 'Updated Package',
+      isActive: false,
       basePrice: 25.99,
       paymentMethods: [
         {
@@ -155,6 +169,17 @@ describe('PackageController', () => {
 
       expect(packageService.update).toHaveBeenCalledWith(packageId, updatePackageDto);
       expect(result).toEqual(updatedPackage);
+    });
+
+    it('should update a package with isActive field successfully', async () => {
+      const updateDtoWithIsActive = { ...updatePackageDto, isActive: true };
+      const updatedPackageWithIsActive = { ...mockPackage, ...updateDtoWithIsActive };
+      packageService.update.mockResolvedValue(updatedPackageWithIsActive);
+
+      const result = await controller.update(packageId, updateDtoWithIsActive);
+
+      expect(packageService.update).toHaveBeenCalledWith(packageId, updateDtoWithIsActive);
+      expect(result).toEqual(updatedPackageWithIsActive);
     });
 
     it('should handle update errors', async () => {
