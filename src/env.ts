@@ -9,6 +9,11 @@ const envSchema = z.object({
   BIGO_CLIENT_ID: z.string().optional(),
   BIGO_PRIVATE_KEY: z.string().optional(),
   BIGO_RESELLER_BIGOID: z.string().optional(), //NOT USED
+  // GCP Storage
+  GCP_PROJECT_ID: z.string().optional(),
+  GCP_BUCKET_NAME: z.string().optional(),
+  GCP_CLIENT_EMAIL: z.string().optional(),
+  GCP_PRIVATE_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
