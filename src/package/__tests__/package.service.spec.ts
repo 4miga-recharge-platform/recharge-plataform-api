@@ -527,6 +527,7 @@ describe('PackageService', () => {
   describe('uploadCardImage', () => {
     const packageId = 'package-123';
     const storeId = 'store-123';
+    const productId = 'product-123';
     const existingImgUrl =
       'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.png';
     const file: any = {
@@ -543,24 +544,25 @@ describe('PackageService', () => {
         id: packageId,
         storeId,
         imgCardUrl: existingImgUrl,
+        productId,
       });
       const uploadedUrl =
         'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.jpg';
       storageService.deleteFile.mockResolvedValue(undefined);
       storageService.uploadFile.mockResolvedValue(uploadedUrl);
-      const updated = { id: packageId, storeId, imgCardUrl: uploadedUrl };
+      const updated = { id: packageId, storeId, imgCardUrl: uploadedUrl, productId };
       prismaService.package.update.mockResolvedValue(updated);
 
       const result = await service.uploadCardImage(packageId, file, storeId);
 
       expect(prismaService.package.findUnique).toHaveBeenCalledWith({
         where: { id: packageId },
-        select: { id: true, imgCardUrl: true, storeId: true },
+        select: { id: true, imgCardUrl: true, storeId: true, productId: true },
       });
       expect(storageService.deleteFile).toHaveBeenCalledWith(existingImgUrl);
       expect(storageService.uploadFile).toHaveBeenCalledWith(
         file,
-        `store/${storeId}/packages/${packageId}`,
+        `store/${storeId}/product/${productId}/package/${packageId}`,
         'card.jpg',
       );
       expect(prismaService.package.update).toHaveBeenCalledWith({
@@ -577,6 +579,7 @@ describe('PackageService', () => {
         id: packageId,
         storeId,
         imgCardUrl: existingImgUrl,
+        productId,
       });
       storageService.deleteFile.mockRejectedValue(new Error('Cannot delete'));
       storageService.uploadFile.mockResolvedValue(

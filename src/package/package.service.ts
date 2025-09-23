@@ -210,7 +210,7 @@ export class PackageService {
     try {
       const packageExists = await this.prisma.package.findUnique({
         where: { id: packageId },
-        select: { id: true, imgCardUrl: true, storeId: true },
+        select: { id: true, imgCardUrl: true, storeId: true, productId: true },
       });
 
       this.logger.log(`Package exists: ${!!packageExists}`);
@@ -223,7 +223,9 @@ export class PackageService {
         throw new BadRequestException('Package does not belong to your store');
       }
 
-      const folderPath = `store/${storeId}/packages/${packageId}`;
+       const productId = packageExists.productId;
+
+      const folderPath = `store/${storeId}/product/${productId}/package/${packageId}`;
       this.logger.log(`Uploading to folder: ${folderPath}`);
 
       // Delete previous image if exists
