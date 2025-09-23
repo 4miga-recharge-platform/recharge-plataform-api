@@ -35,6 +35,7 @@ describe('PackageController', () => {
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      uploadCardImage: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -209,6 +210,40 @@ describe('PackageController', () => {
 
       await expect(controller.remove(packageId)).rejects.toThrow('Failed to remove package');
       expect(packageService.remove).toHaveBeenCalledWith(packageId);
+    });
+  });
+
+  describe('uploadCardImage', () => {
+    const packageId = 'package-123';
+    const user = { id: 'user-1', storeId: 'store-123' } as any;
+    const file: any = {
+      fieldname: 'file',
+      originalname: 'card.png',
+      encoding: '7bit',
+      mimetype: 'image/png',
+      buffer: Buffer.from([1, 2, 3]),
+      size: 3,
+    };
+
+    it('should upload card image successfully', async () => {
+      const mockResponse = {
+        success: true,
+        package: { id: packageId, storeId: user.storeId },
+        fileUrl: 'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.png',
+        message: 'Package card image uploaded successfully',
+      };
+
+      packageService.uploadCardImage.mockResolvedValue(mockResponse);
+
+      const result = await controller.uploadCardImage(packageId, file, user);
+
+      expect(packageService.uploadCardImage).toHaveBeenCalledWith(packageId, file, user.storeId);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should throw BadRequestException when file is missing', async () => {
+      await expect(controller.uploadCardImage(packageId, undefined as any, user)).rejects.toThrow('No file provided');
+      expect(packageService.uploadCardImage).not.toHaveBeenCalled();
     });
   });
 });
