@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,11 +8,30 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PackageService } from './package.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
+import { FileValidationInterceptor } from '../storage/interceptors/file-validation.interceptor';
+import { RoleGuard } from '../auth/guards/role.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { LoggedUser } from '../auth/logged-user.decorator';
+import { User } from '../user/entities/user.entity';
+
+interface FileUpload {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
 
 
 @ApiTags('package')
@@ -47,5 +67,38 @@ export class PackageController {
   @ApiOperation({ summary: 'Delete a package by id' })
   remove(@Param('id') id: string) {
     return this.packageService.remove(id);
+  }
+
+  @Post(':id/images/card')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @UseInterceptors(FileInterceptor('file'), FileValidationInterceptor)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload package card image' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Package card image upload',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image file for package card',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  async uploadCardImage(
+    @Param('id') packageId: string,
+    @UploadedFile() file: FileUpload,
+    @LoggedUser() user: User,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    return this.packageService.uploadCardImage(packageId, file, user.storeId);
   }
 }

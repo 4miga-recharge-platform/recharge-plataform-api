@@ -18,7 +18,12 @@ export class StorageService {
   private readonly bucketName: string;
 
   constructor() {
-    this.bucketName = env.GCP_BUCKET_NAME || 'recharge-plataform-bucket';
+    this.bucketName = env.GCP_BUCKET_NAME || '4miga-images';
+
+    this.logger.log(`GCP_PROJECT_ID: ${env.GCP_PROJECT_ID ? 'SET' : 'NOT SET'}`);
+    this.logger.log(`GCP_CLIENT_EMAIL: ${env.GCP_CLIENT_EMAIL ? 'SET' : 'NOT SET'}`);
+    this.logger.log(`GCP_PRIVATE_KEY: ${env.GCP_PRIVATE_KEY ? 'SET' : 'NOT SET'}`);
+    this.logger.log(`GCP_BUCKET_NAME: ${this.bucketName}`);
 
     if (env.GCP_PROJECT_ID && env.GCP_CLIENT_EMAIL && env.GCP_PRIVATE_KEY) {
       this.storage = new Storage({
@@ -35,12 +40,23 @@ export class StorageService {
     }
   }
 
+  private sanitizeFilename(originalName: string): string {
+    const trimmed = originalName.trim();
+    const replacedSpaces = trimmed.replace(/\s+/g, '-');
+    const normalized = replacedSpaces.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const cleaned = normalized.replace(/[^a-zA-Z0-9._-]/g, '');
+    return cleaned.toLowerCase();
+  }
+
   async uploadFile(
     file: UploadedFile,
     folderPath: string,
+    desiredFileName?: string,
   ): Promise<string> {
-    const fileName = `${Date.now()}-${file.originalname}`;
-    const filePath = `${folderPath}/${fileName}`;
+    const baseName = desiredFileName
+      ? this.sanitizeFilename(desiredFileName)
+      : `${Date.now()}-${this.sanitizeFilename(file.originalname)}`;
+    const filePath = `${folderPath}/${baseName}`;
 
     try {
       const bucket = this.storage.bucket(this.bucketName);
