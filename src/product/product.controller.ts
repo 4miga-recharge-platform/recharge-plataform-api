@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,14 +8,39 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-
-import { ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import { RoleGuard } from '../auth/guards/role.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { LoggedUser } from '../auth/logged-user.decorator';
+import { User } from '../user/entities/user.entity';
+import { FileValidationInterceptor } from '../storage/interceptors/file-validation.interceptor';
 import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateStoreProductSettingsDto } from './dto/create-store-product-settings.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateStoreProductSettingsDto } from './dto/update-store-product-settings.dto';
 import { ProductService } from './product.service';
+
+interface FileUpload {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
 
 @ApiTags('product')
 @Controller('product')
@@ -41,21 +67,110 @@ export class ProductController {
   // StoreProductSettings routes
   @Post('customize')
   @ApiOperation({ summary: 'Create product customization for a store' })
-  createCustomization(@Body() createStoreProductSettingsDto: CreateStoreProductSettingsDto) {
-    return this.productService.createStoreProductSettings(createStoreProductSettingsDto);
+  createCustomization(
+    @Body() createStoreProductSettingsDto: CreateStoreProductSettingsDto,
+  ) {
+    return this.productService.createStoreProductSettings(
+      createStoreProductSettingsDto,
+    );
   }
-
 
   @Patch('customize/:id')
   @ApiOperation({ summary: 'Update product customization by id' })
-  updateCustomization(@Param('id') id: string, @Body() updateStoreProductSettingsDto: UpdateStoreProductSettingsDto) {
-    return this.productService.updateStoreProductSettings(id, updateStoreProductSettingsDto);
+  updateCustomization(
+    @Param('id') id: string,
+    @Body() updateStoreProductSettingsDto: UpdateStoreProductSettingsDto,
+  ) {
+    return this.productService.updateStoreProductSettings(
+      id,
+      updateStoreProductSettingsDto,
+    );
   }
 
   @Delete('customize/:id')
   @ApiOperation({ summary: 'Delete product customization by id' })
   removeCustomization(@Param('id') id: string) {
     return this.productService.removeStoreProductSettings(id);
+  }
+
+  @Post(':productId/images/banner')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @UseInterceptors(FileInterceptor('file'), FileValidationInterceptor)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Upload product banner image for store customization',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Product banner image upload for store customization',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image file for product banner',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  async uploadStoreProductBanner(
+    @Param('productId') productId: string,
+    @UploadedFile() file: FileUpload,
+    @LoggedUser() user: User,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    return this.productService.updateStoreProductImage(
+      user.storeId,
+      productId,
+      file,
+      'banner',
+    );
+  }
+
+  @Post(':productId/images/card')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @UseInterceptors(FileInterceptor('file'), FileValidationInterceptor)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Upload product card image for store customization',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Product card image upload for store customization',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image file for product card',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  async uploadStoreProductCard(
+    @Param('productId') productId: string,
+    @UploadedFile() file: FileUpload,
+    @LoggedUser() user: User,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    return this.productService.updateStoreProductImage(
+      user.storeId,
+      productId,
+      file,
+      'card',
+    );
   }
 
   @Get(':id')

@@ -1,10 +1,11 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
-import { PackageService } from '../package.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../storage/storage.service';
 import { WebhookService } from '../../webhook/webhook.service';
 import { CreatePackageDto } from '../dto/create-package.dto';
 import { UpdatePackageDto } from '../dto/update-package.dto';
+import { PackageService } from '../package.service';
 
 // Mock validation utility
 jest.mock('../../utils/validation.util', () => ({
@@ -14,12 +15,14 @@ jest.mock('../../utils/validation.util', () => ({
 describe('PackageService', () => {
   let service: PackageService;
   let prismaService: any;
+  let storageService: any;
 
   const mockPackage = {
     id: 'package-123',
     name: 'Premium Package',
     amountCredits: 100,
     imgCardUrl: 'https://example.com/package-card.png',
+    isActive: true,
     isOffer: false,
     basePrice: 19.99,
     productId: 'product-123',
@@ -49,6 +52,7 @@ describe('PackageService', () => {
     name: true,
     amountCredits: true,
     imgCardUrl: true,
+    isActive: true,
     isOffer: true,
     basePrice: true,
     productId: true,
@@ -81,6 +85,12 @@ describe('PackageService', () => {
       notifyStoreUpdate: jest.fn(),
     };
 
+    const mockStorageService = {
+      uploadFile: jest.fn(),
+      deleteFile: jest.fn(),
+      getBucketUrl: jest.fn(),
+    } as Partial<StorageService>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PackageService,
@@ -92,11 +102,16 @@ describe('PackageService', () => {
           provide: WebhookService,
           useValue: mockWebhookService,
         },
+        {
+          provide: StorageService,
+          useValue: mockStorageService,
+        },
       ],
     }).compile();
 
     service = module.get<PackageService>(PackageService);
     prismaService = module.get(PrismaService);
+    storageService = module.get(StorageService);
 
     jest.clearAllMocks();
   });
@@ -122,7 +137,9 @@ describe('PackageService', () => {
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      prismaService.package.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.package.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAll(storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch packages'),
@@ -154,7 +171,9 @@ describe('PackageService', () => {
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      prismaService.package.findUnique.mockRejectedValue(new Error('Database error'));
+      prismaService.package.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findOne(packageId)).rejects.toThrow(
         new BadRequestException('Failed to fetch package'),
@@ -167,6 +186,7 @@ describe('PackageService', () => {
       name: 'New Package',
       amountCredits: 50,
       imgCardUrl: 'https://example.com/new-package-card.png',
+      isActive: true,
       isOffer: true,
       basePrice: 15.99,
       productId: 'product-123',
@@ -201,15 +221,17 @@ describe('PackageService', () => {
           name: createPackageDto.name,
           amountCredits: createPackageDto.amountCredits,
           imgCardUrl: createPackageDto.imgCardUrl,
+          isActive: createPackageDto.isActive,
           isOffer: createPackageDto.isOffer,
           basePrice: createPackageDto.basePrice,
           productId: createPackageDto.productId,
           storeId: createPackageDto.storeId,
           paymentMethods: {
-            create: createPackageDto.paymentMethods?.map(pm => ({
-              name: pm.name,
-              price: pm.price,
-            })) || [],
+            create:
+              createPackageDto.paymentMethods?.map((pm) => ({
+                name: pm.name,
+                price: pm.price,
+              })) || [],
           },
         },
         select: mockPackageSelect,
@@ -234,6 +256,7 @@ describe('PackageService', () => {
           name: dtoWithoutPaymentMethods.name,
           amountCredits: dtoWithoutPaymentMethods.amountCredits,
           imgCardUrl: dtoWithoutPaymentMethods.imgCardUrl,
+          isActive: dtoWithoutPaymentMethods.isActive,
           isOffer: dtoWithoutPaymentMethods.isOffer,
           basePrice: dtoWithoutPaymentMethods.basePrice,
           productId: dtoWithoutPaymentMethods.productId,
@@ -245,11 +268,50 @@ describe('PackageService', () => {
       expect(result).toEqual(mockPackage);
     });
 
+    it('should create a package with isActive field successfully', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {});
+
+      const dtoWithIsActive = { ...createPackageDto, isActive: false };
+
+      prismaService.package.create.mockResolvedValue({
+        ...mockPackage,
+        isActive: false,
+      });
+
+      const result = await service.create(dtoWithIsActive);
+
+      expect(prismaService.package.create).toHaveBeenCalledWith({
+        data: {
+          name: dtoWithIsActive.name,
+          amountCredits: dtoWithIsActive.amountCredits,
+          imgCardUrl: dtoWithIsActive.imgCardUrl,
+          isActive: dtoWithIsActive.isActive,
+          isOffer: dtoWithIsActive.isOffer,
+          basePrice: dtoWithIsActive.basePrice,
+          productId: dtoWithIsActive.productId,
+          storeId: dtoWithIsActive.storeId,
+          paymentMethods: {
+            create:
+              dtoWithIsActive.paymentMethods?.map((pm) => ({
+                name: pm.name,
+                price: pm.price,
+              })) || [],
+          },
+        },
+        select: mockPackageSelect,
+      });
+
+      expect(result).toEqual({ ...mockPackage, isActive: false });
+    });
+
     it('should throw BadRequestException when database error occurs', async () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      prismaService.package.create.mockRejectedValue(new Error('Database error'));
+      prismaService.package.create.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.create(createPackageDto)).rejects.toThrow(
         new BadRequestException('Failed to create package'),
@@ -261,6 +323,7 @@ describe('PackageService', () => {
     const packageId = 'package-123';
     const updatePackageDto: UpdatePackageDto = {
       name: 'Updated Package',
+      isActive: false,
       basePrice: 25.99,
       paymentMethods: [
         {
@@ -275,7 +338,10 @@ describe('PackageService', () => {
       validateRequiredFields.mockImplementation(() => {});
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
-      prismaService.package.update.mockResolvedValue({ ...mockPackage, ...updatePackageDto });
+      prismaService.package.update.mockResolvedValue({
+        ...mockPackage,
+        ...updatePackageDto,
+      });
 
       const result = await service.update(packageId, updatePackageDto);
 
@@ -284,19 +350,26 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(validateRequiredFields).toHaveBeenCalledWith(updatePackageDto, ['name', 'basePrice', 'paymentMethods']);
+      expect(validateRequiredFields).toHaveBeenCalledWith(updatePackageDto, [
+        'name',
+        'isActive',
+        'basePrice',
+        'paymentMethods',
+      ]);
 
       expect(prismaService.package.update).toHaveBeenCalledWith({
         where: { id: packageId },
         data: {
           name: updatePackageDto.name,
+          isActive: updatePackageDto.isActive,
           basePrice: updatePackageDto.basePrice,
           paymentMethods: {
             deleteMany: {},
-            create: updatePackageDto.paymentMethods?.map(pm => ({
-              name: pm.name,
-              price: pm.price,
-            })) || [],
+            create:
+              updatePackageDto.paymentMethods?.map((pm) => ({
+                name: pm.name,
+                price: pm.price,
+              })) || [],
           },
         },
         select: mockPackageSelect,
@@ -309,11 +382,17 @@ describe('PackageService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      const dtoWithProductId = { ...updatePackageDto, productId: 'new-product-123' };
+      const dtoWithProductId = {
+        ...updatePackageDto,
+        productId: 'new-product-123',
+      };
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
-      prismaService.package.update.mockResolvedValue({ ...mockPackage, ...dtoWithProductId });
+      prismaService.package.update.mockResolvedValue({
+        ...mockPackage,
+        ...dtoWithProductId,
+      });
 
       const result = await service.update(packageId, dtoWithProductId);
 
@@ -332,7 +411,10 @@ describe('PackageService', () => {
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.store.findUnique.mockResolvedValue(mockStore);
-      prismaService.package.update.mockResolvedValue({ ...mockPackage, ...dtoWithStoreId });
+      prismaService.package.update.mockResolvedValue({
+        ...mockPackage,
+        ...dtoWithStoreId,
+      });
 
       const result = await service.update(packageId, dtoWithStoreId);
 
@@ -355,28 +437,34 @@ describe('PackageService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      const dtoWithInvalidProductId = { ...updatePackageDto, productId: 'invalid-product-123' };
+      const dtoWithInvalidProductId = {
+        ...updatePackageDto,
+        productId: 'invalid-product-123',
+      };
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.update(packageId, dtoWithInvalidProductId)).rejects.toThrow(
-        new BadRequestException('Failed to update package'),
-      );
+      await expect(
+        service.update(packageId, dtoWithInvalidProductId),
+      ).rejects.toThrow(new BadRequestException('Failed to update package'));
     });
 
     it('should throw BadRequestException when store not found', async () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      const dtoWithInvalidStoreId = { ...updatePackageDto, storeId: 'invalid-store-123' };
+      const dtoWithInvalidStoreId = {
+        ...updatePackageDto,
+        storeId: 'invalid-store-123',
+      };
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.update(packageId, dtoWithInvalidStoreId)).rejects.toThrow(
-        new BadRequestException('Failed to update package'),
-      );
+      await expect(
+        service.update(packageId, dtoWithInvalidStoreId),
+      ).rejects.toThrow(new BadRequestException('Failed to update package'));
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
@@ -384,7 +472,9 @@ describe('PackageService', () => {
       validateRequiredFields.mockImplementation(() => {});
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
-      prismaService.package.update.mockRejectedValue(new Error('Database error'));
+      prismaService.package.update.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.update(packageId, updatePackageDto)).rejects.toThrow(
         new BadRequestException('Failed to update package'),
@@ -424,11 +514,106 @@ describe('PackageService', () => {
 
     it('should throw BadRequestException when database error occurs', async () => {
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
-      prismaService.package.delete.mockRejectedValue(new Error('Database error'));
+      prismaService.package.delete.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.remove(packageId)).rejects.toThrow(
         new BadRequestException('Failed to remove package'),
       );
+    });
+  });
+
+  describe('uploadCardImage', () => {
+    const packageId = 'package-123';
+    const storeId = 'store-123';
+    const productId = 'product-123';
+    const existingImgUrl =
+      'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.png';
+    const file: any = {
+      fieldname: 'file',
+      originalname: 'card.JPG',
+      encoding: '7bit',
+      mimetype: 'image/jpeg',
+      buffer: Buffer.from([1, 2, 3]),
+      size: 3,
+    };
+
+    it('should upload card image successfully and update package', async () => {
+      prismaService.package.findUnique.mockResolvedValue({
+        id: packageId,
+        storeId,
+        imgCardUrl: existingImgUrl,
+        productId,
+      });
+      const uploadedUrl =
+        'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.jpg';
+      storageService.deleteFile.mockResolvedValue(undefined);
+      storageService.uploadFile.mockResolvedValue(uploadedUrl);
+      const updated = { id: packageId, storeId, imgCardUrl: uploadedUrl, productId };
+      prismaService.package.update.mockResolvedValue(updated);
+
+      const result = await service.uploadCardImage(packageId, file, storeId);
+
+      expect(prismaService.package.findUnique).toHaveBeenCalledWith({
+        where: { id: packageId },
+        select: { id: true, imgCardUrl: true, storeId: true, productId: true },
+      });
+      expect(storageService.deleteFile).toHaveBeenCalledWith(existingImgUrl);
+      expect(storageService.uploadFile).toHaveBeenCalledWith(
+        file,
+        `store/${storeId}/product/${productId}/package/${packageId}`,
+        'card.jpg',
+      );
+      expect(prismaService.package.update).toHaveBeenCalledWith({
+        where: { id: packageId },
+        data: { imgCardUrl: uploadedUrl },
+        select: mockPackageSelect,
+      });
+      expect(result.success).toBe(true);
+      expect(result.fileUrl).toBe(uploadedUrl);
+    });
+
+    it('should continue when deleting previous image fails', async () => {
+      prismaService.package.findUnique.mockResolvedValue({
+        id: packageId,
+        storeId,
+        imgCardUrl: existingImgUrl,
+        productId,
+      });
+      storageService.deleteFile.mockRejectedValue(new Error('Cannot delete'));
+      storageService.uploadFile.mockResolvedValue(
+        'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.jpg',
+      );
+      prismaService.package.update.mockResolvedValue({
+        id: packageId,
+        storeId,
+      });
+
+      const result = await service.uploadCardImage(packageId, file, storeId);
+
+      expect(storageService.uploadFile).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+    });
+
+    it('should throw NotFoundException when package does not exist', async () => {
+      prismaService.package.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.uploadCardImage(packageId, file, storeId),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('should throw BadRequestException when package belongs to another store', async () => {
+      prismaService.package.findUnique.mockResolvedValue({
+        id: packageId,
+        storeId: 'other-store',
+        imgCardUrl: null,
+      });
+
+      await expect(
+        service.uploadCardImage(packageId, file, storeId),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

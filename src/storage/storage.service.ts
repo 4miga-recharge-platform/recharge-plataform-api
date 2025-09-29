@@ -1,0 +1,107 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Storage } from '@google-cloud/storage';
+import { env } from '../env';
+
+interface UploadedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
+
+@Injectable()
+export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
+  private readonly storage: Storage;
+  private readonly bucketName: string;
+
+  constructor() {
+    this.bucketName = env.GCP_BUCKET_NAME || '4miga-images';
+
+    this.logger.log(`GCP_PROJECT_ID: ${env.GCP_PROJECT_ID ? 'SET' : 'NOT SET'}`);
+    this.logger.log(`GCP_CLIENT_EMAIL: ${env.GCP_CLIENT_EMAIL ? 'SET' : 'NOT SET'}`);
+    this.logger.log(`GCP_PRIVATE_KEY: ${env.GCP_PRIVATE_KEY ? 'SET' : 'NOT SET'}`);
+    this.logger.log(`GCP_BUCKET_NAME: ${this.bucketName}`);
+
+    if (env.GCP_PROJECT_ID && env.GCP_CLIENT_EMAIL && env.GCP_PRIVATE_KEY) {
+      this.storage = new Storage({
+        projectId: env.GCP_PROJECT_ID,
+        credentials: {
+          client_email: env.GCP_CLIENT_EMAIL,
+          private_key: env.GCP_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        },
+      });
+      this.logger.log(`GCP Storage initialized with bucket: ${this.bucketName}`);
+    } else {
+      this.storage = new Storage();
+      this.logger.warn('GCP Storage initialized without credentials (using default auth)');
+    }
+  }
+
+  private sanitizeFilename(originalName: string): string {
+    const trimmed = originalName.trim();
+    const replacedSpaces = trimmed.replace(/\s+/g, '-');
+    const normalized = replacedSpaces.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const cleaned = normalized.replace(/[^a-zA-Z0-9._-]/g, '');
+    return cleaned.toLowerCase();
+  }
+
+  async uploadFile(
+    file: UploadedFile,
+    folderPath: string,
+    desiredFileName?: string,
+  ): Promise<string> {
+    const baseName = desiredFileName
+      ? this.sanitizeFilename(desiredFileName)
+      : `${Date.now()}-${this.sanitizeFilename(file.originalname)}`;
+    const filePath = `${folderPath}/${baseName}`;
+
+    try {
+      const bucket = this.storage.bucket(this.bucketName);
+      const fileUpload = bucket.file(filePath);
+
+      await fileUpload.save(file.buffer, {
+        metadata: {
+          contentType: file.mimetype,
+        },
+      });
+
+      const publicUrl = `https://storage.googleapis.com/${this.bucketName}/${filePath}`;
+      this.logger.log(`File uploaded successfully: ${publicUrl}`);
+
+      return publicUrl;
+    } catch (error) {
+      this.logger.error(`Failed to upload file: ${error.message}`);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+  }
+
+  async deleteFile(fileUrl: string): Promise<void> {
+    try {
+      const fileName = this.extractFileNameFromUrl(fileUrl);
+      const bucket = this.storage.bucket(this.bucketName);
+      const file = bucket.file(fileName);
+
+      await file.delete();
+      this.logger.log(`File deleted successfully: ${fileUrl}`);
+    } catch (error) {
+      this.logger.error(`Failed to delete file: ${error.message}`);
+      throw new Error(`Delete failed: ${error.message}`);
+    }
+  }
+
+  async getFileUrl(filePath: string): Promise<string> {
+    return `https://storage.googleapis.com/${this.bucketName}/${filePath}`;
+  }
+
+  getBucketUrl(): string {
+    return `https://storage.googleapis.com/${this.bucketName}`;
+  }
+
+  private extractFileNameFromUrl(fileUrl: string): string {
+    const url = new URL(fileUrl);
+    return url.pathname.substring(1);
+  }
+}

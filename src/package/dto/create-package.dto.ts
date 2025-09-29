@@ -52,6 +52,15 @@ export class CreatePackageDto {
   @IsOptional()
   @IsBoolean()
   @ApiProperty({
+    description: 'Whether this package is active',
+    example: true,
+    required: false,
+  })
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({
     description: 'Whether this package is an offer',
     example: false,
     required: false,

@@ -1,14 +1,32 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { WebhookService } from '../webhook/webhook.service';
 import { validateRequiredFields } from 'src/utils/validation.util';
+import { StorageService } from '../storage/storage.service';
+import { WebhookService } from '../webhook/webhook.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 
+interface FileUpload {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
+
 @Injectable()
 export class PackageService {
+  private readonly logger = new Logger(PackageService.name);
+
   constructor(
     private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
     private readonly webhookService: WebhookService,
   ) {}
 
@@ -17,6 +35,7 @@ export class PackageService {
     name: true,
     amountCredits: true,
     imgCardUrl: true,
+    isActive: true,
     isOffer: true,
     basePrice: true,
     productId: true,
@@ -87,7 +106,11 @@ export class PackageService {
       });
 
       // Notify frontend via webhook
-      await this.webhookService.notifyPackageUpdate(package_.id, package_.storeId, 'created');
+      await this.webhookService.notifyPackageUpdate(
+        package_.id,
+        package_.storeId,
+        'created',
+      );
 
       return package_;
     } catch {
@@ -146,7 +169,11 @@ export class PackageService {
       });
 
       // Notify frontend via webhook
-      await this.webhookService.notifyPackageUpdate(package_.id, package_.storeId, 'updated');
+      await this.webhookService.notifyPackageUpdate(
+        package_.id,
+        package_.storeId,
+        'updated',
+      );
 
       return package_;
     } catch {
@@ -163,11 +190,94 @@ export class PackageService {
       });
 
       // Notify frontend via webhook
-      await this.webhookService.notifyPackageUpdate(id, deletedPackage.storeId, 'deleted');
+      await this.webhookService.notifyPackageUpdate(
+        id,
+        deletedPackage.storeId,
+        'deleted',
+      );
 
       return deletedPackage;
     } catch {
       throw new BadRequestException('Failed to remove package');
+    }
+  }
+
+  async uploadCardImage(packageId: string, file: FileUpload, storeId: string) {
+    this.logger.log(
+      `Uploading card image for package ${packageId}, storeId: ${storeId}`,
+    );
+
+    try {
+      const packageExists = await this.prisma.package.findUnique({
+        where: { id: packageId },
+        select: { id: true, imgCardUrl: true, storeId: true, productId: true },
+      });
+
+      this.logger.log(`Package exists: ${!!packageExists}`);
+
+      if (!packageExists) {
+        throw new NotFoundException('Package not found');
+      }
+
+      if (packageExists.storeId !== storeId) {
+        throw new BadRequestException('Package does not belong to your store');
+      }
+
+       const productId = packageExists.productId;
+
+      const folderPath = `store/${storeId}/product/${productId}/package/${packageId}`;
+      this.logger.log(`Uploading to folder: ${folderPath}`);
+
+      // Delete previous image if exists
+      if (packageExists.imgCardUrl) {
+        try {
+          await this.storageService.deleteFile(packageExists.imgCardUrl);
+          this.logger.log('Previous card image deleted');
+        } catch (err) {
+          this.logger.warn(`Could not delete previous image: ${err.message}`);
+        }
+      }
+
+      // Decide deterministic filename: card.<ext>
+      const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
+      const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+      const mimeToExt: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+      };
+      const mimeExt = mimeToExt[file.mimetype] || '';
+      let ext = originalExt || mimeExt || 'png';
+      if (!allowedExts.includes(ext)) {
+        ext = mimeExt && allowedExts.includes(mimeExt) ? mimeExt : 'png';
+      }
+
+      const desiredFileName = `card.${ext}`;
+
+      const fileUrl = await this.storageService.uploadFile(
+        file,
+        folderPath,
+        desiredFileName,
+      );
+      this.logger.log(`File uploaded successfully: ${fileUrl}`);
+
+      const updatedPackage = await this.prisma.package.update({
+        where: { id: packageId },
+        data: { imgCardUrl: fileUrl },
+        select: this.packageSelect,
+      });
+
+      this.logger.log(`Package updated successfully`);
+
+      return {
+        success: true,
+        package: updatedPackage,
+        fileUrl,
+        message: 'Package card image uploaded successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Error uploading card image: ${error.message}`);
+      throw error;
     }
   }
 }
