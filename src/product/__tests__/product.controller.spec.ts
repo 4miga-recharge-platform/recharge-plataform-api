@@ -293,7 +293,8 @@ describe('ProductController', () => {
       });
     });
     describe('updateCustomization', () => {
-      const customizationId = 'customization-123';
+      const productId = 'product-123';
+      const user = { id: 'user-1', storeId: 'store-123' } as any;
 
       it('should update a product customization successfully', async () => {
         const updatedCustomization = {
@@ -305,12 +306,14 @@ describe('ProductController', () => {
         );
 
         const result = await controller.updateCustomization(
-          customizationId,
+          productId,
           updateStoreProductSettingsDto,
+          user,
         );
 
         expect(productService.updateStoreProductSettings).toHaveBeenCalledWith(
-          customizationId,
+          user.storeId,
+          productId,
           updateStoreProductSettingsDto,
         );
         expect(result).toEqual(updatedCustomization);
@@ -322,12 +325,14 @@ describe('ProductController', () => {
 
         await expect(
           controller.updateCustomization(
-            customizationId,
+            productId,
             updateStoreProductSettingsDto,
+            user,
           ),
         ).rejects.toThrow('Failed to update product customization');
         expect(productService.updateStoreProductSettings).toHaveBeenCalledWith(
-          customizationId,
+          user.storeId,
+          productId,
           updateStoreProductSettingsDto,
         );
       });

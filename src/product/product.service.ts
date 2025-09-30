@@ -77,6 +77,7 @@ export class ProductService {
                 },
               },
             },
+            orderBy: { amountCredits: 'asc' },
           });
 
           // Fetch store customizations for this product
@@ -235,6 +236,7 @@ export class ProductService {
             },
           },
         },
+        orderBy: { amountCredits: 'asc' },
       });
 
       // Fetch store customizations for this product
@@ -433,7 +435,8 @@ export class ProductService {
   }
 
   async updateStoreProductSettings(
-    id: string,
+    storeId: string,
+    productId: string,
     dto: UpdateStoreProductSettingsDto,
   ): Promise<StoreProductSettings> {
     try {
@@ -442,26 +445,52 @@ export class ProductService {
       );
       validateRequiredFields(dto, fieldsToValidate);
 
-      const existingCustomization =
-        await this.prisma.storeProductSettings.findUnique({
-          where: { id },
-        });
-      if (!existingCustomization) {
-        throw new BadRequestException('Product customization not found');
+      // Check if store exists
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+      });
+      if (!store) {
+        throw new BadRequestException('Store not found');
       }
 
-      const customization = await this.prisma.storeProductSettings.update({
-        where: { id },
-        data: dto,
+      // Check if product exists
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
       });
+      if (!product) {
+        throw new BadRequestException('Product not found');
+      }
+
+      // Find existing customization or create if doesn't exist
+      let existingCustomization =
+        await this.prisma.storeProductSettings.findFirst({
+          where: {
+            storeId,
+            productId,
+          },
+        });
+
+      if (!existingCustomization) {
+        // Create new customization if it doesn't exist
+        existingCustomization = await this.prisma.storeProductSettings.create({
+          data: {
+            storeId,
+            productId,
+            ...dto,
+          },
+        });
+      } else {
+        // Update existing customization
+        existingCustomization = await this.prisma.storeProductSettings.update({
+          where: { id: existingCustomization.id },
+          data: dto,
+        });
+      }
 
       // Notify frontend via webhook
-      await this.webhookService.notifyProductUpdate(
-        customization.productId,
-        'updated',
-      );
+      await this.webhookService.notifyProductUpdate(productId, 'updated');
 
-      return customization;
+      return existingCustomization;
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;

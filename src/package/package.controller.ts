@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { PackageService } from './package.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
@@ -75,6 +75,12 @@ export class PackageController {
   @UseInterceptors(FileInterceptor('file'), FileValidationInterceptor)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload package card image' })
+  @ApiQuery({
+    name: 'updateAllPackages',
+    required: false,
+    type: Boolean,
+    description: 'If true, updates all packages from the same product. If false, updates only the specified package.',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     description: 'Package card image upload',
@@ -93,12 +99,16 @@ export class PackageController {
   async uploadCardImage(
     @Param('id') packageId: string,
     @UploadedFile() file: FileUpload,
+    @Query('updateAllPackages') updateAllPackages: string | undefined,
     @LoggedUser() user: User,
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
 
-    return this.packageService.uploadCardImage(packageId, file, user.storeId);
+    // Convert string query parameter to boolean
+    const shouldUpdateAll = updateAllPackages === 'true';
+
+    return this.packageService.uploadCardImage(packageId, file, user.storeId, shouldUpdateAll);
   }
 }

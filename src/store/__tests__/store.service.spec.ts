@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { StoreService } from '../store.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { StorageService } from '../../storage/storage.service';
 import { CreateStoreDto } from '../dto/create-store.dto';
 import { UpdateStoreDto } from '../dto/update-store.dto';
 
@@ -66,12 +67,22 @@ describe('StoreService', () => {
       },
     };
 
+    const mockStorageService = {
+      uploadFile: jest.fn(),
+      deleteFile: jest.fn(),
+      getFileUrlWithTimestamp: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StoreService,
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: StorageService,
+          useValue: mockStorageService,
         },
       ],
     }).compile();

@@ -132,6 +132,7 @@ describe('PackageService', () => {
       expect(prismaService.package.findMany).toHaveBeenCalledWith({
         where: { storeId },
         select: mockPackageSelect,
+        orderBy: { amountCredits: 'asc' },
       });
       expect(result).toEqual(packages);
     });
@@ -539,7 +540,7 @@ describe('PackageService', () => {
       size: 3,
     };
 
-    it('should upload card image successfully and update package', async () => {
+    it('should upload card image successfully and update single package', async () => {
       prismaService.package.findUnique.mockResolvedValue({
         id: packageId,
         storeId,
@@ -550,10 +551,20 @@ describe('PackageService', () => {
         'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.jpg';
       storageService.deleteFile.mockResolvedValue(undefined);
       storageService.uploadFile.mockResolvedValue(uploadedUrl);
-      const updated = { id: packageId, storeId, imgCardUrl: uploadedUrl, productId };
+      const updated = {
+        id: packageId,
+        storeId,
+        imgCardUrl: uploadedUrl,
+        productId,
+      };
       prismaService.package.update.mockResolvedValue(updated);
 
-      const result = await service.uploadCardImage(packageId, file, storeId);
+      const result = await service.uploadCardImage(
+        packageId,
+        file,
+        storeId,
+        false,
+      );
 
       expect(prismaService.package.findUnique).toHaveBeenCalledWith({
         where: { id: packageId },
@@ -572,6 +583,71 @@ describe('PackageService', () => {
       });
       expect(result.success).toBe(true);
       expect(result.fileUrl).toBe(uploadedUrl);
+      expect(result).toHaveProperty('package');
+    });
+
+    it('should upload card image successfully and update all packages', async () => {
+      const packages = [
+        { id: 'package-1', imgCardUrl: 'old-url-1' },
+        { id: 'package-2', imgCardUrl: 'old-url-2' },
+      ];
+
+      prismaService.package.findUnique.mockResolvedValue({
+        id: packageId,
+        storeId,
+        imgCardUrl: existingImgUrl,
+        productId,
+      });
+      prismaService.package.findMany.mockResolvedValue(packages);
+
+      const uploadedUrl =
+        'https://storage.googleapis.com/bucket/store/store-123/product/product-123/shared/card.jpg';
+      storageService.deleteFile.mockResolvedValue(undefined);
+      storageService.uploadFile.mockResolvedValue(uploadedUrl);
+
+      const updatedPackages = [
+        { id: 'package-1', storeId, imgCardUrl: uploadedUrl },
+        { id: 'package-2', storeId, imgCardUrl: uploadedUrl },
+      ];
+      prismaService.package.update.mockResolvedValue(updatedPackages[0]);
+
+      const result = await service.uploadCardImage(
+        packageId,
+        file,
+        storeId,
+        true,
+      );
+
+      expect(prismaService.package.findMany).toHaveBeenCalledWith({
+        where: { productId, storeId },
+        select: { id: true, imgCardUrl: true },
+        orderBy: { amountCredits: 'asc' },
+      });
+      expect(storageService.uploadFile).toHaveBeenCalledWith(
+        file,
+        `store/${storeId}/product/${productId}/shared`,
+        'card.jpg',
+      );
+      expect(result.success).toBe(true);
+      expect(result.fileUrl).toBe(uploadedUrl);
+      expect(result).toHaveProperty('packages');
+      expect(result.message).toContain(
+        'All 2 packages card images updated successfully',
+      );
+    });
+
+    it('should throw BadRequestException when no packages found for product', async () => {
+      prismaService.package.findUnique.mockResolvedValue({
+        id: packageId,
+        storeId,
+        imgCardUrl: existingImgUrl,
+        productId,
+      });
+      prismaService.package.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.uploadCardImage(packageId, file, storeId, true),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('should continue when deleting previous image fails', async () => {
@@ -590,7 +666,12 @@ describe('PackageService', () => {
         storeId,
       });
 
-      const result = await service.uploadCardImage(packageId, file, storeId);
+      const result = await service.uploadCardImage(
+        packageId,
+        file,
+        storeId,
+        false,
+      );
 
       expect(storageService.uploadFile).toHaveBeenCalled();
       expect(result.success).toBe(true);
@@ -600,7 +681,7 @@ describe('PackageService', () => {
       prismaService.package.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.uploadCardImage(packageId, file, storeId),
+        service.uploadCardImage(packageId, file, storeId, false),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -612,7 +693,7 @@ describe('PackageService', () => {
       });
 
       await expect(
-        service.uploadCardImage(packageId, file, storeId),
+        service.uploadCardImage(packageId, file, storeId, false),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });

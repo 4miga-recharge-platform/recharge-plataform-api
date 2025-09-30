@@ -51,6 +51,7 @@ export class PackageService {
       return await this.prisma.package.findMany({
         where: { storeId },
         select: this.packageSelect,
+        orderBy: { amountCredits: 'asc' },
       });
     } catch {
       throw new BadRequestException('Failed to fetch packages');
@@ -202,9 +203,14 @@ export class PackageService {
     }
   }
 
-  async uploadCardImage(packageId: string, file: FileUpload, storeId: string) {
+  async uploadCardImage(
+    packageId: string,
+    file: FileUpload,
+    storeId: string,
+    updateAllPackages: boolean = false,
+  ) {
     this.logger.log(
-      `Uploading card image for package ${packageId}, storeId: ${storeId}`,
+      `Uploading card image for package ${packageId}, storeId: ${storeId}, updateAllPackages: ${updateAllPackages}`,
     );
 
     try {
@@ -223,24 +229,13 @@ export class PackageService {
         throw new BadRequestException('Package does not belong to your store');
       }
 
-       const productId = packageExists.productId;
-
-      const folderPath = `store/${storeId}/product/${productId}/package/${packageId}`;
-      this.logger.log(`Uploading to folder: ${folderPath}`);
-
-      // Delete previous image if exists
-      if (packageExists.imgCardUrl) {
-        try {
-          await this.storageService.deleteFile(packageExists.imgCardUrl);
-          this.logger.log('Previous card image deleted');
-        } catch (err) {
-          this.logger.warn(`Could not delete previous image: ${err.message}`);
-        }
-      }
+      const productId = packageExists.productId;
 
       // Decide deterministic filename: card.<ext>
       const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
-      const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+      const originalExt = (
+        file.originalname.split('.').pop() || ''
+      ).toLowerCase();
       const mimeToExt: Record<string, string> = {
         'image/png': 'png',
         'image/jpeg': 'jpg',
@@ -254,30 +249,144 @@ export class PackageService {
 
       const desiredFileName = `card.${ext}`;
 
-      const fileUrl = await this.storageService.uploadFile(
-        file,
-        folderPath,
-        desiredFileName,
-      );
-      this.logger.log(`File uploaded successfully: ${fileUrl}`);
-
-      const updatedPackage = await this.prisma.package.update({
-        where: { id: packageId },
-        data: { imgCardUrl: fileUrl },
-        select: this.packageSelect,
-      });
-
-      this.logger.log(`Package updated successfully`);
-
-      return {
-        success: true,
-        package: updatedPackage,
-        fileUrl,
-        message: 'Package card image uploaded successfully',
-      };
+      if (updateAllPackages) {
+        return await this.updateAllPackagesCardImage(
+          productId,
+          file,
+          storeId,
+          desiredFileName,
+        );
+      } else {
+        return await this.updateSinglePackageCardImage(
+          packageId,
+          file,
+          storeId,
+          productId,
+          desiredFileName,
+        );
+      }
     } catch (error) {
       this.logger.error(`Error uploading card image: ${error.message}`);
       throw error;
     }
+  }
+
+  private async updateSinglePackageCardImage(
+    packageId: string,
+    file: FileUpload,
+    storeId: string,
+    productId: string,
+    desiredFileName: string,
+  ) {
+    const packageExists = await this.prisma.package.findUnique({
+      where: { id: packageId },
+      select: { id: true, imgCardUrl: true, storeId: true, productId: true },
+    });
+
+    const folderPath = `store/${storeId}/product/${productId}/package/${packageId}`;
+    this.logger.log(`Uploading to folder: ${folderPath}`);
+
+    // Delete previous image if exists
+    if (packageExists?.imgCardUrl) {
+      try {
+        await this.storageService.deleteFile(packageExists.imgCardUrl);
+        this.logger.log('Previous card image deleted');
+      } catch (err) {
+        this.logger.warn(`Could not delete previous image: ${err.message}`);
+      }
+    }
+
+    const fileUrl = await this.storageService.uploadFile(
+      file,
+      folderPath,
+      desiredFileName,
+    );
+    this.logger.log(`File uploaded successfully: ${fileUrl}`);
+
+    const updatedPackage = await this.prisma.package.update({
+      where: { id: packageId },
+      data: { imgCardUrl: fileUrl },
+      select: this.packageSelect,
+    });
+
+    this.logger.log(`Package updated successfully`);
+
+    return {
+      success: true,
+      package: updatedPackage,
+      fileUrl,
+      message: 'Package card image uploaded successfully',
+    };
+  }
+
+  private async updateAllPackagesCardImage(
+    productId: string,
+    file: FileUpload,
+    storeId: string,
+    desiredFileName: string,
+  ) {
+    this.logger.log(`Updating all packages for product ${productId}`);
+
+    // Get all packages for this product
+    const packages = await this.prisma.package.findMany({
+      where: {
+        productId: productId,
+        storeId: storeId,
+      },
+      select: { id: true, imgCardUrl: true },
+      orderBy: { amountCredits: 'asc' },
+    });
+
+    if (packages.length === 0) {
+      throw new BadRequestException('No packages found for this product');
+    }
+
+    this.logger.log(`Found ${packages.length} packages to update`);
+
+    // Upload the file once to a shared location
+    const sharedFolderPath = `store/${storeId}/product/${productId}/shared`;
+    const fileUrl = await this.storageService.uploadFile(
+      file,
+      sharedFolderPath,
+      desiredFileName,
+    );
+    this.logger.log(
+      `File uploaded successfully to shared location: ${fileUrl}`,
+    );
+
+    // Delete previous images and update all packages
+    const updatePromises = packages.map(async (pkg) => {
+      // Delete previous image if exists
+      if (pkg.imgCardUrl) {
+        try {
+          await this.storageService.deleteFile(pkg.imgCardUrl);
+          this.logger.log(`Previous card image deleted for package ${pkg.id}`);
+        } catch (err) {
+          this.logger.warn(
+            `Could not delete previous image for package ${pkg.id}: ${err.message}`,
+          );
+        }
+      }
+
+      // Update package with new image URL
+      return this.prisma.package.update({
+        where: { id: pkg.id },
+        data: { imgCardUrl: fileUrl },
+        select: this.packageSelect,
+      });
+    });
+
+    const updatedPackages = await Promise.all(updatePromises);
+
+    this.logger.log(
+      `All ${updatedPackages.length} packages updated successfully`,
+    );
+
+    return {
+      success: true,
+      packages: updatedPackages,
+      fileUrl,
+      message: `All ${updatedPackages.length} packages card images updated successfully`,
+    };
   }
 }
