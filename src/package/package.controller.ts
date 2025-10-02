@@ -46,9 +46,12 @@ export class PackageController {
   }
 
   @Post()
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a package' })
-  create(@Body() createPackageDto: CreatePackageDto) {
-    return this.packageService.create(createPackageDto);
+  create(@Body() createPackageDto: CreatePackageDto, @LoggedUser() user: User) {
+    return this.packageService.create(createPackageDto, user.storeId);
   }
 
   @Get(':id')

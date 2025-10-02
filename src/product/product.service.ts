@@ -64,6 +64,7 @@ export class ProductService {
               basePrice: true,
               productId: true,
               storeId: true,
+              isActive: true,
               createdAt: false,
               updatedAt: false,
               paymentMethods: {

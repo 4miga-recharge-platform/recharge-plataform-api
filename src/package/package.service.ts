@@ -73,7 +73,7 @@ export class PackageService {
     }
   }
 
-  async create(dto: CreatePackageDto): Promise<any> {
+  async create(dto: CreatePackageDto, storeId: string): Promise<any> {
     try {
       validateRequiredFields(dto, [
         'name',
@@ -81,7 +81,6 @@ export class PackageService {
         'imgCardUrl',
         'basePrice',
         'productId',
-        'storeId',
       ]);
 
       // Separate paymentMethods from the rest of the data
@@ -90,6 +89,7 @@ export class PackageService {
       // Create package with payment methods if provided
       const createData: any = {
         ...packageData,
+        storeId,
         ...(paymentMethods &&
           paymentMethods.length > 0 && {
             paymentMethods: {
@@ -136,32 +136,67 @@ export class PackageService {
         }
       }
 
-      if (dto.storeId) {
-        const store = await this.prisma.store.findUnique({
-          where: { id: dto.storeId },
-        });
-        if (!store) {
-          throw new BadRequestException('Store not found');
-        }
-      }
-
       // Separate paymentMethods from the rest of the data
       const { paymentMethods, ...packageData } = dto;
 
       // Prepare data for update
-      const updateData: any = {
+      let updateData: any = {
         ...packageData,
-        ...(paymentMethods &&
-          paymentMethods.length > 0 && {
-            paymentMethods: {
-              deleteMany: {}, // Remove todos os payment methods existentes
-              create: paymentMethods.map((pm) => ({
-                name: pm.name,
-                price: pm.price,
-              })),
-            },
-          }),
       };
+
+      // Handle paymentMethods update with integrity validation
+      if (paymentMethods && paymentMethods.length > 0) {
+        // 1. Get current payment methods for this package
+        const currentPaymentMethods = await this.prisma.paymentMethod.findMany({
+          where: { packageId: id },
+          select: { id: true, name: true, price: true },
+        });
+
+        // 2. Identify which payment methods will be removed (compare name AND price)
+        const newPaymentMethods = paymentMethods.map((pm) => ({
+          name: pm.name,
+          price: pm.price
+        }));
+        const toBeRemoved = currentPaymentMethods.filter(
+          (current) => !newPaymentMethods.some(
+            (newPm) => newPm.name === current.name && Number(newPm.price) === Number(current.price)
+          ),
+        );
+
+        // 3. Validate that removed payment methods don't have associated orders
+        for (const paymentMethod of toBeRemoved) {
+          const hasOrders = await this.prisma.order.findFirst({
+            where: {
+              payment: {
+                name: paymentMethod.name,
+              },
+              orderItem: {
+                package: {
+                  packageId: id, // Ensure it's from the same package
+                },
+              },
+            },
+            select: { id: true, orderNumber: true },
+          });
+
+          if (hasOrders) {
+            throw new BadRequestException(
+              `Cannot remove payment method "${paymentMethod.name}" because it has existing orders. ` +
+                `Found order #${hasOrders.orderNumber} using this payment method. ` +
+                `Please contact support if you need to modify this.`,
+            );
+          }
+        }
+
+        // 4. If validation passes, proceed with deleteMany + create
+        updateData.paymentMethods = {
+          deleteMany: {}, // Remove todos os payment methods existentes
+          create: paymentMethods.map((pm) => ({
+            name: pm.name,
+            price: pm.price,
+          })),
+        };
+      }
 
       const package_ = await this.prisma.package.update({
         where: { id },

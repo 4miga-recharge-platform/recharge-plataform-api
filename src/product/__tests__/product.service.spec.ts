@@ -35,6 +35,7 @@ describe('ProductService', () => {
     basePrice: 10.0,
     productId: 'product-123',
     storeId: 'store-123',
+    isActive: true,
     paymentMethods: [
       {
         id: 'payment-123',
@@ -157,6 +158,7 @@ describe('ProductService', () => {
           basePrice: true,
           productId: true,
           storeId: true,
+          isActive: true,
           createdAt: false,
           updatedAt: false,
           paymentMethods: {
