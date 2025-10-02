@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { Storage } from '@google-cloud/storage';
+import { Injectable, Logger } from '@nestjs/common';
 import { env } from '../env';
 
 interface UploadedFile {
@@ -20,9 +20,15 @@ export class StorageService {
   constructor() {
     this.bucketName = env.GCP_BUCKET_NAME || '4miga-images';
 
-    this.logger.log(`GCP_PROJECT_ID: ${env.GCP_PROJECT_ID ? 'SET' : 'NOT SET'}`);
-    this.logger.log(`GCP_CLIENT_EMAIL: ${env.GCP_CLIENT_EMAIL ? 'SET' : 'NOT SET'}`);
-    this.logger.log(`GCP_PRIVATE_KEY: ${env.GCP_PRIVATE_KEY ? 'SET' : 'NOT SET'}`);
+    this.logger.log(
+      `GCP_PROJECT_ID: ${env.GCP_PROJECT_ID ? 'SET' : 'NOT SET'}`,
+    );
+    this.logger.log(
+      `GCP_CLIENT_EMAIL: ${env.GCP_CLIENT_EMAIL ? 'SET' : 'NOT SET'}`,
+    );
+    this.logger.log(
+      `GCP_PRIVATE_KEY: ${env.GCP_PRIVATE_KEY ? 'SET' : 'NOT SET'}`,
+    );
     this.logger.log(`GCP_BUCKET_NAME: ${this.bucketName}`);
 
     if (env.GCP_PROJECT_ID && env.GCP_CLIENT_EMAIL && env.GCP_PRIVATE_KEY) {
@@ -33,17 +39,23 @@ export class StorageService {
           private_key: env.GCP_PRIVATE_KEY.replace(/\\n/g, '\n'),
         },
       });
-      this.logger.log(`GCP Storage initialized with bucket: ${this.bucketName}`);
+      this.logger.log(
+        `GCP Storage initialized with bucket: ${this.bucketName}`,
+      );
     } else {
       this.storage = new Storage();
-      this.logger.warn('GCP Storage initialized without credentials (using default auth)');
+      this.logger.warn(
+        'GCP Storage initialized without credentials (using default auth)',
+      );
     }
   }
 
   private sanitizeFilename(originalName: string): string {
     const trimmed = originalName.trim();
     const replacedSpaces = trimmed.replace(/\s+/g, '-');
-    const normalized = replacedSpaces.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const normalized = replacedSpaces
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '');
     const cleaned = normalized.replace(/[^a-zA-Z0-9._-]/g, '');
     return cleaned.toLowerCase();
   }
@@ -68,7 +80,9 @@ export class StorageService {
         },
       });
 
-      const publicUrl = `https://storage.googleapis.com/${this.bucketName}/${filePath}`;
+      // Sempre retorna URL com timestamp para evitar cache
+      const publicUrl = this.getFileUrlWithTimestamp(filePath);
+
       this.logger.log(`File uploaded successfully: ${publicUrl}`);
 
       return publicUrl;
@@ -94,6 +108,39 @@ export class StorageService {
 
   async getFileUrl(filePath: string): Promise<string> {
     return `https://storage.googleapis.com/${this.bucketName}/${filePath}`;
+  }
+
+  /**
+   * Gera URL do arquivo com timestamp para evitar cache
+   * @param filePath Caminho do arquivo no bucket
+   * @param timestamp Timestamp opcional (se não fornecido, usa Date.now())
+   * @returns URL com parâmetro de versioning
+   */
+  getFileUrlWithTimestamp(filePath: string, timestamp?: number): string {
+    const baseUrl = `https://storage.googleapis.com/${this.bucketName}/${filePath}`;
+    const version = timestamp || Date.now();
+    return `${baseUrl}?v=${version}`;
+  }
+
+  /**
+   * Gera URL do arquivo com timestamp baseado na data de modificação
+   * @param filePath Caminho do arquivo no bucket
+   * @returns Promise com URL com parâmetro de versioning baseado na data de modificação
+   */
+  async getFileUrlWithMetadataTimestamp(filePath: string): Promise<string> {
+    try {
+      const bucket = this.storage.bucket(this.bucketName);
+      const file = bucket.file(filePath);
+      const [metadata] = await file.getMetadata();
+
+      const timestamp = new Date(metadata.updated || Date.now()).getTime();
+      return this.getFileUrlWithTimestamp(filePath, timestamp);
+    } catch (error) {
+      this.logger.warn(
+        `Could not get metadata for ${filePath}, using current timestamp: ${error.message}`,
+      );
+      return this.getFileUrlWithTimestamp(filePath);
+    }
   }
 
   getBucketUrl(): string {

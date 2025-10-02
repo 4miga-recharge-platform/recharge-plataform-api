@@ -22,11 +22,11 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleGuard } from '../auth/guards/role.guard';
 import { LoggedUser } from '../auth/logged-user.decorator';
-import { User } from '../user/entities/user.entity';
 import { FileValidationInterceptor } from '../storage/interceptors/file-validation.interceptor';
+import { User } from '../user/entities/user.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { CreateStoreProductSettingsDto } from './dto/create-store-product-settings.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -75,14 +75,21 @@ export class ProductController {
     );
   }
 
-  @Patch('customize/:id')
-  @ApiOperation({ summary: 'Update product customization by id' })
+  @Patch('customize/:productId')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update product customization for logged user store',
+  })
   updateCustomization(
-    @Param('id') id: string,
+    @Param('productId') productId: string,
     @Body() updateStoreProductSettingsDto: UpdateStoreProductSettingsDto,
+    @LoggedUser() user: User,
   ) {
     return this.productService.updateStoreProductSettings(
-      id,
+      user.storeId,
+      productId,
       updateStoreProductSettingsDto,
     );
   }

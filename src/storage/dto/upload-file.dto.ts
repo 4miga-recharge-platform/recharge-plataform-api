@@ -19,8 +19,8 @@ export class UploadFileResponseDto {
   success: boolean;
 
   @ApiProperty({
-    description: 'Public URL of the uploaded file',
-    example: 'https://storage.googleapis.com/bucket/stores/store-123/logo/image.jpg',
+    description: 'Public URL of the uploaded file with cache busting timestamp',
+    example: 'https://storage.googleapis.com/bucket/stores/store-123/logo/image.jpg?v=1703123456',
   })
   fileUrl: string;
 
@@ -55,4 +55,40 @@ export class DeleteFileResponseDto {
     example: 'File deleted successfully',
   })
   message: string;
+}
+
+export class GetFileUrlWithTimestampDto {
+  @ApiProperty({
+    description: 'File path in the bucket',
+    example: 'stores/store-123/logo/image.jpg',
+  })
+  @IsString()
+  @IsNotEmpty()
+  filePath: string;
+}
+
+export class GetFileUrlWithTimestampResponseDto {
+  @ApiProperty({
+    description: 'Success status',
+    example: true,
+  })
+  success: boolean;
+
+  @ApiProperty({
+    description: 'File URL with timestamp for cache busting',
+    example: 'https://storage.googleapis.com/bucket/stores/store-123/logo/image.jpg?v=1703123456',
+  })
+  fileUrl: string;
+
+  @ApiProperty({
+    description: 'Timestamp used for cache busting',
+    example: 1703123456,
+  })
+  timestamp: number;
+
+  @ApiProperty({
+    description: 'Original file path',
+    example: 'stores/store-123/logo/image.jpg',
+  })
+  filePath: string;
 }
