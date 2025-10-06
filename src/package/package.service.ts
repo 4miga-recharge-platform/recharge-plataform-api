@@ -173,53 +173,10 @@ export class PackageService {
         ...packageData,
       };
 
-      // Handle paymentMethods update with integrity validation
+      // Handle paymentMethods update
       if (paymentMethods && paymentMethods.length > 0) {
-        // 1. Get current payment methods for this package
-        const currentPaymentMethods = await this.prisma.paymentMethod.findMany({
-          where: { packageId: id },
-          select: { id: true, name: true, price: true },
-        });
-
-        // 2. Identify which payment methods will be removed (compare name AND price)
-        const newPaymentMethods = paymentMethods.map((pm) => ({
-          name: pm.name,
-          price: pm.price
-        }));
-        const toBeRemoved = currentPaymentMethods.filter(
-          (current) => !newPaymentMethods.some(
-            (newPm) => newPm.name === current.name && Number(newPm.price) === Number(current.price)
-          ),
-        );
-
-        // 3. Validate that removed payment methods don't have associated orders
-        for (const paymentMethod of toBeRemoved) {
-          const hasOrders = await this.prisma.order.findFirst({
-            where: {
-              payment: {
-                name: paymentMethod.name,
-              },
-              orderItem: {
-                package: {
-                  packageId: id, // Ensure it's from the same package
-                },
-              },
-            },
-            select: { id: true, orderNumber: true },
-          });
-
-          if (hasOrders) {
-            throw new BadRequestException(
-              `Cannot remove payment method "${paymentMethod.name}" because it has existing orders. ` +
-                `Found order #${hasOrders.orderNumber} using this payment method. ` +
-                `Please contact support if you need to modify this.`,
-            );
-          }
-        }
-
-        // 4. If validation passes, proceed with deleteMany + create
         updateData.paymentMethods = {
-          deleteMany: {}, // Remove todos os payment methods existentes
+          deleteMany: {},
           create: paymentMethods.map((pm) => ({
             name: pm.name,
             price: pm.price,
