@@ -48,11 +48,21 @@ export class PackageService {
   // master admin only access
   async findAll(storeId: string): Promise<any[]> {
     try {
-      return await this.prisma.package.findMany({
+      const packages = await this.prisma.package.findMany({
         where: { storeId },
         select: this.packageSelect,
         orderBy: { amountCredits: 'asc' },
       });
+
+      // Convert Decimal to number for consistency
+      return packages.map(pkg => ({
+        ...pkg,
+        basePrice: pkg.basePrice.toNumber(),
+        paymentMethods: pkg.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      }));
     } catch {
       throw new BadRequestException('Failed to fetch packages');
     }
@@ -67,7 +77,16 @@ export class PackageService {
       if (!data) {
         throw new BadRequestException('Package not found');
       }
-      return data;
+
+      // Convert Decimal to number for consistency
+      return {
+        ...data,
+        basePrice: data.basePrice.toNumber(),
+        paymentMethods: data.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      };
     } catch {
       throw new BadRequestException('Failed to fetch package');
     }
@@ -106,6 +125,16 @@ export class PackageService {
         select: this.packageSelect,
       });
 
+      // Convert Decimal to number for consistency
+      const convertedPackage = {
+        ...package_,
+        basePrice: package_.basePrice.toNumber(),
+        paymentMethods: package_.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      };
+
       // Notify frontend via webhook
       await this.webhookService.notifyPackageUpdate(
         package_.id,
@@ -113,7 +142,7 @@ export class PackageService {
         'created',
       );
 
-      return package_;
+      return convertedPackage;
     } catch {
       throw new BadRequestException('Failed to create package');
     }
@@ -204,6 +233,16 @@ export class PackageService {
         select: this.packageSelect,
       });
 
+      // Convert Decimal to number for consistency
+      const convertedPackage = {
+        ...package_,
+        basePrice: package_.basePrice.toNumber(),
+        paymentMethods: package_.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      };
+
       // Notify frontend via webhook
       await this.webhookService.notifyPackageUpdate(
         package_.id,
@@ -211,7 +250,7 @@ export class PackageService {
         'updated',
       );
 
-      return package_;
+      return convertedPackage;
     } catch {
       throw new BadRequestException('Failed to update package');
     }
@@ -225,6 +264,16 @@ export class PackageService {
         select: this.packageSelect,
       });
 
+      // Convert Decimal to number for consistency
+      const convertedPackage = {
+        ...deletedPackage,
+        basePrice: deletedPackage.basePrice.toNumber(),
+        paymentMethods: deletedPackage.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      };
+
       // Notify frontend via webhook
       await this.webhookService.notifyPackageUpdate(
         id,
@@ -232,7 +281,7 @@ export class PackageService {
         'deleted',
       );
 
-      return deletedPackage;
+      return convertedPackage;
     } catch {
       throw new BadRequestException('Failed to remove package');
     }
@@ -344,11 +393,21 @@ export class PackageService {
       select: this.packageSelect,
     });
 
+    // Convert Decimal to number for consistency
+    const convertedPackage = {
+      ...updatedPackage,
+      basePrice: updatedPackage.basePrice.toNumber(),
+      paymentMethods: updatedPackage.paymentMethods?.map(pm => ({
+        ...pm,
+        price: pm.price.toNumber()
+      }))
+    };
+
     this.logger.log(`Package updated successfully`);
 
     return {
       success: true,
-      package: updatedPackage,
+      package: convertedPackage,
       fileUrl,
       message: 'Package card image uploaded successfully',
     };
@@ -404,11 +463,21 @@ export class PackageService {
       }
 
       // Update package with new image URL
-      return this.prisma.package.update({
+      const updatedPackage = await this.prisma.package.update({
         where: { id: pkg.id },
         data: { imgCardUrl: fileUrl },
         select: this.packageSelect,
       });
+
+      // Convert Decimal to number for consistency
+      return {
+        ...updatedPackage,
+        basePrice: updatedPackage.basePrice.toNumber(),
+        paymentMethods: updatedPackage.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      };
     });
 
     const updatedPackages = await Promise.all(updatePromises);

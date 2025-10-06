@@ -81,6 +81,16 @@ export class ProductService {
             orderBy: { amountCredits: 'asc' },
           });
 
+          // Convert Decimal to number for consistency
+          const convertedPackages = packages.map(pkg => ({
+            ...pkg,
+            basePrice: pkg.basePrice.toNumber(),
+            paymentMethods: pkg.paymentMethods?.map(pm => ({
+              ...pm,
+              price: pm.price.toNumber()
+            }))
+          }));
+
           // Fetch store customizations for this product
           const customization =
             await this.prisma.storeProductSettings.findFirst({
@@ -93,7 +103,7 @@ export class ProductService {
           // Merge product data with customization (fallback logic)
           const customizedProduct = {
             ...product,
-            packages,
+            packages: convertedPackages,
             storeCustomization: customization
               ? {
                   description: customization.description || product.description,
@@ -240,6 +250,16 @@ export class ProductService {
         orderBy: { amountCredits: 'asc' },
       });
 
+      // Convert Decimal to number for consistency
+      const convertedPackages = packages.map(pkg => ({
+        ...pkg,
+        basePrice: pkg.basePrice.toNumber(),
+        paymentMethods: pkg.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      }));
+
       // Fetch store customizations for this product
       const customization = await this.prisma.storeProductSettings.findFirst({
         where: {
@@ -251,7 +271,7 @@ export class ProductService {
       // Merge product data with customization (fallback logic)
       const customizedProduct = {
         ...product,
-        packages,
+        packages: convertedPackages,
         storeCustomization: customization
           ? {
               description: customization.description || product.description,

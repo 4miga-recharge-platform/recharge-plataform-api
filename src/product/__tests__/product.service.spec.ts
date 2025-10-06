@@ -17,6 +17,8 @@ describe('ProductService', () => {
   let prismaService: any;
   let storageService: any;
 
+  const dec = (n: number) => ({ toNumber: () => n } as any);
+
   const mockProduct = {
     id: 'product-123',
     name: 'Mobile Recharge',
@@ -32,7 +34,7 @@ describe('ProductService', () => {
     amountCredits: 10,
     imgCardUrl: 'https://example.com/package-card.png',
     isOffer: false,
-    basePrice: 10.0,
+    basePrice: dec(10.0),
     productId: 'product-123',
     storeId: 'store-123',
     isActive: true,
@@ -40,7 +42,7 @@ describe('ProductService', () => {
       {
         id: 'payment-123',
         name: 'Credit Card',
-        price: 10.0,
+        price: dec(10.0),
         packageId: 'package-123',
       },
     ],
@@ -187,7 +189,16 @@ describe('ProductService', () => {
       expect(result).toEqual([
         {
           ...mockProduct,
-          packages,
+          packages: [
+            {
+              ...mockPackage,
+              basePrice: 10,
+              paymentMethods: mockPackage.paymentMethods.map(pm => ({
+                ...pm,
+                price: 10,
+              })),
+            },
+          ],
           storeCustomization: null,
         },
       ]);
@@ -279,7 +290,16 @@ describe('ProductService', () => {
 
       expect(result).toEqual({
         ...mockProduct,
-        packages,
+        packages: [
+          {
+            ...mockPackage,
+            basePrice: 10,
+            paymentMethods: mockPackage.paymentMethods.map(pm => ({
+              ...pm,
+              price: 10,
+            })),
+          },
+        ],
         storeCustomization: null,
       });
     });

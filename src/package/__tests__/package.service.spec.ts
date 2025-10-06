@@ -17,6 +17,12 @@ describe('PackageService', () => {
   let prismaService: any;
   let storageService: any;
 
+  const dec = (n: number) => ({
+    toNumber: () => n,
+    valueOf: () => n,
+    toString: () => String(n),
+  } as any);
+
   const mockPackage = {
     id: 'package-123',
     name: 'Premium Package',
@@ -24,14 +30,14 @@ describe('PackageService', () => {
     imgCardUrl: 'https://example.com/package-card.png',
     isActive: true,
     isOffer: false,
-    basePrice: 19.99,
+    basePrice: dec(19.99),
     productId: 'product-123',
     storeId: 'store-123',
     paymentMethods: [
       {
         id: 'payment-123',
         name: 'pix',
-        price: 19.99,
+        price: dec(19.99),
         packageId: 'package-123',
       },
     ],
@@ -140,7 +146,16 @@ describe('PackageService', () => {
         select: mockPackageSelect,
         orderBy: { amountCredits: 'asc' },
       });
-      expect(result).toEqual(packages);
+      expect(result).toEqual([
+        {
+          ...mockPackage,
+          basePrice: 19.99,
+          paymentMethods: mockPackage.paymentMethods.map(pm => ({
+            ...pm,
+            price: 19.99,
+          })),
+        },
+      ]);
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
@@ -166,7 +181,14 @@ describe('PackageService', () => {
         where: { id: packageId },
         select: mockPackageSelect,
       });
-      expect(result).toEqual(mockPackage);
+      expect(result).toEqual({
+        ...mockPackage,
+        basePrice: 19.99,
+        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+          ...pm,
+          price: 19.99,
+        })),
+      });
     });
 
     it('should throw BadRequestException when package not found', async () => {
@@ -243,7 +265,14 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(result).toEqual(mockPackage);
+      expect(result).toEqual({
+        ...mockPackage,
+        basePrice: 19.99,
+        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+          ...pm,
+          price: 19.99,
+        })),
+      });
     });
 
     it('should create a package without payment methods successfully', async () => {
@@ -272,7 +301,14 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(result).toEqual(mockPackage);
+      expect(result).toEqual({
+        ...mockPackage,
+        basePrice: 19.99,
+        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+          ...pm,
+          price: 19.99,
+        })),
+      });
     });
 
     it('should create a package with isActive field successfully', async () => {
@@ -310,7 +346,15 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(result).toEqual({ ...mockPackage, isActive: false });
+      expect(result).toEqual({
+        ...mockPackage,
+        isActive: false,
+        basePrice: 19.99,
+        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+          ...pm,
+          price: 19.99,
+        })),
+      });
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
@@ -347,8 +391,8 @@ describe('PackageService', () => {
       validateRequiredFields.mockImplementation(() => {});
 
       const currentPaymentMethods = [
-        { id: 'pm-1', name: 'pix', price: 19.99 },
-        { id: 'pm-2', name: 'mercado_pago', price: 21.99 },
+        { id: 'pm-1', name: 'pix', price: dec(19.99) },
+        { id: 'pm-2', name: 'mercado_pago', price: dec(21.99) },
       ];
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
@@ -358,8 +402,14 @@ describe('PackageService', () => {
       prismaService.order.findFirst.mockResolvedValue(null); // No orders found
       prismaService.package.update.mockResolvedValue({
         ...mockPackage,
-        ...updatePackageDto,
-      });
+        name: updatePackageDto.name,
+        isActive: updatePackageDto.isActive,
+        basePrice: dec(updatePackageDto.basePrice as number),
+        paymentMethods: updatePackageDto.paymentMethods?.map(pm => ({
+          name: pm.name,
+          price: dec(pm.price as number),
+        })),
+      } as any);
 
       const result = await service.update(packageId, updatePackageDto);
 
@@ -393,7 +443,16 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(result).toEqual({ ...mockPackage, ...updatePackageDto });
+      expect(result).toEqual({
+        ...mockPackage,
+        name: updatePackageDto.name,
+        isActive: updatePackageDto.isActive,
+        basePrice: updatePackageDto.basePrice,
+        paymentMethods: updatePackageDto.paymentMethods?.map(pm => ({
+          name: pm.name,
+          price: pm.price,
+        })),
+      });
     });
 
     it('should update a package with product validation successfully', async () => {
@@ -406,8 +465,8 @@ describe('PackageService', () => {
       };
 
       const currentPaymentMethods = [
-        { id: 'pm-1', name: 'pix', price: 19.99 },
-        { id: 'pm-2', name: 'mercado_pago', price: 21.99 },
+        { id: 'pm-1', name: 'pix', price: dec(19.99) },
+        { id: 'pm-2', name: 'mercado_pago', price: dec(21.99) },
       ];
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
@@ -419,6 +478,11 @@ describe('PackageService', () => {
       prismaService.package.update.mockResolvedValue({
         ...mockPackage,
         ...dtoWithProductId,
+        basePrice: dec((dtoWithProductId as any).basePrice ?? 19.99),
+        paymentMethods: (dtoWithProductId as any).paymentMethods?.map((pm: any) => ({
+          name: pm.name,
+          price: dec(pm.price),
+        })) ?? mockPackage.paymentMethods,
       });
 
       const result = await service.update(packageId, dtoWithProductId);
@@ -437,8 +501,8 @@ describe('PackageService', () => {
       const dtoWithStoreId = { ...updatePackageDto, storeId: 'new-store-123' };
 
       const currentPaymentMethods = [
-        { id: 'pm-1', name: 'pix', price: 19.99 },
-        { id: 'pm-2', name: 'mercado_pago', price: 21.99 },
+        { id: 'pm-1', name: 'pix', price: dec(19.99) },
+        { id: 'pm-2', name: 'mercado_pago', price: dec(21.99) },
       ];
 
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
@@ -450,6 +514,11 @@ describe('PackageService', () => {
       prismaService.package.update.mockResolvedValue({
         ...mockPackage,
         ...dtoWithStoreId,
+        basePrice: dec((dtoWithStoreId as any).basePrice ?? 19.99),
+        paymentMethods: (dtoWithStoreId as any).paymentMethods?.map((pm: any) => ({
+          name: pm.name,
+          price: dec(pm.price),
+        })) ?? mockPackage.paymentMethods,
       });
 
       const result = await service.update(packageId, dtoWithStoreId);
@@ -527,11 +596,20 @@ describe('PackageService', () => {
       prismaService.package.update.mockResolvedValue({
         ...mockPackage,
         ...updateDtoWithoutPaymentMethods,
+        basePrice: (mockPackage as any).basePrice,
       });
 
       const result = await service.update(packageId, updateDtoWithoutPaymentMethods);
 
-      expect(result).toEqual({ ...mockPackage, ...updateDtoWithoutPaymentMethods });
+      expect(result).toEqual({
+        ...mockPackage,
+        ...updateDtoWithoutPaymentMethods,
+        basePrice: 19.99,
+        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+          ...pm,
+          price: 19.99,
+        })),
+      });
     });
 
     it('should allow payment method removal when no orders exist', async () => {
@@ -539,8 +617,8 @@ describe('PackageService', () => {
       validateRequiredFields.mockImplementation(() => {});
 
       const currentPaymentMethods = [
-        { id: 'pm-1', name: 'pix', price: 19.99 },
-        { id: 'pm-2', name: 'mercado_pago', price: 21.99 },
+        { id: 'pm-1', name: 'pix', price: dec(19.99) },
+        { id: 'pm-2', name: 'mercado_pago', price: dec(21.99) },
       ];
 
       const updateDtoWithRemoval = {
@@ -558,6 +636,11 @@ describe('PackageService', () => {
       prismaService.package.update.mockResolvedValue({
         ...mockPackage,
         ...updateDtoWithRemoval,
+        basePrice: (mockPackage as any).basePrice,
+        paymentMethods: updateDtoWithRemoval.paymentMethods.map(pm => ({
+          name: pm.name,
+          price: dec(pm.price),
+        })),
       });
 
       const result = await service.update(packageId, updateDtoWithRemoval);
@@ -576,7 +659,12 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(result).toEqual({ ...mockPackage, ...updateDtoWithRemoval });
+      expect(result).toEqual({
+        ...mockPackage,
+        ...updateDtoWithRemoval,
+        basePrice: 19.99,
+        paymentMethods: updateDtoWithRemoval.paymentMethods,
+      });
     });
 
     it('should not modify payment methods when same name and price are provided', async () => {
@@ -584,8 +672,8 @@ describe('PackageService', () => {
       validateRequiredFields.mockImplementation(() => {});
 
       const currentPaymentMethods = [
-        { id: 'pm-1', name: 'pix', price: 19.99 },
-        { id: 'pm-2', name: 'mercado_pago', price: 21.99 },
+        { id: 'pm-1', name: 'pix', price: dec(19.99) },
+        { id: 'pm-2', name: 'mercado_pago', price: dec(21.99) },
       ];
 
       const updateDtoSamePaymentMethods = {
@@ -602,6 +690,11 @@ describe('PackageService', () => {
       prismaService.package.update.mockResolvedValue({
         ...mockPackage,
         ...updateDtoSamePaymentMethods,
+        basePrice: (mockPackage as any).basePrice,
+        paymentMethods: updateDtoSamePaymentMethods.paymentMethods.map(pm => ({
+          name: pm.name,
+          price: dec(pm.price),
+        })),
       });
 
       const result = await service.update(
@@ -629,6 +722,8 @@ describe('PackageService', () => {
       expect(result).toEqual({
         ...mockPackage,
         ...updateDtoSamePaymentMethods,
+        basePrice: 19.99,
+        paymentMethods: updateDtoSamePaymentMethods.paymentMethods,
       });
     });
   });
@@ -652,7 +747,14 @@ describe('PackageService', () => {
         select: mockPackageSelect,
       });
 
-      expect(result).toEqual(mockPackage);
+      expect(result).toEqual({
+        ...mockPackage,
+        basePrice: 19.99,
+        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+          ...pm,
+          price: 19.99,
+        })),
+      });
     });
 
     it('should throw BadRequestException when package not found', async () => {
@@ -703,10 +805,16 @@ describe('PackageService', () => {
       storageService.uploadFile.mockResolvedValue(uploadedUrl);
       const updated = {
         id: packageId,
+        name: 'Premium Package',
+        amountCredits: 100,
         storeId,
         imgCardUrl: uploadedUrl,
         productId,
-      };
+        isActive: true,
+        isOffer: false,
+        basePrice: dec(19.99),
+        paymentMethods: [],
+      } as any;
       prismaService.package.update.mockResolvedValue(updated);
 
       const result = await service.uploadCardImage(
@@ -756,8 +864,8 @@ describe('PackageService', () => {
       storageService.uploadFile.mockResolvedValue(uploadedUrl);
 
       const updatedPackages = [
-        { id: 'package-1', storeId, imgCardUrl: uploadedUrl },
-        { id: 'package-2', storeId, imgCardUrl: uploadedUrl },
+        { id: 'package-1', name: 'P1', amountCredits: 10, storeId, imgCardUrl: uploadedUrl, basePrice: dec(9.99), paymentMethods: [] },
+        { id: 'package-2', name: 'P2', amountCredits: 20, storeId, imgCardUrl: uploadedUrl, basePrice: dec(19.99), paymentMethods: [] },
       ];
       prismaService.package.update.mockResolvedValue(updatedPackages[0]);
 
@@ -813,8 +921,16 @@ describe('PackageService', () => {
       );
       prismaService.package.update.mockResolvedValue({
         id: packageId,
+        name: 'Premium Package',
+        amountCredits: 100,
         storeId,
-      });
+        imgCardUrl: 'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.jpg',
+        productId,
+        basePrice: dec(19.99),
+        isActive: true,
+        isOffer: false,
+        paymentMethods: [],
+      } as any);
 
       const result = await service.uploadCardImage(
         packageId,
