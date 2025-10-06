@@ -36,6 +36,7 @@ describe('PackageController', () => {
       update: jest.fn(),
       remove: jest.fn(),
       uploadCardImage: jest.fn(),
+      cleanupPackageImages: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -389,6 +390,31 @@ describe('PackageController', () => {
         controller.uploadCardImage(packageId, undefined as any, 'false', user),
       ).rejects.toThrow('No file provided');
       expect(packageService.uploadCardImage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cleanupImages', () => {
+    const user = { id: 'user-1', storeId: 'store-123' } as any;
+
+    it('should cleanup images for a specific product', async () => {
+      const productId = 'product-123';
+      const mockResponse = { deleted: ['url1'], skipped: [], errors: [] };
+      packageService.cleanupPackageImages.mockResolvedValue(mockResponse);
+
+      const result = await controller.cleanupImages(productId, user);
+
+      expect(packageService.cleanupPackageImages).toHaveBeenCalledWith(productId, user.storeId);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should cleanup images for all products when productId is omitted', async () => {
+      const mockResponse = { perProduct: { 'product-1': { deleted: [], skipped: [], errors: [] } } };
+      packageService.cleanupPackageImages.mockResolvedValue(mockResponse);
+
+      const result = await controller.cleanupImages(undefined as any, user);
+
+      expect(packageService.cleanupPackageImages).toHaveBeenCalledWith(undefined, user.storeId);
+      expect(result).toEqual(mockResponse);
     });
   });
 });

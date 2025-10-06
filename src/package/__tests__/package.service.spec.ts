@@ -80,6 +80,9 @@ describe('PackageService', () => {
       product: {
         findUnique: jest.fn(),
       },
+      storeProductSettings: {
+        findUnique: jest.fn(),
+      },
       store: {
         findUnique: jest.fn(),
       },
@@ -101,6 +104,7 @@ describe('PackageService', () => {
       uploadFile: jest.fn(),
       deleteFile: jest.fn(),
       getBucketUrl: jest.fn(),
+      listFiles: jest.fn(),
     } as Partial<StorageService>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -733,13 +737,17 @@ describe('PackageService', () => {
 
     it('should remove a package successfully', async () => {
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: null });
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: null });
+      prismaService.package.count = jest.fn().mockResolvedValue(0);
+      storageService.deleteFile.mockResolvedValue(undefined);
       prismaService.package.delete.mockResolvedValue(mockPackage);
 
       const result = await service.remove(packageId);
 
       expect(prismaService.package.findUnique).toHaveBeenCalledWith({
         where: { id: packageId },
-        select: mockPackageSelect,
+        select: { id: true, imgCardUrl: true, storeId: true, productId: true },
       });
 
       expect(prismaService.package.delete).toHaveBeenCalledWith({
@@ -774,6 +782,66 @@ describe('PackageService', () => {
       await expect(service.remove(packageId)).rejects.toThrow(
         new BadRequestException('Failed to remove package'),
       );
+    });
+  });
+
+  describe('cleanupPackageImages', () => {
+    const storeId = 'store-123';
+    const productId = 'product-123';
+
+    it('should delete unreferenced package images for a specific product', async () => {
+      // Defaults
+      prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: 'https://storage.googleapis.com/bucket/product-default.png' });
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: 'https://storage.googleapis.com/bucket/store-default.png' });
+      // Packages referencing
+      prismaService.package.findMany.mockResolvedValue([
+        { id: 'p1', imgCardUrl: 'https://storage.googleapis.com/bucket/store/store-123/product/product-123/package/p1/card.png?v=1' },
+      ]);
+      // Files in bucket
+      (storageService.getBucketUrl as jest.Mock).mockReturnValue('https://storage.googleapis.com/bucket');
+      (storageService.listFiles as jest.Mock).mockResolvedValue([
+        'store/store-123/product/product-123/package/p1/card.png', // referenced → skip
+        'store/store-123/product/product-123/package/p2/card.png', // unreferenced → delete
+        'store/store-123/product/product-123/package/p3/card.png', // unreferenced → delete
+      ]);
+      (storageService.deleteFile as jest.Mock).mockResolvedValue(undefined);
+
+      const result = (await service.cleanupPackageImages(productId, storeId)) as any;
+
+      expect(storageService.listFiles).toHaveBeenCalledWith(`store/${storeId}/product/${productId}/package/`);
+      expect(storageService.deleteFile).toHaveBeenCalledTimes(2);
+      expect(result.deleted.length).toBe(2);
+      expect(result.skipped.find((s: any) => s.reason === 'referenced_by_package')).toBeTruthy();
+    });
+
+    it('should return errors when deletion fails', async () => {
+      prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: null });
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: null });
+      prismaService.package.findMany.mockResolvedValue([]);
+      (storageService.getBucketUrl as jest.Mock).mockReturnValue('https://storage.googleapis.com/bucket');
+      (storageService.listFiles as jest.Mock).mockResolvedValue([
+        'store/store-123/product/product-123/package/pX/card.png',
+      ]);
+      (storageService.deleteFile as jest.Mock).mockRejectedValue(new Error('fail'));
+
+      const result = (await service.cleanupPackageImages(productId, storeId)) as any;
+      expect(result.errors.length).toBe(1);
+    });
+
+    it('should iterate all products when productId is missing', async () => {
+      prismaService.package.findMany
+        .mockResolvedValueOnce([{ productId: 'prod-1' }, { productId: 'prod-2' }]) // distinct query simulation
+        .mockResolvedValueOnce([]) // for prod-1 referenced
+        .mockResolvedValueOnce([]); // for prod-2 referenced
+
+      prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: null });
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: null });
+      (storageService.getBucketUrl as jest.Mock).mockReturnValue('https://storage.googleapis.com/bucket');
+      (storageService.listFiles as jest.Mock).mockResolvedValue([]);
+
+      const result = (await service.cleanupPackageImages(undefined, storeId)) as any;
+      expect(result).toHaveProperty('perProduct');
+      expect(storageService.listFiles).toHaveBeenCalledTimes(2);
     });
   });
 
