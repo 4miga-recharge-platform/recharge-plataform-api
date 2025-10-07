@@ -114,4 +114,17 @@ export class PackageController {
 
     return this.packageService.uploadCardImage(packageId, file, user.storeId, shouldUpdateAll);
   }
+
+  @Post('images/cleanup')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cleanup unreferenced package images for a product in the current store' })
+  @ApiQuery({ name: 'productId', required: false, type: String })
+  cleanupImages(
+    @Query('productId') productId: string | undefined,
+    @LoggedUser() user: User,
+  ) {
+    return this.packageService.cleanupPackageImages(productId, user.storeId);
+  }
 }

@@ -101,13 +101,30 @@ export class StorageService {
       await file.delete();
       this.logger.log(`File deleted successfully: ${fileUrl}`);
     } catch (error) {
-      this.logger.error(`Failed to delete file: ${error.message}`);
-      throw new Error(`Delete failed: ${error.message}`);
+      // Ignore NOT FOUND errors to make deletion idempotent and robust
+      const message = (error as any)?.message || '';
+      if (message.includes('No such object')) {
+        this.logger.warn(`File not found during delete (ignoring): ${fileUrl}`);
+        return;
+      }
+      this.logger.error(`Failed to delete file: ${message}`);
+      throw new Error(`Delete failed: ${message}`);
     }
   }
 
   async getFileUrl(filePath: string): Promise<string> {
     return `https://storage.googleapis.com/${this.bucketName}/${filePath}`;
+  }
+
+  async listFiles(prefix: string): Promise<string[]> {
+    try {
+      const bucket = this.storage.bucket(this.bucketName);
+      const [files] = await bucket.getFiles({ prefix });
+      return files.map(f => f.name);
+    } catch (error) {
+      this.logger.error(`Failed to list files for prefix ${prefix}: ${error.message}`);
+      throw new Error(`List failed: ${error.message}`);
+    }
   }
 
   /**
@@ -149,6 +166,11 @@ export class StorageService {
 
   private extractFileNameFromUrl(fileUrl: string): string {
     const url = new URL(fileUrl);
-    return url.pathname.substring(1);
+    const pathname = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+    // pathname may be "<bucket>/<filePath>" for public URLs; strip leading bucket segment if present
+    if (pathname.startsWith(`${this.bucketName}/`)) {
+      return pathname.substring(this.bucketName.length + 1);
+    }
+    return pathname;
   }
 }
