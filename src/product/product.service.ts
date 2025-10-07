@@ -119,7 +119,18 @@ export class ProductService {
           return customizedProduct;
         }),
       );
-      return productsWithPackagesAndCustomizations;
+
+      // Sort products: "Bigo Live" always first, then others by name
+      const sortedProducts = productsWithPackagesAndCustomizations.sort((a, b) => {
+        const aIsBigo = a.name.toLowerCase().includes('bigo');
+        const bIsBigo = b.name.toLowerCase().includes('bigo');
+
+        if (aIsBigo && !bIsBigo) return -1;
+        if (!aIsBigo && bIsBigo) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return sortedProducts;
     } catch {
       throw new BadRequestException('Failed to fetch products');
     }
@@ -127,7 +138,19 @@ export class ProductService {
 
   async findAllForAdmin(): Promise<Product[]> {
     try {
-      return await this.prisma.product.findMany({ select: this.productSelect });
+      const products = await this.prisma.product.findMany({ select: this.productSelect });
+
+      // Sort products: "Bigo Live" always first, then others by name
+      const sortedProducts = products.sort((a, b) => {
+        const aIsBigo = a.name.toLowerCase().includes('bigo');
+        const bIsBigo = b.name.toLowerCase().includes('bigo');
+
+        if (aIsBigo && !bIsBigo) return -1;
+        if (!aIsBigo && bIsBigo) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return sortedProducts;
     } catch {
       throw new BadRequestException('Failed to fetch products');
     }

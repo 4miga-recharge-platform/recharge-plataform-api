@@ -16,6 +16,9 @@ const envSchema = z.object({
   GCP_BUCKET_NAME: z.string().optional(),
   GCP_CLIENT_EMAIL: z.string().optional(),
   GCP_PRIVATE_KEY: z.string().optional(),
+  // Webhooks for frontend revalidation
+  STORE_WEBHOOKS: z.string().optional(),
+  REVALIDATE_TOKEN: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

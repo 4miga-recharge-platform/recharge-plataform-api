@@ -82,7 +82,7 @@ export class WebhookService {
 
     // Send to ALL stores (products are global)
     const promises = this.storeWebhooks.map(store =>
-      this.sendWebhook(store, '/api/webhook/product-update', webhookData)
+      this.sendWebhook(store, '/api/revalidate-products', webhookData)
     );
 
     try {
@@ -126,7 +126,7 @@ export class WebhookService {
     console.log('🔍 DEBUG: Will send to store:', `${store.storeName} (${store.storeId})`);
 
     try {
-      await this.sendWebhook(store, '/api/webhook/package-update', webhookData);
+      await this.sendWebhook(store, '/api/revalidate-products', webhookData);
       this.logger.log(`Package webhook sent successfully: ${packageId} ${action} for store ${store.storeName} (${storeId})`);
     } catch (error) {
       this.logger.error(`Failed to send package webhook for ${packageId}:`, error.message);
@@ -173,11 +173,15 @@ export class WebhookService {
     console.log('🔍 DEBUG: ==============================');
 
     try {
+      const token = process.env.REVALIDATE_TOKEN;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await axios.post(fullUrl, data, {
         timeout: 5000, // 5 second timeout
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       console.log('✅ DEBUG: Webhook SUCCESS for', store.storeName);
