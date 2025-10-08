@@ -61,6 +61,7 @@ describe('ProductController', () => {
       findAll: jest.fn(),
       findAllForAdmin: jest.fn(),
       findOne: jest.fn(),
+      findBigoProduct: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
@@ -160,6 +161,68 @@ describe('ProductController', () => {
         'Product not found',
       );
       expect(productService.findOne).toHaveBeenCalledWith(productId, storeId);
+    });
+  });
+
+  describe('findBigoProduct', () => {
+    const storeId = 'store-123';
+    const mockBigoProduct = {
+      id: 'bigo-product-123',
+      name: 'Bigo Live',
+      description: 'Recharge diamonds for Bigo Live',
+      instructions: 'Enter your Bigo Live ID',
+      imgBannerUrl: 'https://example.com/bigo-banner.png',
+      imgCardUrl: 'https://example.com/bigo-card.png',
+      packages: [
+        {
+          id: 'package-123',
+          name: '100 Diamonds',
+          amountCredits: 100,
+          imgCardUrl: 'https://example.com/package-card.png',
+          isOffer: false,
+          basePrice: 5.0,
+          productId: 'bigo-product-123',
+          storeId: 'store-123',
+          paymentMethods: [
+            {
+              id: 'payment-123',
+              name: 'Credit Card',
+              price: 5.0,
+              packageId: 'package-123',
+            },
+          ],
+        },
+      ],
+      storeCustomization: null,
+    };
+
+    it('should return Bigo product with packages successfully', async () => {
+      productService.findBigoProduct.mockResolvedValue(mockBigoProduct);
+
+      const result = await controller.findBigoProduct(storeId);
+
+      expect(productService.findBigoProduct).toHaveBeenCalledWith(storeId);
+      expect(result).toEqual(mockBigoProduct);
+    });
+
+    it('should handle errors when Bigo product not found', async () => {
+      const error = new Error('Bigo product not found');
+      productService.findBigoProduct.mockRejectedValue(error);
+
+      await expect(controller.findBigoProduct(storeId)).rejects.toThrow(
+        'Bigo product not found',
+      );
+      expect(productService.findBigoProduct).toHaveBeenCalledWith(storeId);
+    });
+
+    it('should handle database errors', async () => {
+      const error = new Error('Failed to fetch Bigo product');
+      productService.findBigoProduct.mockRejectedValue(error);
+
+      await expect(controller.findBigoProduct(storeId)).rejects.toThrow(
+        'Failed to fetch Bigo product',
+      );
+      expect(productService.findBigoProduct).toHaveBeenCalledWith(storeId);
     });
   });
 

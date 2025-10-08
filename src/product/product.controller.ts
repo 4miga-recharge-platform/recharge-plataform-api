@@ -180,6 +180,17 @@ export class ProductController {
     );
   }
 
+  @Get('bigo')
+  @ApiOperation({ summary: 'Get Bigo product with packages for a store' })
+  @ApiQuery({
+    name: 'storeId',
+    required: true,
+    description: 'Store ID to filter packages',
+  })
+  findBigoProduct(@Query('storeId') storeId: string) {
+    return this.productService.findBigoProduct(storeId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a product by id with packages for a store' })
   @ApiQuery({
