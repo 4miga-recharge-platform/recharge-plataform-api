@@ -202,4 +202,140 @@ export class UserService {
       throw new BadRequestException('Failed to remove user');
     }
   }
+
+  async findEmailsByStore(storeId: string, search?: string): Promise<{ id: string; email: string }[]> {
+    try {
+      const where: any = {
+        storeId,
+        role: 'USER', // Only non-admin users
+      };
+
+      if (search) {
+        where.email = {
+          contains: search,
+          mode: 'insensitive',
+        };
+      }
+
+      const users = await this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+        },
+        orderBy: {
+          email: 'asc',
+        },
+      });
+
+      return users;
+    } catch {
+      throw new BadRequestException('Failed to fetch emails');
+    }
+  }
+
+  async findAdminsByStore(storeId: string): Promise<{ id: string; email: string }[]> {
+    try {
+      const admins = await this.prisma.user.findMany({
+        where: {
+          storeId,
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+        },
+        select: {
+          id: true,
+          email: true,
+        },
+        orderBy: {
+          email: 'asc',
+        },
+      });
+
+      return admins;
+    } catch {
+      throw new BadRequestException('Failed to fetch admins');
+    }
+  }
+
+  async promoteToAdmin(userId: string, adminStoreId: string): Promise<User> {
+    try {
+      // Find user with password select to get full data
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      // Validate user belongs to same store
+      if (user.storeId !== adminStoreId) {
+        throw new BadRequestException('Cannot promote users from different stores');
+      }
+
+      // Check if user is already an admin
+      if (user.role !== 'USER') {
+        throw new BadRequestException('User is already an admin');
+      }
+
+      // Promote user
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+        },
+        select: this.userSelect,
+      });
+
+      return updatedUser;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to promote user');
+    }
+  }
+
+  async demoteToUser(userId: string, adminStoreId: string, currentUserId: string): Promise<User> {
+    try {
+      // Prevent self-demotion
+      if (userId === currentUserId) {
+        throw new BadRequestException('Cannot demote yourself');
+      }
+
+      // Find user
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      // Validate user belongs to same store
+      if (user.storeId !== adminStoreId) {
+        throw new BadRequestException('Cannot demote users from different stores');
+      }
+
+      // Check if user is a reseller admin
+      if (user.role !== 'RESELLER_ADMIN_4MIGA_USER') {
+        throw new BadRequestException('User is not a reseller admin');
+      }
+
+      // Demote user
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          role: 'USER',
+        },
+        select: this.userSelect,
+      });
+
+      return updatedUser;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to demote user');
+    }
+  }
 }
