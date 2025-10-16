@@ -1,26 +1,28 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
-  UseInterceptors,
+  UnauthorizedException,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserService } from './user.service';
-import { UserCleanupService } from './user-cleanup.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleGuard } from '../auth/guards/role.guard';
+import { LoggedUser } from '../auth/logged-user.decorator';
+import { ValidationInterceptor } from '../common/interceptors/validation.interceptor';
+import { ConfirmRoleChangeDto } from './dto/confirm-role-change.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ValidationInterceptor } from '../common/interceptors/validation.interceptor';
-import { RoleGuard } from '../auth/guards/role.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { LoggedUser } from '../auth/logged-user.decorator';
 import { User } from './entities/user.entity';
+import { UserCleanupService } from './user-cleanup.service';
+import { UserService } from './user.service';
 
 @ApiTags('user')
 @Controller('user')
@@ -54,7 +56,10 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all user emails from the logged admin store (non-admins only)' })
+  @ApiOperation({
+    summary:
+      'Get all user emails from the logged admin store (non-admins only)',
+  })
   findEmails(@LoggedUser() user: User, @Query('search') search?: string) {
     return this.userService.findEmailsByStore(user.storeId, search);
   }
@@ -72,17 +77,49 @@ export class UserController {
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Promote a user to admin' })
-  promoteToAdmin(@Param('id') id: string, @LoggedUser() user: User) {
-    return this.userService.promoteToAdmin(id, user.storeId);
+  @ApiOperation({
+    summary: 'Promote a user to admin (requires password confirmation)',
+  })
+  async promoteToAdmin(
+    @Param('id') id: string,
+    @LoggedUser() user: User,
+    @Body() confirmDto: ConfirmRoleChangeDto,
+  ) {
+    // Validate admin password before promoting
+    const isPasswordValid = await this.userService.validatePassword(
+      user.id,
+      confirmDto.password,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    return this.userService.promoteToAdmin(id, user.storeId, user.id);
   }
 
   @Patch(':id/demote')
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Demote an admin to regular user' })
-  demoteToUser(@Param('id') id: string, @LoggedUser() user: User) {
+  @ApiOperation({
+    summary: 'Demote an admin to regular user (requires password confirmation)',
+  })
+  async demoteToUser(
+    @Param('id') id: string,
+    @LoggedUser() user: User,
+    @Body() confirmDto: ConfirmRoleChangeDto,
+  ) {
+    // Validate admin password before demoting
+    const isPasswordValid = await this.userService.validatePassword(
+      user.id,
+      confirmDto.password,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
     return this.userService.demoteToUser(id, user.storeId, user.id);
   }
 

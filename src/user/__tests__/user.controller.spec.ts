@@ -5,6 +5,7 @@ import { UserCleanupService } from '../user-cleanup.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { User } from '../entities/user.entity';
+import { ConfirmRoleChangeDto } from '../dto/confirm-role-change.dto';
 
 describe('UserController', () => {
   let controller: UserController;
@@ -325,11 +326,14 @@ describe('UserController', () => {
       const userToPromote = 'user-456';
       const promotedUser = { ...mockUser, id: userToPromote, role: 'RESELLER_ADMIN_4MIGA_USER' };
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.promoteToAdmin.mockResolvedValue(promotedUser);
 
-      const result = await controller.promoteToAdmin(userToPromote, loggedUser as User);
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      const result = await controller.promoteToAdmin(userToPromote, loggedUser as User, confirmDto);
 
-      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId);
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
+      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId, loggedUser.id);
       expect(result).toEqual(promotedUser);
     });
 
@@ -337,33 +341,42 @@ describe('UserController', () => {
       const loggedUser = { ...mockUser, role: 'RESELLER_ADMIN_4MIGA_USER' };
       const userToPromote = 'invalid-user';
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.promoteToAdmin.mockRejectedValue(new Error('User not found'));
 
-      await expect(controller.promoteToAdmin(userToPromote, loggedUser as User)).rejects.toThrow('User not found');
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      await expect(controller.promoteToAdmin(userToPromote, loggedUser as User, confirmDto)).rejects.toThrow('User not found');
 
-      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId);
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
+      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId, loggedUser.id);
     });
 
     it('should handle error when user is from different store', async () => {
       const loggedUser = { ...mockUser, role: 'RESELLER_ADMIN_4MIGA_USER' };
       const userToPromote = 'user-456';
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.promoteToAdmin.mockRejectedValue(new Error('Cannot promote users from different stores'));
 
-      await expect(controller.promoteToAdmin(userToPromote, loggedUser as User)).rejects.toThrow('Cannot promote users from different stores');
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      await expect(controller.promoteToAdmin(userToPromote, loggedUser as User, confirmDto)).rejects.toThrow('Cannot promote users from different stores');
 
-      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId);
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
+      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId, loggedUser.id);
     });
 
     it('should handle error when user is already an admin', async () => {
       const loggedUser = { ...mockUser, role: 'RESELLER_ADMIN_4MIGA_USER' };
       const userToPromote = 'user-456';
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.promoteToAdmin.mockRejectedValue(new Error('User is already an admin'));
 
-      await expect(controller.promoteToAdmin(userToPromote, loggedUser as User)).rejects.toThrow('User is already an admin');
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      await expect(controller.promoteToAdmin(userToPromote, loggedUser as User, confirmDto)).rejects.toThrow('User is already an admin');
 
-      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId);
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
+      expect(userService.promoteToAdmin).toHaveBeenCalledWith(userToPromote, loggedUser.storeId, loggedUser.id);
     });
   });
 
@@ -373,10 +386,13 @@ describe('UserController', () => {
       const adminToDemote = 'admin-456';
       const demotedUser = { ...mockUser, id: adminToDemote, role: 'USER' };
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.demoteToUser.mockResolvedValue(demotedUser);
 
-      const result = await controller.demoteToUser(adminToDemote, loggedUser as User);
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      const result = await controller.demoteToUser(adminToDemote, loggedUser as User, confirmDto);
 
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
       expect(userService.demoteToUser).toHaveBeenCalledWith(adminToDemote, loggedUser.storeId, loggedUser.id);
       expect(result).toEqual(demotedUser);
     });
@@ -384,10 +400,13 @@ describe('UserController', () => {
     it('should handle error when trying to demote self', async () => {
       const loggedUser = { ...mockUser, role: 'RESELLER_ADMIN_4MIGA_USER' };
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.demoteToUser.mockRejectedValue(new Error('Cannot demote yourself'));
 
-      await expect(controller.demoteToUser(loggedUser.id, loggedUser as User)).rejects.toThrow('Cannot demote yourself');
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      await expect(controller.demoteToUser(loggedUser.id, loggedUser as User, confirmDto)).rejects.toThrow('Cannot demote yourself');
 
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
       expect(userService.demoteToUser).toHaveBeenCalledWith(loggedUser.id, loggedUser.storeId, loggedUser.id);
     });
 
@@ -395,10 +414,13 @@ describe('UserController', () => {
       const loggedUser = { ...mockUser, role: 'RESELLER_ADMIN_4MIGA_USER' };
       const adminToDemote = 'invalid-admin';
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.demoteToUser.mockRejectedValue(new Error('User not found'));
 
-      await expect(controller.demoteToUser(adminToDemote, loggedUser as User)).rejects.toThrow('User not found');
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      await expect(controller.demoteToUser(adminToDemote, loggedUser as User, confirmDto)).rejects.toThrow('User not found');
 
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
       expect(userService.demoteToUser).toHaveBeenCalledWith(adminToDemote, loggedUser.storeId, loggedUser.id);
     });
 
@@ -406,10 +428,13 @@ describe('UserController', () => {
       const loggedUser = { ...mockUser, role: 'RESELLER_ADMIN_4MIGA_USER' };
       const adminToDemote = 'admin-456';
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.demoteToUser.mockRejectedValue(new Error('Cannot demote users from different stores'));
 
-      await expect(controller.demoteToUser(adminToDemote, loggedUser as User)).rejects.toThrow('Cannot demote users from different stores');
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      await expect(controller.demoteToUser(adminToDemote, loggedUser as User, confirmDto)).rejects.toThrow('Cannot demote users from different stores');
 
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
       expect(userService.demoteToUser).toHaveBeenCalledWith(adminToDemote, loggedUser.storeId, loggedUser.id);
     });
 
@@ -417,10 +442,13 @@ describe('UserController', () => {
       const loggedUser = { ...mockUser, role: 'RESELLER_ADMIN_4MIGA_USER' };
       const adminToDemote = 'user-456';
 
+      userService.validatePassword = jest.fn().mockResolvedValue(true);
       userService.demoteToUser.mockRejectedValue(new Error('User is not a reseller admin'));
 
-      await expect(controller.demoteToUser(adminToDemote, loggedUser as User)).rejects.toThrow('User is not a reseller admin');
+      const confirmDto: ConfirmRoleChangeDto = { password: 'valid-pass' } as any;
+      await expect(controller.demoteToUser(adminToDemote, loggedUser as User, confirmDto)).rejects.toThrow('User is not a reseller admin');
 
+      expect(userService.validatePassword).toHaveBeenCalledWith(loggedUser.id, confirmDto.password);
       expect(userService.demoteToUser).toHaveBeenCalledWith(adminToDemote, loggedUser.storeId, loggedUser.id);
     });
   });

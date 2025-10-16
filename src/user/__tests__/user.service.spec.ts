@@ -475,13 +475,14 @@ describe('UserService', () => {
     it('should promote a user to admin successfully', async () => {
       const userId = 'user-456';
       const adminStoreId = 'store-123';
+      const currentUserId = 'current-admin-123';
       const userToPromote = { ...mockUser, id: userId };
       const promotedUser = { ...mockUser, id: userId, role: 'RESELLER_ADMIN_4MIGA_USER' };
 
       prismaService.user.findUnique.mockResolvedValue(userToPromote);
       prismaService.user.update.mockResolvedValue(promotedUser);
 
-      const result = await service.promoteToAdmin(userId, adminStoreId);
+      const result = await service.promoteToAdmin(userId, adminStoreId, currentUserId);
 
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
         where: { id: userId },
@@ -491,6 +492,8 @@ describe('UserService', () => {
         where: { id: userId },
         data: {
           role: 'RESELLER_ADMIN_4MIGA_USER',
+          roleChangedBy: currentUserId,
+          roleChangedAt: expect.any(Date),
         },
         select: mockUserSelect,
       });
@@ -501,10 +504,11 @@ describe('UserService', () => {
     it('should throw BadRequestException when user not found', async () => {
       const userId = 'user-456';
       const adminStoreId = 'store-123';
+      const currentUserId = 'current-admin-123';
 
       prismaService.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.promoteToAdmin(userId, adminStoreId)).rejects.toThrow(
+      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
         new BadRequestException('User not found'),
       );
     });
@@ -512,11 +516,12 @@ describe('UserService', () => {
     it('should throw BadRequestException when user is from different store', async () => {
       const userId = 'user-456';
       const adminStoreId = 'store-123';
+      const currentUserId = 'current-admin-123';
       const userFromDifferentStore = { ...mockUser, id: userId, storeId: 'different-store' };
 
       prismaService.user.findUnique.mockResolvedValue(userFromDifferentStore);
 
-      await expect(service.promoteToAdmin(userId, adminStoreId)).rejects.toThrow(
+      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
         new BadRequestException('Cannot promote users from different stores'),
       );
     });
@@ -524,11 +529,12 @@ describe('UserService', () => {
     it('should throw BadRequestException when user is already an admin', async () => {
       const userId = 'user-456';
       const adminStoreId = 'store-123';
+      const currentUserId = 'current-admin-123';
       const adminUser = { ...mockUser, id: userId, role: 'RESELLER_ADMIN_4MIGA_USER' };
 
       prismaService.user.findUnique.mockResolvedValue(adminUser);
 
-      await expect(service.promoteToAdmin(userId, adminStoreId)).rejects.toThrow(
+      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
         new BadRequestException('User is already an admin'),
       );
     });
@@ -536,12 +542,13 @@ describe('UserService', () => {
     it('should throw BadRequestException when database error occurs during update', async () => {
       const userId = 'user-456';
       const adminStoreId = 'store-123';
+      const currentUserId = 'current-admin-123';
       const userToPromote = { ...mockUser, id: userId };
 
       prismaService.user.findUnique.mockResolvedValue(userToPromote);
       prismaService.user.update.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.promoteToAdmin(userId, adminStoreId)).rejects.toThrow(
+      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
         new BadRequestException('Failed to promote user'),
       );
     });
@@ -568,6 +575,8 @@ describe('UserService', () => {
         where: { id: userId },
         data: {
           role: 'USER',
+          roleChangedBy: currentUserId,
+          roleChangedAt: expect.any(Date),
         },
         select: mockUserSelect,
       });

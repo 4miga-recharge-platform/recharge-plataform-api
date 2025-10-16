@@ -79,6 +79,8 @@ model User {
   emailConfirmationCode    String?
   emailVerified            Boolean        @default(false)
   emailConfirmationExpires DateTime?
+  roleChangedAt            DateTime?
+  roleChangedBy            String?
   orders                   Order[]
   store                    Store          @relation(fields: [storeId], references: [id])
 
