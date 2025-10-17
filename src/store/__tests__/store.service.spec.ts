@@ -32,7 +32,7 @@ describe('StoreService', () => {
     miniLogoUrl: 'https://example.com/mini-logo.png',
     faviconUrl: 'https://example.com/favicon.ico',
     bannersUrl: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
-    onSaleUrlImg: 'https://example.com/on-sale.png',
+    offerBannerImage: 'https://example.com/offer-banner.png',
   };
 
   const mockStoreSelect = {
@@ -48,13 +48,15 @@ describe('StoreService', () => {
     miniLogoUrl: true,
     faviconUrl: true,
     bannersUrl: true,
-    onSaleUrlImg: true,
+    offerBannerImage: true,
     createdAt: false,
     updatedAt: false,
     users: false,
     packages: false,
     orders: false,
   };
+
+  let mockStorageService: any;
 
   beforeEach(async () => {
     const mockPrismaService = {
@@ -67,7 +69,7 @@ describe('StoreService', () => {
       },
     };
 
-    const mockStorageService = {
+    mockStorageService = {
       uploadFile: jest.fn(),
       deleteFile: jest.fn(),
       getFileUrlWithTimestamp: jest.fn(),
@@ -296,6 +298,273 @@ describe('StoreService', () => {
 
       await expect(service.remove(storeId)).rejects.toThrow(
         new BadRequestException('Failed to remove store'),
+      );
+    });
+  });
+
+  describe('addBanner', () => {
+    const storeId = 'store-123';
+    const mockFile = {
+      fieldname: 'file',
+      originalname: 'banner.png',
+      encoding: '7bit',
+      mimetype: 'image/png',
+      buffer: Buffer.from('fake-image-data'),
+      size: 1024,
+    };
+
+    it('should add a banner successfully', async () => {
+      mockStorageService.uploadFile.mockResolvedValue('https://storage.com/banner.png');
+
+      prismaService.store.findUnique.mockResolvedValue({
+        id: storeId,
+        bannersUrl: ['https://storage.com/existing-banner.png'],
+      });
+
+      const updatedStore = {
+        ...mockStore,
+        bannersUrl: ['https://storage.com/existing-banner.png', 'https://storage.com/banner.png'],
+      };
+
+      prismaService.store.update.mockResolvedValue(updatedStore);
+
+      const result = await service.addBanner(storeId, mockFile);
+
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+        select: { id: true, bannersUrl: true },
+      });
+
+      expect(mockStorageService.uploadFile).toHaveBeenCalled();
+      expect(prismaService.store.update).toHaveBeenCalledWith({
+        where: { id: storeId },
+        data: {
+          bannersUrl: ['https://storage.com/existing-banner.png', 'https://storage.com/banner.png'],
+        },
+        select: mockStoreSelect,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.store).toEqual(updatedStore);
+    });
+
+    it('should throw BadRequestException when store not found', async () => {
+      prismaService.store.findUnique.mockResolvedValue(null);
+
+      await expect(service.addBanner(storeId, mockFile)).rejects.toThrow(
+        new BadRequestException('Store not found'),
+      );
+    });
+
+    it('should throw BadRequestException when maximum banners reached', async () => {
+      prismaService.store.findUnique.mockResolvedValue({
+        id: storeId,
+        bannersUrl: Array(5).fill('https://storage.com/banner.png'),
+      });
+
+      await expect(service.addBanner(storeId, mockFile)).rejects.toThrow(
+        new BadRequestException('Maximum of 5 banners allowed'),
+      );
+    });
+  });
+
+  describe('removeBanner', () => {
+    const storeId = 'store-123';
+    const bannerIndex = 1;
+
+    it('should remove a banner successfully', async () => {
+      mockStorageService.deleteFile.mockResolvedValue(undefined);
+
+      prismaService.store.findUnique.mockResolvedValue({
+        id: storeId,
+        bannersUrl: ['https://storage.com/banner1.png', 'https://storage.com/banner2.png', 'https://storage.com/banner3.png'],
+      });
+
+      const updatedStore = {
+        ...mockStore,
+        bannersUrl: ['https://storage.com/banner1.png', 'https://storage.com/banner3.png'],
+      };
+
+      prismaService.store.update.mockResolvedValue(updatedStore);
+
+      const result = await service.removeBanner(storeId, bannerIndex);
+
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+        select: { id: true, bannersUrl: true },
+      });
+
+      expect(mockStorageService.deleteFile).toHaveBeenCalledWith('https://storage.com/banner2.png');
+      expect(prismaService.store.update).toHaveBeenCalledWith({
+        where: { id: storeId },
+        data: {
+          bannersUrl: ['https://storage.com/banner1.png', 'https://storage.com/banner3.png'],
+        },
+        select: mockStoreSelect,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.store).toEqual(updatedStore);
+    });
+
+    it('should throw BadRequestException when store not found', async () => {
+      prismaService.store.findUnique.mockResolvedValue(null);
+
+      await expect(service.removeBanner(storeId, bannerIndex)).rejects.toThrow(
+        new BadRequestException('Store not found'),
+      );
+    });
+
+    it('should throw BadRequestException when invalid banner index', async () => {
+      prismaService.store.findUnique.mockResolvedValue({
+        id: storeId,
+        bannersUrl: ['https://storage.com/banner1.png'],
+      });
+
+      await expect(service.removeBanner(storeId, 5)).rejects.toThrow(
+        new BadRequestException('Invalid banner index'),
+      );
+    });
+  });
+
+  describe('addMultipleBanners', () => {
+    const storeId = 'store-123';
+    const mockFiles = [
+      {
+        fieldname: 'files',
+        originalname: 'banner1.png',
+        encoding: '7bit',
+        mimetype: 'image/png',
+        buffer: Buffer.from('fake-image-data-1'),
+        size: 1024,
+      },
+      {
+        fieldname: 'files',
+        originalname: 'banner2.png',
+        encoding: '7bit',
+        mimetype: 'image/png',
+        buffer: Buffer.from('fake-image-data-2'),
+        size: 1024,
+      },
+    ];
+
+    it('should add multiple banners successfully', async () => {
+      mockStorageService.uploadFile
+        .mockResolvedValueOnce('https://storage.com/banner1.png')
+        .mockResolvedValueOnce('https://storage.com/banner2.png');
+
+      prismaService.store.findUnique.mockResolvedValue({
+        id: storeId,
+        bannersUrl: ['https://storage.com/existing-banner.png'],
+      });
+
+      const updatedStore = {
+        ...mockStore,
+        bannersUrl: [
+          'https://storage.com/existing-banner.png',
+          'https://storage.com/banner1.png',
+          'https://storage.com/banner2.png',
+        ],
+      };
+
+      prismaService.store.update.mockResolvedValue(updatedStore);
+
+      const result = await service.addMultipleBanners(storeId, mockFiles);
+
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+        select: { id: true, bannersUrl: true },
+      });
+
+      expect(mockStorageService.uploadFile).toHaveBeenCalledTimes(2);
+      expect(prismaService.store.update).toHaveBeenCalledWith({
+        where: { id: storeId },
+        data: {
+          bannersUrl: [
+            'https://storage.com/existing-banner.png',
+            'https://storage.com/banner1.png',
+            'https://storage.com/banner2.png',
+          ],
+        },
+        select: mockStoreSelect,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.store).toEqual(updatedStore);
+    });
+
+    it('should throw BadRequestException when store not found', async () => {
+      prismaService.store.findUnique.mockResolvedValue(null);
+
+      await expect(service.addMultipleBanners(storeId, mockFiles)).rejects.toThrow(
+        new BadRequestException('Store not found'),
+      );
+    });
+  });
+
+  describe('removeMultipleBanners', () => {
+    const storeId = 'store-123';
+    const indices = [0, 2];
+
+    it('should remove multiple banners successfully', async () => {
+      mockStorageService.deleteFile.mockResolvedValue(undefined);
+
+      prismaService.store.findUnique.mockResolvedValue({
+        id: storeId,
+        bannersUrl: [
+          'https://storage.com/banner1.png',
+          'https://storage.com/banner2.png',
+          'https://storage.com/banner3.png',
+        ],
+      });
+
+      const updatedStore = {
+        ...mockStore,
+        bannersUrl: ['https://storage.com/banner2.png'],
+      };
+
+      prismaService.store.update.mockResolvedValue(updatedStore);
+
+      const result = await service.removeMultipleBanners(storeId, indices);
+
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+        select: { id: true, bannersUrl: true },
+      });
+
+      expect(mockStorageService.deleteFile).toHaveBeenCalledTimes(2);
+      expect(mockStorageService.deleteFile).toHaveBeenCalledWith('https://storage.com/banner1.png');
+      expect(mockStorageService.deleteFile).toHaveBeenCalledWith('https://storage.com/banner3.png');
+
+      expect(prismaService.store.update).toHaveBeenCalledWith({
+        where: { id: storeId },
+        data: {
+          bannersUrl: ['https://storage.com/banner2.png'],
+        },
+        select: mockStoreSelect,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.store).toEqual(updatedStore);
+      expect(result.removedCount).toBe(2);
+    });
+
+    it('should throw BadRequestException when store not found', async () => {
+      prismaService.store.findUnique.mockResolvedValue(null);
+
+      await expect(service.removeMultipleBanners(storeId, indices)).rejects.toThrow(
+        new BadRequestException('Store not found'),
+      );
+    });
+
+    it('should throw BadRequestException when no valid indices provided', async () => {
+      prismaService.store.findUnique.mockResolvedValue({
+        id: storeId,
+        bannersUrl: ['https://storage.com/banner1.png'],
+      });
+
+      await expect(service.removeMultipleBanners(storeId, [5, 10])).rejects.toThrow(
+        new BadRequestException('No valid indices provided'),
       );
     });
   });

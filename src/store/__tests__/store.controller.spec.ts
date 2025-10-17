@@ -20,7 +20,7 @@ describe('StoreController', () => {
     miniLogoUrl: 'https://example.com/mini-logo.png',
     faviconUrl: 'https://example.com/favicon.ico',
     bannersUrl: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
-    onSaleUrlImg: 'https://example.com/on-sale.png',
+    offerBannerImage: 'https://example.com/offer-banner.png',
   };
 
   beforeEach(async () => {
@@ -30,6 +30,10 @@ describe('StoreController', () => {
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      addBanner: jest.fn(),
+      removeBanner: jest.fn(),
+      addMultipleBanners: jest.fn(),
+      removeMultipleBanners: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -164,6 +168,197 @@ describe('StoreController', () => {
 
       await expect(controller.remove(storeId)).rejects.toThrow('Failed to remove store');
       expect(storeService.remove).toHaveBeenCalledWith(storeId);
+    });
+  });
+
+  describe('uploadBanner', () => {
+    const mockFile = {
+      fieldname: 'file',
+      originalname: 'banner.png',
+      encoding: '7bit',
+      mimetype: 'image/png',
+      buffer: Buffer.from('fake-image-data'),
+      size: 1024,
+    };
+
+    const mockUser = {
+      id: 'user-123',
+      storeId: 'store-123',
+      email: 'user@example.com',
+      name: 'Test User',
+      phone: '+5511999999999',
+      password: 'hashedPassword',
+      documentType: 'cpf' as const,
+      documentValue: '12345678901',
+      role: 'RESELLER_ADMIN_4MIGA_USER' as const,
+      isEmailConfirmed: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockResult = {
+      success: true,
+      store: mockStore,
+    };
+
+    it('should upload a banner successfully', async () => {
+      storeService.addBanner.mockResolvedValue(mockResult);
+
+      const result = await controller.uploadBanner(mockFile, mockUser);
+
+      expect(storeService.addBanner).toHaveBeenCalledWith(mockUser.storeId, mockFile);
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should throw BadRequestException when no file provided', async () => {
+      await expect(controller.uploadBanner(undefined as any, mockUser)).rejects.toThrow(
+        'No file provided',
+      );
+    });
+  });
+
+  describe('deleteBanner', () => {
+    const bannerIndex = '1';
+    const mockUser = {
+      id: 'user-123',
+      storeId: 'store-123',
+      email: 'user@example.com',
+      name: 'Test User',
+      phone: '+5511999999999',
+      password: 'hashedPassword',
+      documentType: 'cpf' as const,
+      documentValue: '12345678901',
+      role: 'RESELLER_ADMIN_4MIGA_USER' as const,
+      isEmailConfirmed: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockResult = {
+      success: true,
+      store: mockStore,
+    };
+
+    it('should delete a banner successfully', async () => {
+      storeService.removeBanner.mockResolvedValue(mockResult);
+
+      const result = await controller.deleteBanner(bannerIndex, mockUser);
+
+      expect(storeService.removeBanner).toHaveBeenCalledWith(mockUser.storeId, 1);
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should throw BadRequestException when invalid banner index', async () => {
+      await expect(controller.deleteBanner('invalid', mockUser)).rejects.toThrow(
+        'Invalid banner index',
+      );
+    });
+
+    it('should throw BadRequestException when negative banner index', async () => {
+      await expect(controller.deleteBanner('-1', mockUser)).rejects.toThrow(
+        'Invalid banner index',
+      );
+    });
+  });
+
+  describe('uploadBannersBatch', () => {
+    const mockFiles = [
+      {
+        fieldname: 'files',
+        originalname: 'banner1.png',
+        encoding: '7bit',
+        mimetype: 'image/png',
+        buffer: Buffer.from('fake-image-data-1'),
+        size: 1024,
+      },
+      {
+        fieldname: 'files',
+        originalname: 'banner2.png',
+        encoding: '7bit',
+        mimetype: 'image/png',
+        buffer: Buffer.from('fake-image-data-2'),
+        size: 1024,
+      },
+    ];
+
+    const mockUser = {
+      id: 'user-123',
+      storeId: 'store-123',
+      email: 'user@example.com',
+      name: 'Test User',
+      phone: '+5511999999999',
+      password: 'hashedPassword',
+      documentType: 'cpf' as const,
+      documentValue: '12345678901',
+      role: 'RESELLER_ADMIN_4MIGA_USER' as const,
+      isEmailConfirmed: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const mockResult = {
+      success: true,
+      store: mockStore,
+    };
+
+    it('should upload multiple banners successfully', async () => {
+      storeService.addMultipleBanners.mockResolvedValue(mockResult);
+
+      const result = await controller.uploadBannersBatch(mockFiles, mockUser);
+
+      expect(storeService.addMultipleBanners).toHaveBeenCalledWith(mockUser.storeId, mockFiles);
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should throw BadRequestException when no files provided', async () => {
+      await expect(controller.uploadBannersBatch([], mockUser)).rejects.toThrow(
+        'No files provided',
+      );
+    });
+
+    it('should throw BadRequestException when null files provided', async () => {
+      await expect(controller.uploadBannersBatch(undefined as any, mockUser)).rejects.toThrow(
+        'No files provided',
+      );
+    });
+  });
+
+  describe('deleteBannersBatch', () => {
+    const mockUser = {
+      id: 'user-123',
+      storeId: 'store-123',
+      email: 'user@example.com',
+      name: 'Test User',
+      phone: '+5511999999999',
+      password: 'hashedPassword',
+      documentType: 'cpf' as const,
+      documentValue: '12345678901',
+      role: 'RESELLER_ADMIN_4MIGA_USER' as const,
+      isEmailConfirmed: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const removeBannersDto = {
+      indices: [0, 2],
+    };
+
+    const mockResult = {
+      success: true,
+      store: mockStore,
+      removedCount: 2,
+    };
+
+    it('should delete multiple banners successfully', async () => {
+      storeService.removeMultipleBanners.mockResolvedValue(mockResult);
+
+      const result = await controller.deleteBannersBatch(removeBannersDto, mockUser);
+
+      expect(storeService.removeMultipleBanners).toHaveBeenCalledWith(
+        mockUser.storeId,
+        removeBannersDto.indices,
+      );
+      expect(result).toEqual(mockResult);
     });
   });
 });

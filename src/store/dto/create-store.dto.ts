@@ -104,9 +104,9 @@ export class CreateStoreDto {
   @IsString()
   @IsOptional()
   @ApiProperty({
-    description: 'On sale image URL',
-    example: 'https://example.com/on-sale.png',
+    description: 'Offer banner image URL',
+    example: 'https://example.com/offer-banner.png',
     required: false,
   })
-  onSaleUrlImg?: string;
+  offerBannerImage?: string;
 }

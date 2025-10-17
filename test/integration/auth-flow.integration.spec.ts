@@ -27,7 +27,7 @@ describe('Auth Flow Integration', () => {
     miniLogoUrl: null,
     faviconUrl: null,
     bannersUrl: [],
-    onSaleUrlImg: null,
+    offerBannerImage: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

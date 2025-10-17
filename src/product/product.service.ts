@@ -311,6 +311,84 @@ export class ProductService {
     }
   }
 
+  async findBigoProduct(storeId: string): Promise<any> {
+    try {
+      // Find product with name containing "bigo" (case-insensitive)
+      const product = await this.prisma.product.findFirst({
+        where: {
+          name: {
+            contains: 'bigo',
+            mode: 'insensitive',
+          },
+        },
+        select: this.productSelect,
+      });
+
+      if (!product) {
+        throw new BadRequestException('Bigo product not found');
+      }
+
+      // Fetch packages related to storeId and include paymentMethods
+      const packages = await this.prisma.package.findMany({
+        where: {
+          productId: product.id,
+          storeId: storeId,
+        },
+        include: {
+          paymentMethods: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              createdAt: false,
+              updatedAt: false,
+            },
+          },
+        },
+        orderBy: { amountCredits: 'asc' },
+      });
+
+      // Convert Decimal to number for consistency
+      const convertedPackages = packages.map(pkg => ({
+        ...pkg,
+        basePrice: pkg.basePrice.toNumber(),
+        paymentMethods: pkg.paymentMethods?.map(pm => ({
+          ...pm,
+          price: pm.price.toNumber()
+        }))
+      }));
+
+      // Fetch store customizations for this product
+      const customization = await this.prisma.storeProductSettings.findFirst({
+        where: {
+          productId: product.id,
+          storeId: storeId,
+        },
+      });
+
+      // Merge product data with customization (fallback logic)
+      const customizedProduct = {
+        ...product,
+        packages: convertedPackages,
+        storeCustomization: customization
+          ? {
+              description: customization.description || product.description,
+              instructions: customization.instructions || product.instructions,
+              imgBannerUrl: customization.imgBannerUrl || product.imgBannerUrl,
+              imgCardUrl: customization.imgCardUrl || product.imgCardUrl,
+            }
+          : null,
+      };
+
+      return customizedProduct;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to fetch Bigo product');
+    }
+  }
+
   async create(dto: CreateProductDto): Promise<Product> {
     try {
       validateRequiredFields(dto, [

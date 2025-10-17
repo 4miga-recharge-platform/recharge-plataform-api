@@ -9,23 +9,23 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Store } from 'src/store/entities/store.entity';
 import { User } from 'src/user/entities/user.entity';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { AdminLoginDto } from './dto/admin-login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
-import { AdminLoginDto } from './dto/admin-login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { RequestEmailChangeDto } from './dto/request-email-change.dto';
+import { ResendEmailConfirmationDto } from './dto/resend-email-confirmation.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendEmailConfirmationDto } from './dto/resend-email-confirmation.dto';
 import { LoggedUser } from './logged-user.decorator';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { RequestEmailChangeDto } from './dto/request-email-change.dto';
-import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
-import { Store } from 'src/store/entities/store.entity';
 
 @Controller('auth')
 @ApiTags('auth')
@@ -105,6 +105,23 @@ export class AuthController {
       store = await this.prisma.store.findUnique({
         where: {
           id: user.storeId,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          domain: true,
+          wppNumber: true,
+          instagramUrl: true,
+          facebookUrl: true,
+          tiktokUrl: true,
+          logoUrl: true,
+          miniLogoUrl: true,
+          faviconUrl: true,
+          bannersUrl: true,
+          offerBannerImage: true,
+          createdAt: true,
+          updatedAt: true,
         },
       });
     }

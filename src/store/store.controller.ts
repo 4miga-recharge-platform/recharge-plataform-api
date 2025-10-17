@@ -8,11 +8,12 @@ import {
   Patch,
   Post,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -25,8 +26,10 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { LoggedUser } from '../auth/logged-user.decorator';
 import { User } from '../user/entities/user.entity';
 import { FileValidationInterceptor } from '../storage/interceptors/file-validation.interceptor';
+import { FilesValidationInterceptor } from '../storage/interceptors/files-validation.interceptor';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { RemoveBannersBatchDto } from './dto/remove-banners-batch.dto';
 import { StoreService } from './store.service';
 
 interface FileUpload {
@@ -73,7 +76,7 @@ export class StoreController {
     return this.storeService.remove(id);
   }
 
-  @Post(':storeId/banners')
+  @Post('banners')
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @UseInterceptors(FileInterceptor('file'), FileValidationInterceptor)
@@ -95,7 +98,6 @@ export class StoreController {
     },
   })
   async uploadBanner(
-    @Param('storeId') storeId: string,
     @UploadedFile() file: FileUpload,
     @LoggedUser() user: User,
   ) {
@@ -103,16 +105,30 @@ export class StoreController {
       throw new BadRequestException('No file provided');
     }
 
-    return this.storeService.addBanner(storeId, file, user.storeId);
+    return this.storeService.addBanner(user.storeId, file);
   }
 
-  @Delete(':storeId/banners/:bannerIndex')
+  @Delete('banners/batch')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete multiple store banners by indices' })
+  async deleteBannersBatch(
+    @Body() removeBannersDto: RemoveBannersBatchDto,
+    @LoggedUser() user: User,
+  ) {
+    return this.storeService.removeMultipleBanners(
+      user.storeId,
+      removeBannersDto.indices,
+    );
+  }
+
+  @Delete('banners/:bannerIndex')
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete store banner by index' })
   async deleteBanner(
-    @Param('storeId') storeId: string,
     @Param('bannerIndex') bannerIndex: string,
     @LoggedUser() user: User,
   ) {
@@ -121,6 +137,41 @@ export class StoreController {
       throw new BadRequestException('Invalid banner index');
     }
 
-    return this.storeService.removeBanner(storeId, index, user.storeId);
+    return this.storeService.removeBanner(user.storeId, index);
+  }
+
+  @Post('banners/batch')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @UseInterceptors(
+    FilesInterceptor('files'),
+    FilesValidationInterceptor,
+  )
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload multiple store banner images (flexible)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Upload multiple banner images to be appended to current list',
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+          description: 'Up to 5 image files',
+        },
+      },
+      required: ['files'],
+    },
+  })
+  async uploadBannersBatch(
+    @UploadedFiles() files: any[],
+    @LoggedUser() user: User,
+  ) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files provided');
+    }
+
+    return this.storeService.addMultipleBanners(user.storeId, files);
   }
 }

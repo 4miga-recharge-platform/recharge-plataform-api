@@ -72,6 +72,7 @@ describe('AuthService', () => {
       instagramUrl: 'https://instagram.com/adminstore',
       tiktokUrl: 'https://tiktok.com/adminstore',
       wppNumber: '5511988887777',
+      offerBannerImage: 'https://example.com/offer-banner.png',
     },
   };
 
@@ -135,6 +136,7 @@ describe('AuthService', () => {
         instagramUrl: true,
         tiktokUrl: true,
         wppNumber: true,
+        offerBannerImage: true,
       }
     }
   };

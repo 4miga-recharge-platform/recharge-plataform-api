@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { setTimeout as sleep } from 'timers/promises';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { validateRequiredFields } from 'src/utils/validation.util';
+import { setTimeout as sleep } from 'timers/promises';
 import { EmailService } from '../email/email.service';
+import { getAdminDemotionTemplate } from '../email/templates/admin-demotion.template';
+import { getAdminPromotionTemplate } from '../email/templates/admin-promotion.template';
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -35,7 +37,7 @@ export class UserService {
     try {
       const data = await this.prisma.user.findMany({
         where: { storeId },
-        select: this.userSelect
+        select: this.userSelect,
       });
       return data;
     } catch {
@@ -100,7 +102,9 @@ export class UserService {
 
       // Set expiration time to 24 hours from now
       const emailConfirmationExpires = new Date();
-      emailConfirmationExpires.setHours(emailConfirmationExpires.getHours() + 24);
+      emailConfirmationExpires.setHours(
+        emailConfirmationExpires.getHours() + 24,
+      );
 
       const data = {
         ...rest,
@@ -114,7 +118,7 @@ export class UserService {
         data,
         select: this.userSelect,
       });
-      if(!user) {
+      if (!user) {
         throw new BadRequestException('Failed to create user');
       }
 
@@ -129,7 +133,13 @@ export class UserService {
       }
 
       // Send confirmation email with retry (non-blocking for user creation)
-      const html = getEmailConfirmationTemplate(code, dto.name, store.domain, dto.email, dto.storeId);
+      const html = getEmailConfirmationTemplate(
+        code,
+        dto.name,
+        store.domain,
+        dto.email,
+        dto.storeId,
+      );
       await this.sendEmailWithRetry(
         dto.email,
         'Confirm your registration',
@@ -138,7 +148,6 @@ export class UserService {
         2000,
       );
       return user;
-
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -173,7 +182,9 @@ export class UserService {
     try {
       await this.findOne(id);
       const { ...rest } = dto;
-      const fieldsToValidate = Object.keys(rest).filter(key => rest[key] !== undefined);
+      const fieldsToValidate = Object.keys(rest).filter(
+        (key) => rest[key] !== undefined,
+      );
       validateRequiredFields(rest, fieldsToValidate);
       const data = { ...rest };
       return await this.prisma.user.update({
@@ -200,6 +211,228 @@ export class UserService {
       });
     } catch {
       throw new BadRequestException('Failed to remove user');
+    }
+  }
+
+  async validatePassword(userId: string, password: string): Promise<boolean> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { password: true },
+      });
+
+      if (!user) {
+        return false;
+      }
+
+      return await bcrypt.compare(password, user.password);
+    } catch {
+      return false;
+    }
+  }
+
+  async findEmailsByStore(
+    storeId: string,
+    search?: string,
+  ): Promise<{ id: string; email: string }[]> {
+    try {
+      const where: any = {
+        storeId,
+        role: 'USER', // Only non-admin users
+      };
+
+      if (search) {
+        where.email = {
+          contains: search,
+          mode: 'insensitive',
+        };
+      }
+
+      const users = await this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+        },
+        orderBy: {
+          email: 'asc',
+        },
+      });
+
+      return users;
+    } catch {
+      throw new BadRequestException('Failed to fetch emails');
+    }
+  }
+
+  async findAdminsByStore(
+    storeId: string,
+  ): Promise<{ id: string; email: string }[]> {
+    try {
+      const admins = await this.prisma.user.findMany({
+        where: {
+          storeId,
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+        },
+        select: {
+          id: true,
+          email: true,
+        },
+        orderBy: {
+          email: 'asc',
+        },
+      });
+
+      return admins;
+    } catch {
+      throw new BadRequestException('Failed to fetch admins');
+    }
+  }
+
+  async promoteToAdmin(
+    userId: string,
+    adminStoreId: string,
+    currentUserId: string,
+  ): Promise<User> {
+    try {
+      // Find user with password select to get full data
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      // Validate user belongs to same store
+      if (user.storeId !== adminStoreId) {
+        throw new BadRequestException(
+          'Cannot promote users from different stores',
+        );
+      }
+
+      // Check if user is already an admin
+      if (user.role !== 'USER') {
+        throw new BadRequestException('User is already an admin');
+      }
+
+      // Promote user with audit fields
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+          roleChangedBy: currentUserId,
+          roleChangedAt: new Date(),
+        },
+        select: this.userSelect,
+      });
+
+      // Get store information for email
+      const store = await this.prisma.store.findUnique({
+        where: { id: adminStoreId },
+        select: { name: true, domain: true },
+      });
+
+      if (store) {
+        // Send promotion notification email (non-blocking)
+        const html = getAdminPromotionTemplate(
+          updatedUser.name,
+          store.name,
+          new Date(),
+          store.domain,
+        );
+
+        this.sendEmailWithRetry(
+          updatedUser.email,
+          'Você foi promovido a Administrador',
+          html,
+          3,
+          2000,
+        ).catch((err) => console.error('Failed to send promotion email:', err));
+      }
+
+      return updatedUser;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to promote user');
+    }
+  }
+
+  async demoteToUser(
+    userId: string,
+    adminStoreId: string,
+    currentUserId: string,
+  ): Promise<User> {
+    try {
+      // Prevent self-demotion
+      if (userId === currentUserId) {
+        throw new BadRequestException('Cannot demote yourself');
+      }
+
+      // Find user
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      // Validate user belongs to same store
+      if (user.storeId !== adminStoreId) {
+        throw new BadRequestException(
+          'Cannot demote users from different stores',
+        );
+      }
+
+      // Check if user is a reseller admin
+      if (user.role !== 'RESELLER_ADMIN_4MIGA_USER') {
+        throw new BadRequestException('User is not a reseller admin');
+      }
+
+      // Demote user with audit fields
+      const updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          role: 'USER',
+          roleChangedBy: currentUserId,
+          roleChangedAt: new Date(),
+        },
+        select: this.userSelect,
+      });
+
+      // Get store information for email
+      const store = await this.prisma.store.findUnique({
+        where: { id: adminStoreId },
+        select: { name: true, domain: true },
+      });
+
+      if (store) {
+        // Send demotion notification email (non-blocking)
+        const html = getAdminDemotionTemplate(
+          updatedUser.name,
+          store.name,
+          new Date(),
+          store.domain,
+        );
+
+        this.sendEmailWithRetry(
+          updatedUser.email,
+          'Alteração de Permissões de Administrador',
+          html,
+          3,
+          2000,
+        ).catch((err) => console.error('Failed to send demotion email:', err));
+      }
+
+      return updatedUser;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to demote user');
     }
   }
 }

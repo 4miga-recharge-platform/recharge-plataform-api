@@ -65,6 +65,7 @@ describe('ProductService', () => {
       product: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -320,6 +321,125 @@ describe('ProductService', () => {
       await expect(service.findOne(productId, storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch product'),
       );
+    });
+  });
+
+  describe('findBigoProduct', () => {
+    const storeId = 'store-123';
+    const mockBigoProduct = {
+      id: 'bigo-product-123',
+      name: 'Bigo Live',
+      description: 'Recharge diamonds for Bigo Live',
+      instructions: 'Enter your Bigo Live ID',
+      imgBannerUrl: 'https://example.com/bigo-banner.png',
+      imgCardUrl: 'https://example.com/bigo-card.png',
+    };
+
+    it('should return Bigo product with packages successfully', async () => {
+      const packages = [mockPackage];
+      const mockCustomization = null;
+
+      prismaService.product.findFirst.mockResolvedValue(mockBigoProduct);
+      prismaService.package.findMany.mockResolvedValue(packages);
+      prismaService.storeProductSettings.findFirst.mockResolvedValue(
+        mockCustomization,
+      );
+
+      const result = await service.findBigoProduct(storeId);
+
+      expect(prismaService.product.findFirst).toHaveBeenCalledWith({
+        where: {
+          name: {
+            contains: 'bigo',
+            mode: 'insensitive',
+          },
+        },
+        select: mockProductSelect,
+      });
+
+      expect(prismaService.package.findMany).toHaveBeenCalledWith({
+        where: {
+          productId: mockBigoProduct.id,
+          storeId: storeId,
+        },
+        include: {
+          paymentMethods: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              createdAt: false,
+              updatedAt: false,
+            },
+          },
+        },
+        orderBy: { amountCredits: 'asc' },
+      });
+
+      expect(prismaService.storeProductSettings.findFirst).toHaveBeenCalledWith(
+        {
+          where: {
+            productId: mockBigoProduct.id,
+            storeId: storeId,
+          },
+        },
+      );
+
+      expect(result).toEqual({
+        ...mockBigoProduct,
+        packages: [
+          {
+            ...mockPackage,
+            basePrice: 10,
+            paymentMethods: mockPackage.paymentMethods.map(pm => ({
+              ...pm,
+              price: 10,
+            })),
+          },
+        ],
+        storeCustomization: null,
+      });
+    });
+
+    it('should throw BadRequestException when Bigo product not found', async () => {
+      prismaService.product.findFirst.mockResolvedValue(null);
+
+      await expect(service.findBigoProduct(storeId)).rejects.toThrow(
+        new BadRequestException('Bigo product not found'),
+      );
+    });
+
+    it('should throw BadRequestException when database error occurs', async () => {
+      prismaService.product.findFirst.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.findBigoProduct(storeId)).rejects.toThrow(
+        new BadRequestException('Failed to fetch Bigo product'),
+      );
+    });
+
+    it('should find product with different case variations', async () => {
+      const packages = [mockPackage];
+      const mockBigoUpperCase = { ...mockBigoProduct, name: 'BIGO LIVE' };
+
+      prismaService.product.findFirst.mockResolvedValue(mockBigoUpperCase);
+      prismaService.package.findMany.mockResolvedValue(packages);
+      prismaService.storeProductSettings.findFirst.mockResolvedValue(null);
+
+      const result = await service.findBigoProduct(storeId);
+
+      expect(prismaService.product.findFirst).toHaveBeenCalledWith({
+        where: {
+          name: {
+            contains: 'bigo',
+            mode: 'insensitive',
+          },
+        },
+        select: mockProductSelect,
+      });
+
+      expect(result.name).toBe('BIGO LIVE');
     });
   });
 

@@ -11,7 +11,7 @@ export class Store {
   miniLogoUrl?: string | null;
   faviconUrl?: string | null;
   bannersUrl?: string[];
-  onSaleUrlImg?: string | null;
+  offerBannerImage?: string | null;
   createdAt: Date;
   updatedAt: Date;
   // users?: User[];
