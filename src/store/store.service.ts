@@ -37,7 +37,7 @@ export class StoreService {
     miniLogoUrl: true,
     faviconUrl: true,
     bannersUrl: true,
-    onSaleUrlImg: true,
+    offerBannerImage: true,
     createdAt: false,
     updatedAt: false,
     users: false,

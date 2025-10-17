@@ -20,7 +20,7 @@ describe('StoreController', () => {
     miniLogoUrl: 'https://example.com/mini-logo.png',
     faviconUrl: 'https://example.com/favicon.ico',
     bannersUrl: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
-    onSaleUrlImg: 'https://example.com/on-sale.png',
+    offerBannerImage: 'https://example.com/offer-banner.png',
   };
 
   beforeEach(async () => {

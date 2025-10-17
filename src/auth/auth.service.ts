@@ -66,6 +66,7 @@ export class AuthService {
         instagramUrl: true,
         tiktokUrl: true,
         wppNumber: true,
+        offerBannerImage: true,
       }
     }
   };

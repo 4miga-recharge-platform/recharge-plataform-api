@@ -32,7 +32,7 @@ describe('StoreService', () => {
     miniLogoUrl: 'https://example.com/mini-logo.png',
     faviconUrl: 'https://example.com/favicon.ico',
     bannersUrl: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
-    onSaleUrlImg: 'https://example.com/on-sale.png',
+    offerBannerImage: 'https://example.com/offer-banner.png',
   };
 
   const mockStoreSelect = {
@@ -48,7 +48,7 @@ describe('StoreService', () => {
     miniLogoUrl: true,
     faviconUrl: true,
     bannersUrl: true,
-    onSaleUrlImg: true,
+    offerBannerImage: true,
     createdAt: false,
     updatedAt: false,
     users: false,
