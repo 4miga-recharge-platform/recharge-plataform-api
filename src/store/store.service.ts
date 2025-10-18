@@ -383,4 +383,112 @@ export class StoreService {
       throw new BadRequestException('Failed to upload multiple banners');
     }
   }
+
+  async uploadOfferBanner(storeId: string, file: FileUpload) {
+    try {
+      if (!file) {
+        throw new BadRequestException('File is required');
+      }
+
+      // Validate store exists
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { id: true, offerBannerImage: true },
+      });
+      if (!store) throw new BadRequestException('Store not found');
+
+      // Delete previous offer banner image if exists
+      if (store.offerBannerImage) {
+        try {
+          await this.storageService.deleteFile(store.offerBannerImage);
+          this.logger.log(`Previous offer banner deleted: ${store.offerBannerImage}`);
+        } catch (err) {
+          this.logger.warn(`Could not delete previous offer banner: ${err.message}`);
+        }
+      }
+
+      // Decide deterministic filename and path
+      const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
+      const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+      const mimeToExt: Record<string, string> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+      };
+      const mimeExt = mimeToExt[file.mimetype] || '';
+      let ext = originalExt || mimeExt || 'png';
+      if (!allowedExts.includes(ext)) {
+        ext = mimeExt && allowedExts.includes(mimeExt) ? mimeExt : 'png';
+      }
+      const timestamp = Date.now();
+      const desiredFileName = `offer-banner-${timestamp}.${ext}`;
+      const folderPath = `store/${storeId}/offer-banner`;
+
+      const fileUrl = await this.storageService.uploadFile(
+        file,
+        folderPath,
+        desiredFileName,
+      );
+
+      // Update store with new offer banner image
+      const updated = await this.prisma.store.update({
+        where: { id: storeId },
+        data: { offerBannerImage: fileUrl },
+        select: this.storeSelect,
+      });
+
+      return {
+        success: true,
+        store: updated,
+        offerBannerImage: fileUrl,
+        message: 'Offer banner uploaded successfully',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('Failed to upload offer banner');
+    }
+  }
+
+  async removeOfferBanner(storeId: string) {
+    try {
+      this.logger.log(`Removing offer banner for store: ${storeId}`);
+
+      // Validate store exists and get current offerBannerImage
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { id: true, offerBannerImage: true },
+      });
+      if (!store) {
+        this.logger.error(`Store not found: ${storeId}`);
+        throw new BadRequestException('Store not found');
+      }
+
+      // Delete image from storage if exists
+      if (store.offerBannerImage) {
+        try {
+          await this.storageService.deleteFile(store.offerBannerImage);
+          this.logger.log(`Offer banner deleted from storage: ${store.offerBannerImage}`);
+        } catch (err) {
+          this.logger.warn(`Could not delete offer banner from storage: ${err.message}`);
+        }
+      }
+
+      // Update store to set offerBannerImage as null
+      const updated = await this.prisma.store.update({
+        where: { id: storeId },
+        data: { offerBannerImage: null },
+        select: this.storeSelect,
+      });
+
+      return {
+        success: true,
+        store: updated,
+        offerBannerImage: null,
+        message: 'Offer banner removed successfully',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('Failed to remove offer banner');
+    }
+  }
 }
