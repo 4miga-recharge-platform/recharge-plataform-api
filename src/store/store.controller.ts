@@ -70,6 +70,18 @@ export class StoreController {
     return this.storeService.update(id, updateStoreDto);
   }
 
+  @Delete('offer-banner')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove store offer banner image' })
+  async removeOfferBanner(@LoggedUser() user: User) {
+    if (!user.storeId) {
+      throw new BadRequestException('Store ID not found in user data');
+    }
+    return this.storeService.removeOfferBanner(user.storeId);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a store by id' })
   remove(@Param('id') id: string) {
@@ -173,5 +185,37 @@ export class StoreController {
     }
 
     return this.storeService.addMultipleBanners(user.storeId, files);
+  }
+
+  @Post('offer-banner')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @UseInterceptors(FileInterceptor('file'), FileValidationInterceptor)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload store offer banner image' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Store offer banner image upload',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Image file for store offer banner',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  async uploadOfferBanner(
+    @UploadedFile() file: FileUpload,
+    @LoggedUser() user: User,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    return this.storeService.uploadOfferBanner(user.storeId, file);
   }
 }
