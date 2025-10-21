@@ -64,10 +64,16 @@ export class StoreController {
     return this.storeService.findOne(id);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update a store by id' })
-  update(@Param('id') id: string, @Body() updateStoreDto: UpdateStoreDto) {
-    return this.storeService.update(id, updateStoreDto);
+  @Patch()
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a store' })
+  async update(@LoggedUser() user: User, @Body() updateStoreDto: UpdateStoreDto) {
+    if (!user.storeId){
+      throw new BadRequestException('Store ID not found in user data')
+    }
+    return this.storeService.update(user.storeId, updateStoreDto);
   }
 
   @Delete('offer-banner')
@@ -155,10 +161,7 @@ export class StoreController {
   @Post('banners/batch')
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
-  @UseInterceptors(
-    FilesInterceptor('files'),
-    FilesValidationInterceptor,
-  )
+  @UseInterceptors(FilesInterceptor('files'), FilesValidationInterceptor)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upload multiple store banner images (flexible)' })
   @ApiConsumes('multipart/form-data')
