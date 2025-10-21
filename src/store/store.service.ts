@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { validateRequiredFields, validateUpdateFields } from 'src/utils/validation.util';
 import { StorageService } from '../storage/storage.service';
-import { validateRequiredFields } from 'src/utils/validation.util';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { Store } from './entities/store.entity';
@@ -37,7 +37,7 @@ export class StoreService {
     miniLogoUrl: true,
     faviconUrl: true,
     bannersUrl: true,
-    offerBannerImage: true,
+    secondaryBannerUrl: true,
     createdAt: false,
     updatedAt: false,
     users: false,
@@ -74,7 +74,7 @@ export class StoreService {
 
   async create(dto: CreateStoreDto): Promise<Store> {
     try {
-      validateRequiredFields(dto, ['name', 'email']);
+      validateRequiredFields(dto, ['name']);
       return await this.prisma.store.create({
         data: dto,
         select: this.storeSelect,
@@ -90,7 +90,7 @@ export class StoreService {
       const fieldsToValidate = Object.keys(dto).filter(
         (key) => dto[key] !== undefined,
       );
-      validateRequiredFields(dto, fieldsToValidate);
+      validateUpdateFields(dto, fieldsToValidate);
       return await this.prisma.store.update({
         where: { id },
         data: dto,
@@ -134,7 +134,9 @@ export class StoreService {
 
       // Decide deterministic filename and path
       const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
-      const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+      const originalExt = (
+        file.originalname.split('.').pop() || ''
+      ).toLowerCase();
       const mimeToExt: Record<string, string> = {
         'image/png': 'png',
         'image/jpeg': 'jpg',
@@ -198,11 +200,15 @@ export class StoreService {
         await this.storageService.deleteFile(bannerUrlToDelete);
         this.logger.log(`Banner deleted from storage: ${bannerUrlToDelete}`);
       } catch (err) {
-        this.logger.warn(`Could not delete banner from storage: ${err.message}`);
+        this.logger.warn(
+          `Could not delete banner from storage: ${err.message}`,
+        );
       }
 
       // Remove from array (array will automatically reorder)
-      const updatedBanners = currentBanners.filter((_, index) => index !== bannerIndex);
+      const updatedBanners = currentBanners.filter(
+        (_, index) => index !== bannerIndex,
+      );
 
       const updated = await this.prisma.store.update({
         where: { id: storeId },
@@ -222,10 +228,7 @@ export class StoreService {
     }
   }
 
-  async removeMultipleBanners(
-    storeId: string,
-    indices: number[],
-  ) {
+  async removeMultipleBanners(storeId: string, indices: number[]) {
     try {
       if (!indices || indices.length === 0) {
         throw new BadRequestException('Indices are required');
@@ -258,7 +261,9 @@ export class StoreService {
       }
 
       // Get banner URLs to delete from storage
-      const bannerUrlsToDelete = validIndices.map((index) => currentBanners[index]);
+      const bannerUrlsToDelete = validIndices.map(
+        (index) => currentBanners[index],
+      );
 
       // Delete from storage (ignore failures)
       const deletePromises = bannerUrlsToDelete.map((url) =>
@@ -266,7 +271,9 @@ export class StoreService {
           .deleteFile(url)
           .then(() => ({ success: true, url }))
           .catch((err) => {
-            this.logger.warn(`Could not delete banner from storage: ${err.message}`);
+            this.logger.warn(
+              `Could not delete banner from storage: ${err.message}`,
+            );
             return { success: false, url, error: err.message };
           }),
       );
@@ -293,9 +300,10 @@ export class StoreService {
         bannersUrl: updatedBanners,
         removedCount: validIndices.length,
         invalidIndices,
-        message: invalidIndices.length > 0
-          ? `Removed ${validIndices.length} banners. ${invalidIndices.length} invalid indices ignored.`
-          : 'Banners removed successfully',
+        message:
+          invalidIndices.length > 0
+            ? `Removed ${validIndices.length} banners. ${invalidIndices.length} invalid indices ignored.`
+            : 'Banners removed successfully',
       };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
@@ -303,10 +311,7 @@ export class StoreService {
     }
   }
 
-  async addMultipleBanners(
-    storeId: string,
-    files: FileUpload[],
-  ) {
+  async addMultipleBanners(storeId: string, files: FileUpload[]) {
     try {
       if (!files || files.length === 0) {
         throw new BadRequestException('Files are required');
@@ -339,7 +344,9 @@ export class StoreService {
       };
 
       const uploadPromises = filesToProcess.map((file) => {
-        const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+        const originalExt = (
+          file.originalname.split('.').pop() || ''
+        ).toLowerCase();
         const mimeExt = mimeToExt[file.mimetype] || '';
         let ext = originalExt || mimeExt || 'png';
         if (!allowedExts.includes(ext)) {
@@ -351,13 +358,21 @@ export class StoreService {
         return this.storageService
           .uploadFile(file, folderPath, desiredFileName)
           .then((url) => ({ ok: true, url, name: file.originalname }))
-          .catch((err) => ({ ok: false, error: String(err?.message || err), name: file.originalname }));
+          .catch((err) => ({
+            ok: false,
+            error: String(err?.message || err),
+            name: file.originalname,
+          }));
       });
 
       const results = await Promise.all(uploadPromises);
 
-      const successUrls = results.filter((r) => r.ok).map((r: any) => r.url as string);
-      const failures = results.filter((r) => !r.ok).map((r: any) => ({ name: r.name, error: r.error }));
+      const successUrls = results
+        .filter((r) => r.ok)
+        .map((r: any) => r.url as string);
+      const failures = results
+        .filter((r) => !r.ok)
+        .map((r: any) => ({ name: r.name, error: r.error }));
 
       const updatedBanners = [...currentBanners, ...successUrls];
 
@@ -393,23 +408,29 @@ export class StoreService {
       // Validate store exists
       const store = await this.prisma.store.findUnique({
         where: { id: storeId },
-        select: { id: true, offerBannerImage: true },
+        select: { id: true, secondaryBannerUrl: true },
       });
       if (!store) throw new BadRequestException('Store not found');
 
       // Delete previous offer banner image if exists
-      if (store.offerBannerImage) {
+      if (store.secondaryBannerUrl) {
         try {
-          await this.storageService.deleteFile(store.offerBannerImage);
-          this.logger.log(`Previous offer banner deleted: ${store.offerBannerImage}`);
+          await this.storageService.deleteFile(store.secondaryBannerUrl);
+          this.logger.log(
+            `Previous offer banner deleted: ${store.secondaryBannerUrl}`,
+          );
         } catch (err) {
-          this.logger.warn(`Could not delete previous offer banner: ${err.message}`);
+          this.logger.warn(
+            `Could not delete previous offer banner: ${err.message}`,
+          );
         }
       }
 
       // Decide deterministic filename and path
       const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
-      const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+      const originalExt = (
+        file.originalname.split('.').pop() || ''
+      ).toLowerCase();
       const mimeToExt: Record<string, string> = {
         'image/png': 'png',
         'image/jpeg': 'jpg',
@@ -433,14 +454,14 @@ export class StoreService {
       // Update store with new offer banner image
       const updated = await this.prisma.store.update({
         where: { id: storeId },
-        data: { offerBannerImage: fileUrl },
+        data: { secondaryBannerUrl: fileUrl },
         select: this.storeSelect,
       });
 
       return {
         success: true,
         store: updated,
-        offerBannerImage: fileUrl,
+        secondaryBannerUrl: fileUrl,
         message: 'Offer banner uploaded successfully',
       };
     } catch (error) {
@@ -453,10 +474,10 @@ export class StoreService {
     try {
       this.logger.log(`Removing offer banner for store: ${storeId}`);
 
-      // Validate store exists and get current offerBannerImage
+      // Validate store exists and get current secondaryBannerUrl
       const store = await this.prisma.store.findUnique({
         where: { id: storeId },
-        select: { id: true, offerBannerImage: true },
+        select: { id: true, secondaryBannerUrl: true },
       });
       if (!store) {
         this.logger.error(`Store not found: ${storeId}`);
@@ -464,26 +485,30 @@ export class StoreService {
       }
 
       // Delete image from storage if exists
-      if (store.offerBannerImage) {
+      if (store.secondaryBannerUrl) {
         try {
-          await this.storageService.deleteFile(store.offerBannerImage);
-          this.logger.log(`Offer banner deleted from storage: ${store.offerBannerImage}`);
+          await this.storageService.deleteFile(store.secondaryBannerUrl);
+          this.logger.log(
+            `Offer banner deleted from storage: ${store.secondaryBannerUrl}`,
+          );
         } catch (err) {
-          this.logger.warn(`Could not delete offer banner from storage: ${err.message}`);
+          this.logger.warn(
+            `Could not delete offer banner from storage: ${err.message}`,
+          );
         }
       }
 
-      // Update store to set offerBannerImage as null
+      // Update store to set secondaryBannerUrl as null
       const updated = await this.prisma.store.update({
         where: { id: storeId },
-        data: { offerBannerImage: null },
+        data: { secondaryBannerUrl: null },
         select: this.storeSelect,
       });
 
       return {
         success: true,
         store: updated,
-        offerBannerImage: null,
+        secondaryBannerUrl: null,
         message: 'Offer banner removed successfully',
       };
     } catch (error) {

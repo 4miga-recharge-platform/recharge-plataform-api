@@ -8,27 +8,27 @@ datasource db {
 }
 
 model Store {
-  id               String                 @id @default(uuid())
-  name             String
-  email            String                 @unique
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  bannersUrl       String[]
-  faviconUrl       String?
-  logoUrl          String?
-  miniLogoUrl      String?
-  facebookUrl      String?
-  instagramUrl     String?
-  tiktokUrl        String?
-  wppNumber        String?                @unique
-  domain           String                 @unique
-  offerBannerImage String?
-  coupons          Coupon[]
-  influencers      Influencer[]
-  orders           Order[]
-  packages         Package[]
-  productSettings  StoreProductSettings[]
-  users            User[]
+  id                 String                 @id @default(uuid())
+  name               String
+  email              String?                @unique
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  bannersUrl         String[]
+  faviconUrl         String?
+  logoUrl            String?
+  miniLogoUrl        String?
+  facebookUrl        String?
+  instagramUrl       String?
+  tiktokUrl          String?
+  wppNumber          String?                @unique
+  domain             String                 @unique
+  secondaryBannerUrl String?
+  coupons            Coupon[]
+  influencers        Influencer[]
+  orders             Order[]
+  packages           Package[]
+  productSettings    StoreProductSettings[]
+  users              User[]
 }
 
 model Influencer {

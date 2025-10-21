@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { StoreController } from '../store.controller';
-import { StoreService } from '../store.service';
 import { CreateStoreDto } from '../dto/create-store.dto';
 import { UpdateStoreDto } from '../dto/update-store.dto';
+import { StoreController } from '../store.controller';
+import { StoreService } from '../store.service';
 
 describe('StoreController', () => {
   let controller: StoreController;
@@ -19,8 +19,26 @@ describe('StoreController', () => {
     logoUrl: 'https://example.com/logo.png',
     miniLogoUrl: 'https://example.com/mini-logo.png',
     faviconUrl: 'https://example.com/favicon.ico',
-    bannersUrl: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
-    offerBannerImage: 'https://example.com/offer-banner.png',
+    bannersUrl: [
+      'https://example.com/banner1.png',
+      'https://example.com/banner2.png',
+    ],
+    secondaryBannerUrl: 'https://example.com/offer-banner.png',
+  };
+
+  const mockUser = {
+    id: 'user-123',
+    storeId: 'store-123',
+    email: 'user@example.com',
+    name: 'Test User',
+    phone: '+5511999999999',
+    password: 'hashedPassword',
+    documentType: 'cpf' as const,
+    documentValue: '12345678901',
+    role: 'RESELLER_ADMIN_4MIGA_USER' as const,
+    isEmailConfirmed: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   beforeEach(async () => {
@@ -71,7 +89,9 @@ describe('StoreController', () => {
       const error = new Error('Failed to fetch stores');
       storeService.findAll.mockRejectedValue(error);
 
-      await expect(controller.findAll()).rejects.toThrow('Failed to fetch stores');
+      await expect(controller.findAll()).rejects.toThrow(
+        'Failed to fetch stores',
+      );
       expect(storeService.findAll).toHaveBeenCalled();
     });
   });
@@ -98,7 +118,9 @@ describe('StoreController', () => {
       const error = new Error('Failed to create store');
       storeService.create.mockRejectedValue(error);
 
-      await expect(controller.create(createStoreDto)).rejects.toThrow('Failed to create store');
+      await expect(controller.create(createStoreDto)).rejects.toThrow(
+        'Failed to create store',
+      );
       expect(storeService.create).toHaveBeenCalledWith(createStoreDto);
     });
   });
@@ -119,7 +141,9 @@ describe('StoreController', () => {
       const error = new Error('Store not found');
       storeService.findOne.mockRejectedValue(error);
 
-      await expect(controller.findOne(storeId)).rejects.toThrow('Store not found');
+      await expect(controller.findOne(storeId)).rejects.toThrow(
+        'Store not found',
+      );
       expect(storeService.findOne).toHaveBeenCalledWith(storeId);
     });
   });
@@ -135,7 +159,7 @@ describe('StoreController', () => {
       const updatedStore = { ...mockStore, ...updateStoreDto };
       storeService.update.mockResolvedValue(updatedStore);
 
-      const result = await controller.update(storeId, updateStoreDto);
+      const result = await controller.update(mockUser, updateStoreDto);
 
       expect(storeService.update).toHaveBeenCalledWith(storeId, updateStoreDto);
       expect(result).toEqual(updatedStore);
@@ -145,7 +169,9 @@ describe('StoreController', () => {
       const error = new Error('Failed to update store');
       storeService.update.mockRejectedValue(error);
 
-      await expect(controller.update(storeId, updateStoreDto)).rejects.toThrow('Failed to update store');
+      await expect(
+        controller.update(mockUser, updateStoreDto),
+      ).rejects.toThrow('Failed to update store');
       expect(storeService.update).toHaveBeenCalledWith(storeId, updateStoreDto);
     });
   });
@@ -166,7 +192,9 @@ describe('StoreController', () => {
       const error = new Error('Failed to remove store');
       storeService.remove.mockRejectedValue(error);
 
-      await expect(controller.remove(storeId)).rejects.toThrow('Failed to remove store');
+      await expect(controller.remove(storeId)).rejects.toThrow(
+        'Failed to remove store',
+      );
       expect(storeService.remove).toHaveBeenCalledWith(storeId);
     });
   });
@@ -181,21 +209,6 @@ describe('StoreController', () => {
       size: 1024,
     };
 
-    const mockUser = {
-      id: 'user-123',
-      storeId: 'store-123',
-      email: 'user@example.com',
-      name: 'Test User',
-      phone: '+5511999999999',
-      password: 'hashedPassword',
-      documentType: 'cpf' as const,
-      documentValue: '12345678901',
-      role: 'RESELLER_ADMIN_4MIGA_USER' as const,
-      isEmailConfirmed: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
     const mockResult = {
       success: true,
       store: mockStore,
@@ -206,14 +219,17 @@ describe('StoreController', () => {
 
       const result = await controller.uploadBanner(mockFile, mockUser);
 
-      expect(storeService.addBanner).toHaveBeenCalledWith(mockUser.storeId, mockFile);
+      expect(storeService.addBanner).toHaveBeenCalledWith(
+        mockUser.storeId,
+        mockFile,
+      );
       expect(result).toEqual(mockResult);
     });
 
     it('should throw BadRequestException when no file provided', async () => {
-      await expect(controller.uploadBanner(undefined as any, mockUser)).rejects.toThrow(
-        'No file provided',
-      );
+      await expect(
+        controller.uploadBanner(undefined as any, mockUser),
+      ).rejects.toThrow('No file provided');
     });
   });
 
@@ -244,14 +260,17 @@ describe('StoreController', () => {
 
       const result = await controller.deleteBanner(bannerIndex, mockUser);
 
-      expect(storeService.removeBanner).toHaveBeenCalledWith(mockUser.storeId, 1);
+      expect(storeService.removeBanner).toHaveBeenCalledWith(
+        mockUser.storeId,
+        1,
+      );
       expect(result).toEqual(mockResult);
     });
 
     it('should throw BadRequestException when invalid banner index', async () => {
-      await expect(controller.deleteBanner('invalid', mockUser)).rejects.toThrow(
-        'Invalid banner index',
-      );
+      await expect(
+        controller.deleteBanner('invalid', mockUser),
+      ).rejects.toThrow('Invalid banner index');
     });
 
     it('should throw BadRequestException when negative banner index', async () => {
@@ -306,7 +325,10 @@ describe('StoreController', () => {
 
       const result = await controller.uploadBannersBatch(mockFiles, mockUser);
 
-      expect(storeService.addMultipleBanners).toHaveBeenCalledWith(mockUser.storeId, mockFiles);
+      expect(storeService.addMultipleBanners).toHaveBeenCalledWith(
+        mockUser.storeId,
+        mockFiles,
+      );
       expect(result).toEqual(mockResult);
     });
 
@@ -317,9 +339,9 @@ describe('StoreController', () => {
     });
 
     it('should throw BadRequestException when null files provided', async () => {
-      await expect(controller.uploadBannersBatch(undefined as any, mockUser)).rejects.toThrow(
-        'No files provided',
-      );
+      await expect(
+        controller.uploadBannersBatch(undefined as any, mockUser),
+      ).rejects.toThrow('No files provided');
     });
   });
 
@@ -352,7 +374,10 @@ describe('StoreController', () => {
     it('should delete multiple banners successfully', async () => {
       storeService.removeMultipleBanners.mockResolvedValue(mockResult);
 
-      const result = await controller.deleteBannersBatch(removeBannersDto, mockUser);
+      const result = await controller.deleteBannersBatch(
+        removeBannersDto,
+        mockUser,
+      );
 
       expect(storeService.removeMultipleBanners).toHaveBeenCalledWith(
         mockUser.storeId,
