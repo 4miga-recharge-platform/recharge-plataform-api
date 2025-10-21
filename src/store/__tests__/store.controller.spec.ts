@@ -23,7 +23,7 @@ describe('StoreController', () => {
       'https://example.com/banner1.png',
       'https://example.com/banner2.png',
     ],
-    offerBannerImage: 'https://example.com/offer-banner.png',
+    secondaryBannerUrl: 'https://example.com/offer-banner.png',
   };
 
   const mockUser = {

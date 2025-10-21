@@ -14,6 +14,7 @@ jest.mock('bcrypt', () => ({
 // Mock validation utility
 jest.mock('../../utils/validation.util', () => ({
   validateRequiredFields: jest.fn(),
+  validateUpdateFields: jest.fn(),
 }));
 
 describe('StoreService', () => {
@@ -32,7 +33,7 @@ describe('StoreService', () => {
     miniLogoUrl: 'https://example.com/mini-logo.png',
     faviconUrl: 'https://example.com/favicon.ico',
     bannersUrl: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
-    offerBannerImage: 'https://example.com/offer-banner.png',
+    secondaryBannerUrl: 'https://example.com/offer-banner.png',
   };
 
   const mockStoreSelect = {
@@ -48,7 +49,7 @@ describe('StoreService', () => {
     miniLogoUrl: true,
     faviconUrl: true,
     bannersUrl: true,
-    offerBannerImage: true,
+    secondaryBannerUrl: true,
     createdAt: false,
     updatedAt: false,
     users: false,
@@ -175,7 +176,7 @@ describe('StoreService', () => {
 
       expect(validateRequiredFields).toHaveBeenCalledWith(
         createStoreDto,
-        ['name', 'email'],
+        ['name'],
       );
 
       expect(prismaService.store.create).toHaveBeenCalledWith({
@@ -217,8 +218,8 @@ describe('StoreService', () => {
     };
 
     it('should update a store successfully', async () => {
-      const { validateRequiredFields } = require('../../utils/validation.util');
-      validateRequiredFields.mockImplementation(() => {});
+      const { validateUpdateFields } = require('../../utils/validation.util');
+      validateUpdateFields.mockImplementation(() => {});
 
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.store.update.mockResolvedValue({ ...mockStore, ...updateStoreDto });
@@ -230,7 +231,7 @@ describe('StoreService', () => {
         select: mockStoreSelect,
       });
 
-      expect(validateRequiredFields).toHaveBeenCalledWith(updateStoreDto, ['name', 'email']);
+      expect(validateUpdateFields).toHaveBeenCalledWith(updateStoreDto, ['name', 'email']);
 
       expect(prismaService.store.update).toHaveBeenCalledWith({
         where: { id: storeId },

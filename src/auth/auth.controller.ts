@@ -119,7 +119,7 @@ export class AuthController {
           miniLogoUrl: true,
           faviconUrl: true,
           bannersUrl: true,
-          offerBannerImage: true,
+          secondaryBannerUrl: true,
           createdAt: true,
           updatedAt: true,
         },

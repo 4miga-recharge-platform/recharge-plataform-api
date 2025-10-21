@@ -1,7 +1,7 @@
 export class Store {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   domain: string;
   wppNumber?: string | null;
   instagramUrl?: string | null;
@@ -11,7 +11,7 @@ export class Store {
   miniLogoUrl?: string | null;
   faviconUrl?: string | null;
   bannersUrl?: string[];
-  offerBannerImage?: string | null;
+  secondaryBannerUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
   // users?: User[];

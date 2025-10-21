@@ -12,12 +12,13 @@ export class CreateStoreDto {
 
   @IsString()
   @IsEmail()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({
     description: 'Store email',
     example: 'loja@exemplo.com',
+    required: false,
   })
-  email: string;
+  email?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -108,5 +109,5 @@ export class CreateStoreDto {
     example: 'https://example.com/offer-banner.png',
     required: false,
   })
-  offerBannerImage?: string;
+  secondaryBannerUrl?: string;
 }
