@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { validateRequiredFields, validateUpdateFields } from 'src/utils/validation.util';
 import { StorageService } from '../storage/storage.service';
+import { WebhookService } from '../webhook/webhook.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { Store } from './entities/store.entity';
@@ -22,6 +23,7 @@ export class StoreService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly webhookService: WebhookService,
   ) {}
 
   private storeSelect = {
@@ -75,10 +77,15 @@ export class StoreService {
   async create(dto: CreateStoreDto): Promise<Store> {
     try {
       validateRequiredFields(dto, ['name']);
-      return await this.prisma.store.create({
+      const store = await this.prisma.store.create({
         data: dto,
         select: this.storeSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(store.id, 'created');
+
+      return store;
     } catch {
       throw new BadRequestException('Failed to create store');
     }
@@ -91,11 +98,16 @@ export class StoreService {
         (key) => dto[key] !== undefined,
       );
       validateUpdateFields(dto, fieldsToValidate);
-      return await this.prisma.store.update({
+      const store = await this.prisma.store.update({
         where: { id },
         data: dto,
         select: this.storeSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(store.id, 'updated');
+
+      return store;
     } catch {
       throw new BadRequestException('Failed to update store');
     }
@@ -104,10 +116,15 @@ export class StoreService {
   async remove(id: string): Promise<Store> {
     try {
       await this.findOne(id);
-      return await this.prisma.store.delete({
+      const store = await this.prisma.store.delete({
         where: { id },
         select: this.storeSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(store.id, 'deleted');
+
+      return store;
     } catch {
       throw new BadRequestException('Failed to remove store');
     }
@@ -166,6 +183,9 @@ export class StoreService {
         select: this.storeSelect,
       });
 
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(storeId, 'updated');
+
       return {
         success: true,
         store: updated,
@@ -215,6 +235,9 @@ export class StoreService {
         data: { bannersUrl: updatedBanners },
         select: this.storeSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(storeId, 'updated');
 
       return {
         success: true,
@@ -293,6 +316,9 @@ export class StoreService {
         data: { bannersUrl: updatedBanners },
         select: this.storeSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(storeId, 'updated');
 
       return {
         success: true,
@@ -382,6 +408,9 @@ export class StoreService {
         select: this.storeSelect,
       });
 
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(storeId, 'updated');
+
       return {
         success: true,
         store: updated,
@@ -458,6 +487,9 @@ export class StoreService {
         select: this.storeSelect,
       });
 
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(storeId, 'updated');
+
       return {
         success: true,
         store: updated,
@@ -504,6 +536,9 @@ export class StoreService {
         data: { secondaryBannerUrl: null },
         select: this.storeSelect,
       });
+
+      // Notify frontend via webhook
+      await this.webhookService.notifyStoreUpdate(storeId, 'updated');
 
       return {
         success: true,

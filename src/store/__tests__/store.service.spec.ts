@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { StoreService } from '../store.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../storage/storage.service';
+import { WebhookService } from '../../webhook/webhook.service';
 import { CreateStoreDto } from '../dto/create-store.dto';
 import { UpdateStoreDto } from '../dto/update-store.dto';
 
@@ -58,6 +59,7 @@ describe('StoreService', () => {
   };
 
   let mockStorageService: any;
+  let mockWebhookService: any;
 
   beforeEach(async () => {
     const mockPrismaService = {
@@ -76,6 +78,12 @@ describe('StoreService', () => {
       getFileUrlWithTimestamp: jest.fn(),
     };
 
+    mockWebhookService = {
+      notifyStoreUpdate: jest.fn(),
+      notifyProductUpdate: jest.fn(),
+      notifyPackageUpdate: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StoreService,
@@ -86,6 +94,10 @@ describe('StoreService', () => {
         {
           provide: StorageService,
           useValue: mockStorageService,
+        },
+        {
+          provide: WebhookService,
+          useValue: mockWebhookService,
         },
       ],
     }).compile();
@@ -170,6 +182,7 @@ describe('StoreService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
+      mockWebhookService.notifyStoreUpdate.mockResolvedValue(undefined);
       prismaService.store.create.mockResolvedValue(mockStore);
 
       const result = await service.create(createStoreDto);
@@ -183,6 +196,11 @@ describe('StoreService', () => {
         data: createStoreDto,
         select: mockStoreSelect,
       });
+
+      expect(mockWebhookService.notifyStoreUpdate).toHaveBeenCalledWith(
+        mockStore.id,
+        'created',
+      );
 
       expect(result).toEqual(mockStore);
     });
@@ -221,6 +239,7 @@ describe('StoreService', () => {
       const { validateUpdateFields } = require('../../utils/validation.util');
       validateUpdateFields.mockImplementation(() => {});
 
+      mockWebhookService.notifyStoreUpdate.mockResolvedValue(undefined);
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.store.update.mockResolvedValue({ ...mockStore, ...updateStoreDto });
 
@@ -238,6 +257,11 @@ describe('StoreService', () => {
         data: updateStoreDto,
         select: mockStoreSelect,
       });
+
+      expect(mockWebhookService.notifyStoreUpdate).toHaveBeenCalledWith(
+        storeId,
+        'updated',
+      );
 
       expect(result).toEqual({ ...mockStore, ...updateStoreDto });
     });
@@ -267,6 +291,7 @@ describe('StoreService', () => {
     const storeId = 'store-123';
 
     it('should remove a store successfully', async () => {
+      mockWebhookService.notifyStoreUpdate.mockResolvedValue(undefined);
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.store.delete.mockResolvedValue(mockStore);
 
@@ -281,6 +306,11 @@ describe('StoreService', () => {
         where: { id: storeId },
         select: mockStoreSelect,
       });
+
+      expect(mockWebhookService.notifyStoreUpdate).toHaveBeenCalledWith(
+        storeId,
+        'deleted',
+      );
 
       expect(result).toEqual(mockStore);
     });

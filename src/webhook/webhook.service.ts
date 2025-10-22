@@ -153,7 +153,7 @@ export class WebhookService {
     };
 
     try {
-      await this.sendWebhook(store, '/api/webhook/store-update', webhookData);
+      await this.sendWebhook(store, '/api/revalidate-store', webhookData);
       this.logger.log(`Store webhook sent successfully: ${storeId} ${action} for store ${store.storeName}`);
     } catch (error) {
       this.logger.error(`Failed to send store webhook for ${storeId}:`, error.message);
