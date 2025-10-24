@@ -1,12 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
-  IsOptional,
   IsString,
-  MinLength,
   Matches,
+  MinLength,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -31,11 +30,13 @@ export class CreateUserDto {
   @IsString()
   @MinLength(8, { message: 'Password must be at least 8 characters long' })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message: 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character (@$!%*?&)',
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character (@$!%*?&)',
   })
   @IsNotEmpty({ message: 'Password is required' })
   @ApiProperty({
-    description: 'User password (min 8 characters, must contain uppercase, lowercase, number and special character)',
+    description:
+      'User password (min 8 characters, must contain uppercase, lowercase, number and special character)',
     example: 'StrongPass123!',
   })
   password: string;
@@ -55,15 +56,6 @@ export class CreateUserDto {
     example: '123.456.789-00',
   })
   documentValue: string;
-
-  @IsEnum(['MASTER_ADMIN', 'ADMIN', 'USER'], { message: 'Role must be MASTER_ADMIN, ADMIN or USER' })
-  @IsOptional()
-  @ApiPropertyOptional({
-    description: 'User role',
-    enum: ['MASTER_ADMIN', 'ADMIN', 'USER'],
-    example: 'USER',
-  })
-  role?: 'MASTER_ADMIN_4MIGA_USER' | 'RESELLER_ADMIN_4MIGA_USER' | 'USER';
 
   @IsString()
   @IsNotEmpty({ message: 'Store ID is required' })

@@ -109,6 +109,7 @@ export class UserService {
       const data = {
         ...rest,
         password: await bcrypt.hash(dto.password, 10),
+        role: 'USER' as const, // Explicitly set role as USER for all new users
         emailConfirmationCode: code,
         emailVerified: false,
         emailConfirmationExpires,
@@ -186,7 +187,12 @@ export class UserService {
         (key) => rest[key] !== undefined,
       );
       validateRequiredFields(rest, fieldsToValidate);
-      const data = { ...rest };
+
+      const { role, ...data } = rest as any;
+      if (role !== undefined) {
+        console.warn(`Attempt to change role via general update blocked`);
+      }
+
       return await this.prisma.user.update({
         where: { id },
         data: {
