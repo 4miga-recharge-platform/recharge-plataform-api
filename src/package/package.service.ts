@@ -135,13 +135,6 @@ export class PackageService {
         }))
       };
 
-      // Notify frontend via webhook
-      await this.webhookService.notifyPackageUpdate(
-        package_.id,
-        package_.storeId,
-        'created',
-      );
-
       return convertedPackage;
     } catch {
       throw new BadRequestException('Failed to create package');
@@ -199,13 +192,6 @@ export class PackageService {
           price: pm.price.toNumber()
         }))
       };
-
-      // Notify frontend via webhook
-      await this.webhookService.notifyPackageUpdate(
-        package_.id,
-        package_.storeId,
-        'updated',
-      );
 
       return convertedPackage;
     } catch {
@@ -341,13 +327,6 @@ export class PackageService {
           price: pm.price.toNumber()
         }))
       };
-
-      // Notify frontend via webhook
-      await this.webhookService.notifyPackageUpdate(
-        id,
-        deletedPackage.storeId,
-        'deleted',
-      );
 
       return convertedPackage;
     } catch {
@@ -490,13 +469,6 @@ export class PackageService {
 
     this.logger.log(`Package updated successfully`);
 
-    // Notify frontend via webhook
-    await this.webhookService.notifyPackageUpdate(
-      packageId,
-      storeId,
-      'updated',
-    );
-
     return {
       success: true,
       package: convertedPackage,
@@ -596,13 +568,6 @@ export class PackageService {
 
     this.logger.log(
       `All ${updatedPackages.length} packages updated successfully`,
-    );
-
-    // Notify frontend via webhook (send once for the product change)
-    await this.webhookService.notifyPackageUpdate(
-      packages[0].id, // Use first package id as reference
-      storeId,
-      'updated',
     );
 
     return {

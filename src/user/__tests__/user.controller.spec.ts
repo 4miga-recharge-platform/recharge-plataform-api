@@ -33,7 +33,6 @@ describe('UserController', () => {
     password: 'password123',
     documentType: 'cpf',
     documentValue: '123.456.789-00',
-    role: 'USER',
     storeId: 'store-123',
   };
 

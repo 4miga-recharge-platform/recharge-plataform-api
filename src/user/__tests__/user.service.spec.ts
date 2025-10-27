@@ -172,7 +172,6 @@ describe('UserService', () => {
       password: 'password123',
       documentType: 'cpf',
       documentValue: '123.456.789-00',
-      role: 'USER',
       storeId: 'store-123',
     };
 
@@ -206,7 +205,7 @@ describe('UserService', () => {
           password: 'hashedPassword123',
           documentType: createUserDto.documentType,
           documentValue: createUserDto.documentValue,
-          role: createUserDto.role,
+          role: 'USER',
           storeId: createUserDto.storeId,
           emailConfirmationCode: expect.any(String),
           emailVerified: false,
