@@ -182,7 +182,6 @@ describe('StoreService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      mockWebhookService.notifyStoreUpdate.mockResolvedValue(undefined);
       prismaService.store.create.mockResolvedValue(mockStore);
 
       const result = await service.create(createStoreDto);
@@ -196,11 +195,6 @@ describe('StoreService', () => {
         data: createStoreDto,
         select: mockStoreSelect,
       });
-
-      expect(mockWebhookService.notifyStoreUpdate).toHaveBeenCalledWith(
-        mockStore.id,
-        'created',
-      );
 
       expect(result).toEqual(mockStore);
     });
@@ -239,7 +233,6 @@ describe('StoreService', () => {
       const { validateUpdateFields } = require('../../utils/validation.util');
       validateUpdateFields.mockImplementation(() => {});
 
-      mockWebhookService.notifyStoreUpdate.mockResolvedValue(undefined);
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.store.update.mockResolvedValue({ ...mockStore, ...updateStoreDto });
 
@@ -258,10 +251,6 @@ describe('StoreService', () => {
         select: mockStoreSelect,
       });
 
-      expect(mockWebhookService.notifyStoreUpdate).toHaveBeenCalledWith(
-        storeId,
-        'updated',
-      );
 
       expect(result).toEqual({ ...mockStore, ...updateStoreDto });
     });
@@ -291,7 +280,6 @@ describe('StoreService', () => {
     const storeId = 'store-123';
 
     it('should remove a store successfully', async () => {
-      mockWebhookService.notifyStoreUpdate.mockResolvedValue(undefined);
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.store.delete.mockResolvedValue(mockStore);
 
@@ -307,10 +295,6 @@ describe('StoreService', () => {
         select: mockStoreSelect,
       });
 
-      expect(mockWebhookService.notifyStoreUpdate).toHaveBeenCalledWith(
-        storeId,
-        'deleted',
-      );
 
       expect(result).toEqual(mockStore);
     });

@@ -230,7 +230,7 @@ export class ProductService {
         data: updateData,
       });
 
-      await this.webhookService.notifyProductUpdate(productId, 'updated');
+      // await this.webhookService.notifyProductUpdate(productId, 'updated');
 
       return {
         success: true,
@@ -402,8 +402,6 @@ export class ProductService {
         data: dto,
       });
 
-      // Notify frontend via webhook
-      await this.webhookService.notifyProductUpdate(product.id, 'created');
 
       return product;
     } catch {
@@ -413,17 +411,23 @@ export class ProductService {
 
   async update(id: string, dto: UpdateProductDto): Promise<Product> {
     try {
+      // Verify product exists
+      const existingProduct = await this.prisma.product.findUnique({
+        where: { id },
+      });
+      if (!existingProduct) {
+        throw new BadRequestException('Product not found');
+      }
+
       const fieldsToValidate = Object.keys(dto).filter(
         (key) => dto[key] !== undefined,
       );
       validateRequiredFields(dto, fieldsToValidate);
+
       const product = await this.prisma.product.update({
         where: { id },
         data: dto,
       });
-
-      // Notify frontend via webhook
-      await this.webhookService.notifyProductUpdate(product.id, 'updated');
 
       return product;
     } catch {
@@ -444,8 +448,6 @@ export class ProductService {
         where: { id },
       });
 
-      // Notify frontend via webhook
-      await this.webhookService.notifyProductUpdate(id, 'deleted');
 
       return { message: 'Product deleted successfully' };
     } catch {
@@ -494,8 +496,6 @@ export class ProductService {
         data: dto,
       });
 
-      // Notify frontend via webhook
-      await this.webhookService.notifyProductUpdate(dto.productId, 'updated');
 
       return customization;
     } catch (error) {
@@ -609,8 +609,6 @@ export class ProductService {
         });
       }
 
-      // Notify frontend via webhook
-      await this.webhookService.notifyProductUpdate(productId, 'updated');
 
       return existingCustomization;
     } catch (error) {
@@ -634,11 +632,6 @@ export class ProductService {
         where: { id },
       });
 
-      // Notify frontend via webhook
-      await this.webhookService.notifyProductUpdate(
-        customization.productId,
-        'updated',
-      );
 
       return { message: 'Product customization deleted successfully' };
     } catch (error) {

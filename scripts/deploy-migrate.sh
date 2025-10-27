@@ -10,7 +10,9 @@ echo "🚀 Starting complete deployment with migrations..."
 
 # Load environment variables
 if [ -f .env.deploy ]; then
-  export $(cat .env.deploy | grep -v '^#' | xargs)
+  set -a
+  source .env.deploy
+  set +a
   echo "✅ Using .env.deploy for production deployment"
 else
   echo "⚠️  Warning: .env.deploy file not found. Using default values."
