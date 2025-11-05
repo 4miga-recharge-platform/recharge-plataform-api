@@ -512,41 +512,9 @@ export class PackageService {
       `File uploaded successfully to shared location: ${fileUrl}`,
     );
 
-    // Resolve defaults to avoid deleting them
-    const [product, storeProductSettings] = await Promise.all([
-      this.prisma.product.findUnique({ where: { id: productId }, select: { imgCardUrl: true } }),
-      this.prisma.storeProductSettings.findUnique({ where: { storeId_productId: { storeId, productId } }, select: { imgCardUrl: true } }),
-    ]);
-    const productDefaultUrl = product?.imgCardUrl || null;
-    const storeCustomizationDefaultUrl = storeProductSettings?.imgCardUrl || null;
-
-    // Delete previous images and update all packages
+    // STEP 1: Update all packages with the new shared image URL
     const updatePromises = packages.map(async (pkg) => {
-      // Delete previous image if exists
-      if (pkg.imgCardUrl) {
-        try {
-          const prevUrl = pkg.imgCardUrl;
-          const stripQuery = (u?: string | null) => (u ? new URL(u).origin + new URL(u).pathname : u);
-          const prevNoQuery = stripQuery(prevUrl);
-          const productDefaultNoQuery = stripQuery(productDefaultUrl);
-          const storeCustomizationNoQuery = stripQuery(storeCustomizationDefaultUrl);
-          const isProductDefault = !!(productDefaultNoQuery && productDefaultNoQuery === prevNoQuery);
-          const isStoreCustomizationDefault = !!(storeCustomizationNoQuery && storeCustomizationNoQuery === prevNoQuery);
-          this.logger.log(`Skipping default check before delete (pkg ${pkg.id}): isProductDefault=${isProductDefault}, isStoreCustomizationDefault=${isStoreCustomizationDefault}`);
-          if (!isProductDefault && !isStoreCustomizationDefault) {
-            await this.storageService.deleteFile(prevUrl);
-            this.logger.log(`Previous card image deleted for package ${pkg.id}`);
-          } else {
-            this.logger.log(`Package ${pkg.id} previous image is default; skipping deletion`);
-          }
-        } catch (err) {
-          this.logger.warn(
-            `Could not delete previous image for package ${pkg.id}: ${err.message}`,
-          );
-        }
-      }
-
-      // Update package with new image URL
+      // Update package with new shared image URL
       const updatedPackage = await this.prisma.package.update({
         where: { id: pkg.id },
         data: { imgCardUrl: fileUrl },
@@ -565,6 +533,40 @@ export class PackageService {
     });
 
     const updatedPackages = await Promise.all(updatePromises);
+
+    // STEP 2: Delete all physical files in the /package/ folder (they are no longer needed)
+    const packageFolderPrefix = `store/${storeId}/product/${productId}/package/`;
+    this.logger.log(`Listing files in package folder: ${packageFolderPrefix}`);
+
+    try {
+      // List all files in the package folder
+      const packageFiles = await this.storageService.listFiles(packageFolderPrefix);
+      this.logger.log(`Found ${packageFiles.length} files in package folder`);
+
+      // Get bucket base URL to construct full URLs for deletion
+      const bucketBaseUrl = this.storageService.getBucketUrl();
+
+      // Delete each file in the package folder
+      for (const filePath of packageFiles) {
+        try {
+          // Construct full URL for the file
+          const fileUrl = `${bucketBaseUrl}/${filePath}`;
+
+          // Delete the physical file
+          await this.storageService.deleteFile(fileUrl);
+          this.logger.log(`Deleted package image file: ${filePath}`);
+        } catch (err) {
+          this.logger.warn(
+            `Could not delete package image file: ${filePath}, error: ${err.message}`,
+          );
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Could not list or delete package folder files: ${err.message}`,
+      );
+      // Don't throw - this is cleanup, not critical
+    }
 
     this.logger.log(
       `All ${updatedPackages.length} packages updated successfully`,
