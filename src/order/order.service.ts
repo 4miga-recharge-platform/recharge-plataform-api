@@ -78,8 +78,10 @@ export class OrderService {
 
       const totalPages = Math.ceil(totalOrders / limit);
 
+      const dataWithCustomizedImages = await this.applyStoreProductImages(data);
+
       return {
-        data,
+        data: dataWithCustomizedImages,
         totalOrders,
         page,
         totalPages,
@@ -178,8 +180,10 @@ export class OrderService {
 
       const totalPages = Math.ceil(totalOrders / limit);
 
+      const dataWithCustomizedImages = await this.applyStoreProductImages(data);
+
       return {
-        data,
+        data: dataWithCustomizedImages,
         totalOrders,
         page,
         totalPages,
@@ -190,6 +194,102 @@ export class OrderService {
       }
       throw error;
     }
+  }
+
+  private async applyStoreProductImages(orders: any[]) {
+    if (!orders || orders.length === 0) {
+      return orders;
+    }
+
+    const relevantEntries = orders
+      .filter((order) => order?.storeId && order?.orderItem?.productId && order.orderItem.package)
+      .map((order) => ({
+        storeId: order.storeId as string,
+        productId: order.orderItem.productId as string,
+      }));
+
+    if (relevantEntries.length === 0) {
+      return orders;
+    }
+
+    const storeIds = Array.from(new Set(relevantEntries.map((entry) => entry.storeId)));
+    const productIds = Array.from(new Set(relevantEntries.map((entry) => entry.productId)));
+
+    const storeProductSettingsPromise =
+      storeIds.length > 0 && productIds.length > 0
+        ? this.prisma.storeProductSettings.findMany({
+            where: {
+              storeId: { in: storeIds },
+              productId: { in: productIds },
+            },
+            select: {
+              storeId: true,
+              productId: true,
+              imgCardUrl: true,
+            },
+          })
+        : Promise.resolve([]);
+
+    const productsPromise =
+      productIds.length > 0
+        ? this.prisma.product.findMany({
+            where: {
+              id: { in: productIds },
+            },
+            select: {
+              id: true,
+              imgCardUrl: true,
+            },
+          })
+        : Promise.resolve([]);
+
+    const [storeProductSettings, products] = await Promise.all([
+      storeProductSettingsPromise,
+      productsPromise,
+    ]);
+
+    const storeImageMap = new Map<string, string>();
+    for (const setting of storeProductSettings) {
+      if (setting.imgCardUrl) {
+        storeImageMap.set(`${setting.storeId}:${setting.productId}`, setting.imgCardUrl);
+      }
+    }
+
+    const productImageMap = new Map<string, string>();
+    for (const product of products) {
+      if (product.imgCardUrl) {
+        productImageMap.set(product.id, product.imgCardUrl);
+      }
+    }
+
+    return orders.map((order) => {
+      const productId = order?.orderItem?.productId;
+      const packageInfo = order?.orderItem?.package;
+      if (!productId || !packageInfo) {
+        return order;
+      }
+
+      const storeKey = `${order.storeId}:${productId}`;
+      const replacementImg =
+        storeImageMap.get(storeKey) ??
+        productImageMap.get(productId) ??
+        packageInfo.imgCardUrl;
+
+      if (replacementImg === packageInfo.imgCardUrl) {
+        return order;
+      }
+
+      return {
+        ...order,
+        orderItem: {
+          ...order.orderItem,
+          package: {
+            ...packageInfo,
+            imgCardUrl: replacementImg,
+          },
+        },
+      };
+    });
   }
 
   async findOne(id: string, userId: string) {
@@ -227,7 +327,8 @@ export class OrderService {
         throw new NotFoundException('Order not found');
       }
 
-      return order;
+      const [customizedOrder] = await this.applyStoreProductImages([order]);
+      return customizedOrder;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         throw new BadRequestException(error.message);
