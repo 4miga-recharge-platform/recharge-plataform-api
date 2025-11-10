@@ -20,6 +20,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { CouponValidationResponseDto } from './dto/coupon-validation-response.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { OrderStatus } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { LoggedUser } from '../auth/logged-user.decorator';
@@ -60,6 +61,19 @@ export class OrderController {
   @ApiOperation({ summary: 'Get all orders for the logged admin store' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 6 })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by order number or customer email',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Filter by order status or use "all" to list every status',
+    enum: ['all', ...Object.values(OrderStatus)],
+  })
   @ApiResponse({
     status: 200,
     description: 'Paginated list of store orders returned successfully for admin users.',
@@ -76,8 +90,16 @@ export class OrderController {
     @LoggedUser() user: User,
     @Query('page') page = 1,
     @Query('limit') limit = 6,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
   ) {
-    return this.orderService.findAllByStore(user.storeId, Number(page), Number(limit));
+    return this.orderService.findAllByStore(
+      user.storeId,
+      Number(page),
+      Number(limit),
+      search,
+      status,
+    );
   }
 
   @Get(':id')

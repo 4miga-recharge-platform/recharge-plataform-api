@@ -92,13 +92,50 @@ export class OrderService {
     }
   }
 
-  async findAllByStore(storeId: string, page = 1, limit = 6) {
+  async findAllByStore(
+    storeId: string,
+    page = 1,
+    limit = 6,
+    search?: string,
+    status?: string,
+  ) {
     try {
+      const where: Prisma.OrderWhereInput = {
+        storeId,
+      };
+
+      const normalizedSearch = search?.trim();
+      if (normalizedSearch) {
+        where.OR = [
+          {
+            orderNumber: {
+              contains: normalizedSearch,
+              mode: 'insensitive',
+            },
+          },
+          {
+            user: {
+              email: {
+                contains: normalizedSearch,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ];
+      }
+
+      const normalizedStatus = status?.trim();
+      if (normalizedStatus && normalizedStatus.toLowerCase() !== 'all') {
+        const statusUppercase = normalizedStatus.toUpperCase();
+        if (!Object.values(OrderStatus).includes(statusUppercase as OrderStatus)) {
+          throw new BadRequestException('Invalid order status');
+        }
+        where.orderStatus = statusUppercase as OrderStatus;
+      }
+
       const [data, totalOrders] = await Promise.all([
         this.prisma.order.findMany({
-          where: {
-            storeId,
-          },
+          where,
           include: {
             payment: true,
             orderItem: {
@@ -120,6 +157,13 @@ export class OrderService {
                 },
               },
             },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -128,9 +172,7 @@ export class OrderService {
           take: limit,
         }),
         this.prisma.order.count({
-          where: {
-            storeId,
-          },
+          where,
         }),
       ]);
 

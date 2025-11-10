@@ -104,6 +104,8 @@ describe('OrderController', () => {
         mockUser.storeId,
         Number(page),
         Number(limit),
+        undefined,
+        undefined,
       );
       expect(result).toEqual(mockPaginatedOrders);
     });
@@ -117,6 +119,8 @@ describe('OrderController', () => {
         mockUser.storeId,
         1,
         6,
+        undefined,
+        undefined,
       );
       expect(result).toEqual(mockPaginatedOrders);
     });
@@ -130,6 +134,24 @@ describe('OrderController', () => {
         mockUser.storeId,
         1,
         6,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should forward search and status parameters', async () => {
+      const search = 'john@example.com';
+      const status = 'completed';
+      orderService.findAllByStore.mockResolvedValue(mockPaginatedOrders);
+
+      await controller.findAllForStore(mockUser, 3, 12, search, status);
+
+      expect(orderService.findAllByStore).toHaveBeenCalledWith(
+        mockUser.storeId,
+        3,
+        12,
+        search,
+        status,
       );
     });
   });
