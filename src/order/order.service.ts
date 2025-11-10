@@ -100,6 +100,7 @@ export class OrderService {
     limit = 6,
     search?: string,
     status?: string,
+    productId?: string,
   ) {
     try {
       const where: Prisma.OrderWhereInput = {
@@ -129,10 +130,21 @@ export class OrderService {
       const normalizedStatus = status?.trim();
       if (normalizedStatus && normalizedStatus.toLowerCase() !== 'all') {
         const statusUppercase = normalizedStatus.toUpperCase();
-        if (!Object.values(OrderStatus).includes(statusUppercase as OrderStatus)) {
+        if (
+          !Object.values(OrderStatus).includes(statusUppercase as OrderStatus)
+        ) {
           throw new BadRequestException('Invalid order status');
         }
         where.orderStatus = statusUppercase as OrderStatus;
+      }
+
+      const normalizedProductId = productId?.trim();
+      if (normalizedProductId) {
+        where.orderItem = {
+          is: {
+            productId: normalizedProductId,
+          },
+        };
       }
 
       const [data, totalOrders] = await Promise.all([
@@ -181,12 +193,14 @@ export class OrderService {
       const totalPages = Math.ceil(totalOrders / limit);
 
       const dataWithCustomizedImages = await this.applyStoreProductImages(data);
+      const products = await this.getStoreProducts(storeId);
 
       return {
         data: dataWithCustomizedImages,
         totalOrders,
         page,
         totalPages,
+        products,
       };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -202,7 +216,12 @@ export class OrderService {
     }
 
     const relevantEntries = orders
-      .filter((order) => order?.storeId && order?.orderItem?.productId && order.orderItem.package)
+      .filter(
+        (order) =>
+          order?.storeId &&
+          order?.orderItem?.productId &&
+          order.orderItem.package,
+      )
       .map((order) => ({
         storeId: order.storeId as string,
         productId: order.orderItem.productId as string,
@@ -212,8 +231,12 @@ export class OrderService {
       return orders;
     }
 
-    const storeIds = Array.from(new Set(relevantEntries.map((entry) => entry.storeId)));
-    const productIds = Array.from(new Set(relevantEntries.map((entry) => entry.productId)));
+    const storeIds = Array.from(
+      new Set(relevantEntries.map((entry) => entry.storeId)),
+    );
+    const productIds = Array.from(
+      new Set(relevantEntries.map((entry) => entry.productId)),
+    );
 
     const storeProductSettingsPromise =
       storeIds.length > 0 && productIds.length > 0
@@ -251,7 +274,10 @@ export class OrderService {
     const storeImageMap = new Map<string, string>();
     for (const setting of storeProductSettings) {
       if (setting.imgCardUrl) {
-        storeImageMap.set(`${setting.storeId}:${setting.productId}`, setting.imgCardUrl);
+        storeImageMap.set(
+          `${setting.storeId}:${setting.productId}`,
+          setting.imgCardUrl,
+        );
       }
     }
 
@@ -290,6 +316,35 @@ export class OrderService {
         },
       };
     });
+  }
+
+  private async getStoreProducts(storeId: string) {
+    const packages = await this.prisma.package.findMany({
+      where: {
+        storeId,
+        isActive: true,
+      },
+      select: {
+        productId: true,
+        product: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    const productMap = new Map<string, string>();
+    for (const pkg of packages) {
+      if (pkg.productId && pkg.product?.name) {
+        productMap.set(pkg.productId, pkg.product.name);
+      }
+    }
+
+    return Array.from(productMap.entries()).map(([id, name]) => ({
+      id,
+      name,
+    }));
   }
 
   async findOne(id: string, userId: string) {
@@ -381,7 +436,6 @@ export class OrderService {
       if (!packageData) {
         throw new NotFoundException('Package not found');
       }
-
 
       // Check if package belongs to the store
       if (packageData.storeId !== storeId) {

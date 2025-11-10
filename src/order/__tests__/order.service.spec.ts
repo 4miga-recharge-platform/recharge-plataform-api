@@ -115,6 +115,7 @@ describe('OrderService', () => {
       },
       package: {
         findUnique: jest.fn(),
+        findMany: jest.fn(),
       },
       packageInfo: {
         create: jest.fn(),
@@ -166,6 +167,9 @@ describe('OrderService', () => {
     prismaService = module.get(PrismaService);
 
     jest.clearAllMocks();
+    prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+    prismaService.product.findMany.mockResolvedValue([]);
+    prismaService.package.findMany.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -395,11 +399,18 @@ describe('OrderService', () => {
       prismaService.product.findMany.mockResolvedValue([
         { id: mockOrder.orderItem.productId, imgCardUrl: 'default-product-img' },
       ]);
+      prismaService.package.findMany.mockResolvedValue([
+        {
+          productId: mockOrder.orderItem.productId,
+          product: { name: 'Sample Product' },
+        },
+      ]);
 
       const result = await service.findAllByStore(storeId, page, limit);
 
       const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
       const countArgs = prismaService.order.count.mock.calls[0][0];
+      const packageFindManyArgs = prismaService.package.findMany.mock.calls[0][0];
 
       expect(findManyArgs).toEqual(
         expect.objectContaining({
@@ -449,6 +460,26 @@ describe('OrderService', () => {
       expect(result.totalPages).toBe(Math.ceil(totalOrders / limit));
       expect(result.data).toHaveLength(1);
       expect(result.data[0].orderItem.package.imgCardUrl).toBe('store-custom-img');
+      expect(result.products).toEqual([
+        {
+          id: mockOrder.orderItem.productId,
+          name: 'Sample Product',
+        },
+      ]);
+      expect(packageFindManyArgs).toEqual({
+        where: {
+          storeId,
+          isActive: true,
+        },
+        select: {
+          productId: true,
+          product: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
     });
 
     it('should apply search filters on order number and user email', async () => {
@@ -493,6 +524,23 @@ describe('OrderService', () => {
       expect(findManyArgs.where).toEqual({
         storeId,
         orderStatus: 'COMPLETED',
+      });
+    });
+
+    it('should apply product filter when provided', async () => {
+      prismaService.order.findMany.mockResolvedValue([]);
+      prismaService.order.count.mockResolvedValue(0);
+
+      await service.findAllByStore(storeId, page, limit, undefined, undefined, 'product-123');
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      expect(findManyArgs.where).toEqual({
+        storeId,
+        orderItem: {
+          is: {
+            productId: 'product-123',
+          },
+        },
       });
     });
 

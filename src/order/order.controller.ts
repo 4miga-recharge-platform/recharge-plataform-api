@@ -74,6 +74,12 @@ export class OrderController {
     description: 'Filter by order status or use "all" to list every status',
     enum: ['all', ...Object.values(OrderStatus)],
   })
+  @ApiQuery({
+    name: 'productId',
+    required: false,
+    type: String,
+    description: 'Filter by product id',
+  })
   @ApiResponse({
     status: 200,
     description: 'Paginated list of store orders returned successfully for admin users.',
@@ -82,7 +88,13 @@ export class OrderController {
         data: [/* orders */],
         totalOrders: 42,
         page: 1,
-        totalPages: 7
+        totalPages: 7,
+        products: [
+          {
+            id: 'product-123',
+            name: 'Sample Product',
+          },
+        ],
       }
     }
   })
@@ -92,6 +104,7 @@ export class OrderController {
     @Query('limit') limit = 6,
     @Query('search') search?: string,
     @Query('status') status?: string,
+    @Query('productId') productId?: string,
   ) {
     return this.orderService.findAllByStore(
       user.storeId,
@@ -99,6 +112,7 @@ export class OrderController {
       Number(limit),
       search,
       status,
+      productId,
     );
   }
 

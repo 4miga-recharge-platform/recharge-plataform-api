@@ -106,6 +106,7 @@ describe('OrderController', () => {
         Number(limit),
         undefined,
         undefined,
+        undefined,
       );
       expect(result).toEqual(mockPaginatedOrders);
     });
@@ -121,6 +122,7 @@ describe('OrderController', () => {
         6,
         undefined,
         undefined,
+        undefined,
       );
       expect(result).toEqual(mockPaginatedOrders);
     });
@@ -134,6 +136,7 @@ describe('OrderController', () => {
         mockUser.storeId,
         1,
         6,
+        undefined,
         undefined,
         undefined,
       );
@@ -152,6 +155,23 @@ describe('OrderController', () => {
         12,
         search,
         status,
+        undefined,
+      );
+    });
+
+    it('should forward productId parameter', async () => {
+      const productId = 'product-123';
+      orderService.findAllByStore.mockResolvedValue(mockPaginatedOrders);
+
+      await controller.findAllForStore(mockUser, 1, 6, undefined, undefined, productId);
+
+      expect(orderService.findAllByStore).toHaveBeenCalledWith(
+        mockUser.storeId,
+        1,
+        6,
+        undefined,
+        undefined,
+        productId,
       );
     });
   });
