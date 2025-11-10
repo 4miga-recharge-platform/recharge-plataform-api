@@ -19,8 +19,12 @@ import {
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { CouponValidationResponseDto } from './dto/coupon-validation-response.dto';
-import { OrderService } from './order.service';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleGuard } from '../auth/guards/role.guard';
+import { LoggedUser } from '../auth/logged-user.decorator';
+import { User } from '../user/entities/user.entity';
+import { OrderService } from './order.service';
 
 
 @ApiTags('orders')
@@ -48,6 +52,32 @@ export class OrderController {
   })
   findAll(@Request() req, @Query('page') page = 1, @Query('limit') limit = 6) {
     return this.orderService.findAll(req.user.storeId, req.user.id, Number(page), Number(limit));
+  }
+
+  @Get('admin')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiOperation({ summary: 'Get all orders for the logged admin store' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 6 })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of store orders returned successfully for admin users.',
+    schema: {
+      example: {
+        data: [/* orders */],
+        totalOrders: 42,
+        page: 1,
+        totalPages: 7
+      }
+    }
+  })
+  findAllForStore(
+    @LoggedUser() user: User,
+    @Query('page') page = 1,
+    @Query('limit') limit = 6,
+  ) {
+    return this.orderService.findAllByStore(user.storeId, Number(page), Number(limit));
   }
 
   @Get(':id')

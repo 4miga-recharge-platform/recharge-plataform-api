@@ -318,6 +318,86 @@ describe('OrderService', () => {
     });
   });
 
+  describe('findAllByStore', () => {
+    const storeId = 'store-123';
+    const page = 2;
+    const limit = 10;
+
+    it('should return paginated store orders successfully', async () => {
+      const orders = [{ ...mockOrder, couponUsages: [] }];
+      const totalOrders = 5;
+
+      prismaService.order.findMany.mockResolvedValue(orders);
+      prismaService.order.count.mockResolvedValue(totalOrders);
+
+      const result = await service.findAllByStore(storeId, page, limit);
+
+      expect(prismaService.order.findMany).toHaveBeenCalledWith({
+        where: {
+          storeId,
+        },
+        include: {
+          payment: true,
+          orderItem: {
+            include: {
+              recharge: true,
+              package: true,
+            },
+          },
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  title: true,
+                  discountPercentage: true,
+                  discountAmount: true,
+                  isFirstPurchase: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+
+      expect(prismaService.order.count).toHaveBeenCalledWith({
+        where: {
+          storeId,
+        },
+      });
+
+      expect(result).toEqual({
+        data: orders,
+        totalOrders,
+        page,
+        totalPages: Math.ceil(totalOrders / limit),
+      });
+    });
+
+    it('should propagate errors from prisma', async () => {
+      const error = new Error('Failed to fetch store orders');
+      prismaService.order.findMany.mockRejectedValue(error);
+
+      await expect(service.findAllByStore(storeId, page, limit)).rejects.toThrow('Failed to fetch store orders');
+      expect(prismaService.order.findMany).toHaveBeenCalledWith({
+        where: {
+          storeId,
+        },
+        include: expect.any(Object),
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+    });
+  });
+
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
       storeId: 'store-123',

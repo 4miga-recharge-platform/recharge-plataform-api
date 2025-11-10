@@ -92,6 +92,64 @@ export class OrderService {
     }
   }
 
+  async findAllByStore(storeId: string, page = 1, limit = 6) {
+    try {
+      const [data, totalOrders] = await Promise.all([
+        this.prisma.order.findMany({
+          where: {
+            storeId,
+          },
+          include: {
+            payment: true,
+            orderItem: {
+              include: {
+                recharge: true,
+                package: true,
+              },
+            },
+            couponUsages: {
+              include: {
+                coupon: {
+                  select: {
+                    id: true,
+                    title: true,
+                    discountPercentage: true,
+                    discountAmount: true,
+                    isFirstPurchase: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.order.count({
+          where: {
+            storeId,
+          },
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalOrders / limit);
+
+      return {
+        data,
+        totalOrders,
+        page,
+        totalPages,
+      };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   async findOne(id: string, userId: string) {
     try {
       const order = await this.prisma.order.findFirst({
