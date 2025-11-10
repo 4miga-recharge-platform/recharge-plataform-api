@@ -92,6 +92,106 @@ export class OrderService {
     }
   }
 
+  async findAllByStore(
+    storeId: string,
+    page = 1,
+    limit = 6,
+    search?: string,
+    status?: string,
+  ) {
+    try {
+      const where: Prisma.OrderWhereInput = {
+        storeId,
+      };
+
+      const normalizedSearch = search?.trim();
+      if (normalizedSearch) {
+        where.OR = [
+          {
+            orderNumber: {
+              contains: normalizedSearch,
+              mode: 'insensitive',
+            },
+          },
+          {
+            user: {
+              email: {
+                contains: normalizedSearch,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ];
+      }
+
+      const normalizedStatus = status?.trim();
+      if (normalizedStatus && normalizedStatus.toLowerCase() !== 'all') {
+        const statusUppercase = normalizedStatus.toUpperCase();
+        if (!Object.values(OrderStatus).includes(statusUppercase as OrderStatus)) {
+          throw new BadRequestException('Invalid order status');
+        }
+        where.orderStatus = statusUppercase as OrderStatus;
+      }
+
+      const [data, totalOrders] = await Promise.all([
+        this.prisma.order.findMany({
+          where,
+          include: {
+            payment: true,
+            orderItem: {
+              include: {
+                recharge: true,
+                package: true,
+              },
+            },
+            couponUsages: {
+              include: {
+                coupon: {
+                  select: {
+                    id: true,
+                    title: true,
+                    discountPercentage: true,
+                    discountAmount: true,
+                    isFirstPurchase: true,
+                  },
+                },
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        this.prisma.order.count({
+          where,
+        }),
+      ]);
+
+      const totalPages = Math.ceil(totalOrders / limit);
+
+      return {
+        data,
+        totalOrders,
+        page,
+        totalPages,
+      };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   async findOne(id: string, userId: string) {
     try {
       const order = await this.prisma.order.findFirst({

@@ -318,6 +318,181 @@ describe('OrderService', () => {
     });
   });
 
+  describe('findAllByStore', () => {
+    const storeId = 'store-123';
+    const page = 2;
+    const limit = 10;
+
+    it('should return paginated store orders successfully', async () => {
+      const orders = [{
+        ...mockOrder,
+        couponUsages: [],
+        user: {
+          id: 'user-123',
+          name: 'John Doe',
+          email: 'user@example.com',
+        },
+      }];
+      const totalOrders = 5;
+
+      prismaService.order.findMany.mockResolvedValue(orders);
+      prismaService.order.count.mockResolvedValue(totalOrders);
+
+      const result = await service.findAllByStore(storeId, page, limit);
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      const countArgs = prismaService.order.count.mock.calls[0][0];
+
+      expect(findManyArgs).toEqual(
+        expect.objectContaining({
+          where: { storeId },
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+      );
+
+      expect(findManyArgs.include).toEqual(
+        expect.objectContaining({
+          payment: true,
+          orderItem: expect.objectContaining({
+            include: expect.objectContaining({
+              recharge: true,
+              package: true,
+            }),
+          }),
+          couponUsages: expect.objectContaining({
+            include: expect.objectContaining({
+              coupon: expect.objectContaining({
+                select: {
+                  id: true,
+                  title: true,
+                  discountPercentage: true,
+                  discountAmount: true,
+                  isFirstPurchase: true,
+                },
+              }),
+            }),
+          }),
+          user: expect.objectContaining({
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          }),
+        }),
+      );
+
+      expect(countArgs).toEqual({ where: { storeId } });
+
+      expect(result).toEqual({
+        data: orders,
+        totalOrders,
+        page,
+        totalPages: Math.ceil(totalOrders / limit),
+      });
+    });
+
+    it('should apply search filters on order number and user email', async () => {
+      prismaService.order.findMany.mockResolvedValue([]);
+      prismaService.order.count.mockResolvedValue(0);
+
+      await service.findAllByStore(storeId, page, limit, 'john', undefined);
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      expect(findManyArgs.where).toEqual({
+        storeId,
+        OR: [
+          {
+            orderNumber: {
+              contains: 'john',
+              mode: 'insensitive',
+            },
+          },
+          {
+            user: {
+              email: {
+                contains: 'john',
+                mode: 'insensitive',
+              },
+            },
+          },
+        ],
+      });
+    });
+
+    it('should apply order status filter when provided', async () => {
+      prismaService.order.findMany.mockResolvedValue([]);
+      prismaService.order.count.mockResolvedValue(0);
+
+      await service.findAllByStore(storeId, page, limit, undefined, 'completed');
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      expect(findManyArgs.where).toEqual({
+        storeId,
+        orderStatus: 'COMPLETED',
+      });
+    });
+
+    it('should ignore status when value is "all" (case insensitive)', async () => {
+      prismaService.order.findMany.mockResolvedValue([]);
+      prismaService.order.count.mockResolvedValue(0);
+
+      await service.findAllByStore(storeId, page, limit, undefined, 'All');
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      expect(findManyArgs.where).toEqual({ storeId });
+    });
+
+    it('should normalize status value before applying filter', async () => {
+      prismaService.order.findMany.mockResolvedValue([]);
+      prismaService.order.count.mockResolvedValue(0);
+
+      await service.findAllByStore(storeId, page, limit, undefined, '   processing   ');
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      expect(findManyArgs.where).toEqual({
+        storeId,
+        orderStatus: 'PROCESSING',
+      });
+    });
+
+    it('should ignore empty search and status', async () => {
+      prismaService.order.findMany.mockResolvedValue([]);
+      prismaService.order.count.mockResolvedValue(0);
+
+      await service.findAllByStore(storeId, page, limit, '   ', '');
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      expect(findManyArgs.where).toEqual({ storeId });
+    });
+
+    it('should throw BadRequestException for invalid status', async () => {
+      await expect(
+        service.findAllByStore(storeId, page, limit, undefined, 'invalid-status'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should propagate errors from prisma', async () => {
+      const error = new Error('Failed to fetch store orders');
+      prismaService.order.findMany.mockRejectedValue(error);
+
+      await expect(service.findAllByStore(storeId, page, limit)).rejects.toThrow('Failed to fetch store orders');
+      expect(prismaService.order.findMany).toHaveBeenCalledWith({
+        where: {
+          storeId,
+        },
+        include: expect.any(Object),
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+    });
+  });
+
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
       storeId: 'store-123',

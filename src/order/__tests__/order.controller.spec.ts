@@ -12,6 +12,13 @@ describe('OrderController', () => {
     storeId: 'store-123',
     email: 'user@example.com',
     name: 'John Doe',
+    phone: '123456789',
+    password: 'hashed-password',
+    documentType: 'cpf' as const,
+    documentValue: '12345678901',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    role: 'RESELLER_ADMIN_4MIGA_USER' as const,
   };
 
   const mockOrder = {
@@ -63,6 +70,7 @@ describe('OrderController', () => {
   beforeEach(async () => {
     const mockOrderService = {
       findAll: jest.fn(),
+      findAllByStore: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
     };
@@ -81,6 +89,71 @@ describe('OrderController', () => {
     orderService = module.get(OrderService);
 
     jest.clearAllMocks();
+  });
+
+  describe('findAllForStore', () => {
+    it('should return paginated store orders successfully', async () => {
+      const page = 2;
+      const limit = 10;
+
+      orderService.findAllByStore.mockResolvedValue(mockPaginatedOrders);
+
+      const result = await controller.findAllForStore(mockUser, page, limit);
+
+      expect(orderService.findAllByStore).toHaveBeenCalledWith(
+        mockUser.storeId,
+        Number(page),
+        Number(limit),
+        undefined,
+        undefined,
+      );
+      expect(result).toEqual(mockPaginatedOrders);
+    });
+
+    it('should use default pagination values for store orders', async () => {
+      orderService.findAllByStore.mockResolvedValue(mockPaginatedOrders);
+
+      const result = await controller.findAllForStore(mockUser);
+
+      expect(orderService.findAllByStore).toHaveBeenCalledWith(
+        mockUser.storeId,
+        1,
+        6,
+        undefined,
+        undefined,
+      );
+      expect(result).toEqual(mockPaginatedOrders);
+    });
+
+    it('should handle errors when fetching store orders', async () => {
+      const error = new Error('Failed to fetch store orders');
+      orderService.findAllByStore.mockRejectedValue(error);
+
+      await expect(controller.findAllForStore(mockUser)).rejects.toThrow('Failed to fetch store orders');
+      expect(orderService.findAllByStore).toHaveBeenCalledWith(
+        mockUser.storeId,
+        1,
+        6,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should forward search and status parameters', async () => {
+      const search = 'john@example.com';
+      const status = 'completed';
+      orderService.findAllByStore.mockResolvedValue(mockPaginatedOrders);
+
+      await controller.findAllForStore(mockUser, 3, 12, search, status);
+
+      expect(orderService.findAllByStore).toHaveBeenCalledWith(
+        mockUser.storeId,
+        3,
+        12,
+        search,
+        status,
+      );
+    });
   });
 
   afterEach(() => {
