@@ -8,27 +8,30 @@ datasource db {
 }
 
 model Store {
-  id                 String                 @id @default(uuid())
-  name               String
-  email              String?                @unique
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  bannersUrl         String[]
-  faviconUrl         String?
-  logoUrl            String?
-  miniLogoUrl        String?
-  facebookUrl        String?
-  instagramUrl       String?
-  tiktokUrl          String?
-  wppNumber          String?                @unique
-  domain             String                 @unique
-  secondaryBannerUrl String?
-  coupons            Coupon[]
-  influencers        Influencer[]
-  orders             Order[]
-  packages           Package[]
-  productSettings    StoreProductSettings[]
-  users              User[]
+  id                    String                       @id @default(uuid())
+  name                  String
+  email                 String?                      @unique
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  bannersUrl            String[]
+  faviconUrl            String?
+  logoUrl               String?
+  miniLogoUrl           String?
+  facebookUrl           String?
+  instagramUrl          String?
+  tiktokUrl             String?
+  wppNumber             String?                      @unique
+  domain                String                       @unique
+  secondaryBannerUrl    String?
+  coupons               Coupon[]
+  influencers           Influencer[]
+  orders                Order[]
+  packages              Package[]
+  dailySales            StoreDailySales[]
+  monthlySales          StoreMonthlySales[]
+  monthlySalesByProduct StoreMonthlySalesByProduct[]
+  productSettings       StoreProductSettings[]
+  users                 User[]
 }
 
 model Influencer {
@@ -89,16 +92,17 @@ model User {
 }
 
 model Product {
-  id            String                 @id @default(uuid())
-  name          String
-  description   String
-  instructions  String
-  imgBannerUrl  String
-  imgCardUrl    String
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-  packages      Package[]
-  storeSettings StoreProductSettings[]
+  id                String                       @id @default(uuid())
+  name              String
+  description       String
+  instructions      String
+  imgBannerUrl      String
+  imgCardUrl        String
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  packages          Package[]
+  storeMonthlySales StoreMonthlySalesByProduct[]
+  storeSettings     StoreProductSettings[]
 }
 
 model StoreProductSettings {
@@ -252,6 +256,59 @@ model CouponUsage {
   order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([couponId, orderId])
+}
+
+model StoreDailySales {
+  id          String   @id @default(uuid())
+  storeId     String
+  date        DateTime @db.Date
+  totalSales  Decimal  @default(0) @db.Decimal(10, 2)
+  totalOrders Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, date])
+  @@index([storeId, date])
+}
+
+model StoreMonthlySales {
+  id                   String   @id @default(uuid())
+  storeId              String
+  month                Int
+  year                 Int
+  totalSales           Decimal  @default(0) @db.Decimal(10, 2)
+  totalOrders          Int      @default(0)
+  totalCompletedOrders Int      @default(0)
+  totalExpiredOrders   Int      @default(0)
+  totalRefundedOrders  Int      @default(0)
+  totalCustomers       Int      @default(0)
+  newCustomers         Int      @default(0)
+  ordersWithCoupon     Int      @default(0)
+  ordersWithoutCoupon  Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  store                Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, month, year])
+  @@index([storeId, year, month])
+}
+
+model StoreMonthlySalesByProduct {
+  id          String   @id @default(uuid())
+  storeId     String
+  productId   String
+  month       Int
+  year        Int
+  totalSales  Decimal  @default(0) @db.Decimal(10, 2)
+  totalOrders Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId, month, year])
+  @@index([storeId, year, month])
 }
 
 enum BigoRechargeStatus {
