@@ -189,6 +189,7 @@ describe('OrderService', () => {
           id: 'user-123',
           name: 'John Doe',
           email: 'user@example.com',
+          phone: '123456789',
         },
         orderItem: {
           ...mockOrder.orderItem,
@@ -257,6 +258,7 @@ describe('OrderService', () => {
               id: true,
               name: true,
               email: true,
+              phone: true,
             },
           },
         },
@@ -320,6 +322,7 @@ describe('OrderService', () => {
           id: 'user-123',
           name: 'John Doe',
           email: 'user@example.com',
+          phone: '123456789',
         },
         orderItem: {
           ...mockOrder.orderItem,
@@ -376,6 +379,7 @@ describe('OrderService', () => {
               id: true,
               name: true,
               email: true,
+              phone: true,
             },
           },
         },
@@ -423,6 +427,7 @@ describe('OrderService', () => {
           id: 'user-123',
           name: 'John Doe',
           email: 'user@example.com',
+          phone: '123456789',
         },
       }];
       const totalOrders = 5;
@@ -484,6 +489,7 @@ describe('OrderService', () => {
               id: true,
               name: true,
               email: true,
+              phone: true,
             },
           }),
         }),
