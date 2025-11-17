@@ -65,6 +65,12 @@ describe('OrderController', () => {
     totalOrders: 1,
     page: 1,
     totalPages: 1,
+    products: [
+      {
+        id: 'product-123',
+        name: 'Sample Product',
+      },
+    ],
   };
 
   beforeEach(async () => {

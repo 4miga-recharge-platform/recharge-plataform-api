@@ -185,6 +185,11 @@ describe('OrderService', () => {
     it('should return paginated orders successfully', async () => {
       const orders = [{
         ...mockOrder,
+        user: {
+          id: 'user-123',
+          name: 'John Doe',
+          email: 'user@example.com',
+        },
         orderItem: {
           ...mockOrder.orderItem,
           package: {
@@ -204,6 +209,12 @@ describe('OrderService', () => {
       ]);
       prismaService.product.findMany.mockResolvedValue([
         { id: mockOrder.orderItem.productId, imgCardUrl: 'default-product-img' },
+      ]);
+      prismaService.package.findMany.mockResolvedValue([
+        {
+          productId: mockOrder.orderItem.productId,
+          product: { name: 'Sample Product' },
+        },
       ]);
 
       const result = await service.findAll(storeId, userId, page, limit);
@@ -241,6 +252,13 @@ describe('OrderService', () => {
               },
             },
           },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -261,6 +279,12 @@ describe('OrderService', () => {
       expect(result.totalPages).toBe(1);
       expect(result.data).toHaveLength(1);
       expect(result.data[0].orderItem.package.imgCardUrl).toBe('store-custom-img');
+      expect(result.products).toEqual([
+        {
+          id: mockOrder.orderItem.productId,
+          name: 'Sample Product',
+        },
+      ]);
     });
 
     it('should throw ForbiddenException when user does not belong to store', async () => {
@@ -292,6 +316,11 @@ describe('OrderService', () => {
     it('should return an order successfully', async () => {
       prismaService.order.findFirst.mockResolvedValue({
         ...mockOrder,
+        user: {
+          id: 'user-123',
+          name: 'John Doe',
+          email: 'user@example.com',
+        },
         orderItem: {
           ...mockOrder.orderItem,
           package: {
@@ -340,6 +369,13 @@ describe('OrderService', () => {
                   isFirstPurchase: true,
                 },
               },
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
         },

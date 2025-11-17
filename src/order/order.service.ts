@@ -61,6 +61,13 @@ export class OrderService {
                 },
               },
             },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
           },
           orderBy: {
             createdAt: 'desc',
@@ -79,12 +86,14 @@ export class OrderService {
       const totalPages = Math.ceil(totalOrders / limit);
 
       const dataWithCustomizedImages = await this.applyStoreProductImages(data);
+      const products = await this.getStoreProducts(user.storeId);
 
       return {
         data: dataWithCustomizedImages,
         totalOrders,
         page,
         totalPages,
+        products,
       };
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -373,6 +382,13 @@ export class OrderService {
                   isFirstPurchase: true,
                 },
               },
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
         },
