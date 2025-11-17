@@ -115,9 +115,18 @@ describe('OrderService', () => {
       },
       package: {
         findUnique: jest.fn(),
+        findMany: jest.fn(),
       },
       packageInfo: {
         create: jest.fn(),
+      },
+      product: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+      },
+      storeProductSettings: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
       },
       recharge: {
         create: jest.fn(),
@@ -158,6 +167,9 @@ describe('OrderService', () => {
     prismaService = module.get(PrismaService);
 
     jest.clearAllMocks();
+    prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+    prismaService.product.findMany.mockResolvedValue([]);
+    prismaService.package.findMany.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -171,12 +183,40 @@ describe('OrderService', () => {
     const limit = 6;
 
     it('should return paginated orders successfully', async () => {
-      const orders = [{ ...mockOrder, couponUsages: [] }];
+      const orders = [{
+        ...mockOrder,
+        user: {
+          id: 'user-123',
+          name: 'John Doe',
+          email: 'user@example.com',
+          phone: '123456789',
+        },
+        orderItem: {
+          ...mockOrder.orderItem,
+          package: {
+            ...mockOrder.orderItem.package,
+            imgCardUrl: 'snapshot-img',
+          },
+        },
+        couponUsages: [],
+      }];
       const totalOrders = 1;
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.order.findMany.mockResolvedValue(orders);
       prismaService.order.count.mockResolvedValue(totalOrders);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([
+        { storeId, productId: mockOrder.orderItem.productId, imgCardUrl: 'store-custom-img' },
+      ]);
+      prismaService.product.findMany.mockResolvedValue([
+        { id: mockOrder.orderItem.productId, imgCardUrl: 'default-product-img' },
+      ]);
+      prismaService.package.findMany.mockResolvedValue([
+        {
+          productId: mockOrder.orderItem.productId,
+          product: { name: 'Sample Product' },
+        },
+      ]);
 
       const result = await service.findAll(storeId, userId, page, limit);
 
@@ -213,6 +253,14 @@ describe('OrderService', () => {
               },
             },
           },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -228,12 +276,17 @@ describe('OrderService', () => {
         },
       });
 
-      expect(result).toEqual({
-        data: orders,
-        totalOrders,
-        page,
-        totalPages: 1,
-      });
+      expect(result.totalOrders).toBe(totalOrders);
+      expect(result.page).toBe(page);
+      expect(result.totalPages).toBe(1);
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].orderItem.package.imgCardUrl).toBe('store-custom-img');
+      expect(result.products).toEqual([
+        {
+          id: mockOrder.orderItem.productId,
+          name: 'Sample Product',
+        },
+      ]);
     });
 
     it('should throw ForbiddenException when user does not belong to store', async () => {
@@ -263,7 +316,35 @@ describe('OrderService', () => {
     const userId = 'user-123';
 
     it('should return an order successfully', async () => {
-      prismaService.order.findFirst.mockResolvedValue(mockOrder);
+      prismaService.order.findFirst.mockResolvedValue({
+        ...mockOrder,
+        user: {
+          id: 'user-123',
+          name: 'John Doe',
+          email: 'user@example.com',
+          phone: '123456789',
+        },
+        orderItem: {
+          ...mockOrder.orderItem,
+          package: {
+            ...mockOrder.orderItem.package,
+            imgCardUrl: 'snapshot-img',
+          },
+        },
+      });
+      prismaService.storeProductSettings.findMany.mockResolvedValue([
+        {
+          storeId: mockOrder.storeId,
+          productId: mockOrder.orderItem.productId,
+          imgCardUrl: 'store-custom-img',
+        },
+      ]);
+      prismaService.product.findMany.mockResolvedValue([
+        {
+          id: mockOrder.orderItem.productId,
+          imgCardUrl: 'default-product-img',
+        },
+      ]);
 
       const result = await service.findOne(orderId, userId);
 
@@ -293,10 +374,18 @@ describe('OrderService', () => {
               },
             },
           },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
         },
       });
 
-      expect(result).toEqual(mockOrder);
+      expect(result.orderItem.package.imgCardUrl).toBe('store-custom-img');
     });
 
     it('should throw NotFoundException when order not found', async () => {
@@ -326,22 +415,43 @@ describe('OrderService', () => {
     it('should return paginated store orders successfully', async () => {
       const orders = [{
         ...mockOrder,
+        orderItem: {
+          ...mockOrder.orderItem,
+          package: {
+            ...mockOrder.orderItem.package,
+            imgCardUrl: 'snapshot-img',
+          },
+        },
         couponUsages: [],
         user: {
           id: 'user-123',
           name: 'John Doe',
           email: 'user@example.com',
+          phone: '123456789',
         },
       }];
       const totalOrders = 5;
 
       prismaService.order.findMany.mockResolvedValue(orders);
       prismaService.order.count.mockResolvedValue(totalOrders);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([
+        { storeId, productId: mockOrder.orderItem.productId, imgCardUrl: 'store-custom-img' },
+      ]);
+      prismaService.product.findMany.mockResolvedValue([
+        { id: mockOrder.orderItem.productId, imgCardUrl: 'default-product-img' },
+      ]);
+      prismaService.package.findMany.mockResolvedValue([
+        {
+          productId: mockOrder.orderItem.productId,
+          product: { name: 'Sample Product' },
+        },
+      ]);
 
       const result = await service.findAllByStore(storeId, page, limit);
 
       const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
       const countArgs = prismaService.order.count.mock.calls[0][0];
+      const packageFindManyArgs = prismaService.package.findMany.mock.calls[0][0];
 
       expect(findManyArgs).toEqual(
         expect.objectContaining({
@@ -379,6 +489,7 @@ describe('OrderService', () => {
               id: true,
               name: true,
               email: true,
+              phone: true,
             },
           }),
         }),
@@ -386,17 +497,38 @@ describe('OrderService', () => {
 
       expect(countArgs).toEqual({ where: { storeId } });
 
-      expect(result).toEqual({
-        data: orders,
-        totalOrders,
-        page,
-        totalPages: Math.ceil(totalOrders / limit),
+      expect(result.totalOrders).toBe(totalOrders);
+      expect(result.page).toBe(page);
+      expect(result.totalPages).toBe(Math.ceil(totalOrders / limit));
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].orderItem.package.imgCardUrl).toBe('store-custom-img');
+      expect(result.products).toEqual([
+        {
+          id: mockOrder.orderItem.productId,
+          name: 'Sample Product',
+        },
+      ]);
+      expect(packageFindManyArgs).toEqual({
+        where: {
+          storeId,
+          isActive: true,
+        },
+        select: {
+          productId: true,
+          product: {
+            select: {
+              name: true,
+            },
+          },
+        },
       });
     });
 
     it('should apply search filters on order number and user email', async () => {
       prismaService.order.findMany.mockResolvedValue([]);
       prismaService.order.count.mockResolvedValue(0);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.product.findMany.mockResolvedValue([]);
 
       await service.findAllByStore(storeId, page, limit, 'john', undefined);
 
@@ -425,6 +557,8 @@ describe('OrderService', () => {
     it('should apply order status filter when provided', async () => {
       prismaService.order.findMany.mockResolvedValue([]);
       prismaService.order.count.mockResolvedValue(0);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.product.findMany.mockResolvedValue([]);
 
       await service.findAllByStore(storeId, page, limit, undefined, 'completed');
 
@@ -432,6 +566,23 @@ describe('OrderService', () => {
       expect(findManyArgs.where).toEqual({
         storeId,
         orderStatus: 'COMPLETED',
+      });
+    });
+
+    it('should apply product filter when provided', async () => {
+      prismaService.order.findMany.mockResolvedValue([]);
+      prismaService.order.count.mockResolvedValue(0);
+
+      await service.findAllByStore(storeId, page, limit, undefined, undefined, 'product-123');
+
+      const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
+      expect(findManyArgs.where).toEqual({
+        storeId,
+        orderItem: {
+          is: {
+            productId: 'product-123',
+          },
+        },
       });
     });
 
@@ -461,6 +612,8 @@ describe('OrderService', () => {
     it('should ignore empty search and status', async () => {
       prismaService.order.findMany.mockResolvedValue([]);
       prismaService.order.count.mockResolvedValue(0);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.product.findMany.mockResolvedValue([]);
 
       await service.findAllByStore(storeId, page, limit, '   ', '');
 
@@ -469,6 +622,8 @@ describe('OrderService', () => {
     });
 
     it('should throw BadRequestException for invalid status', async () => {
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.product.findMany.mockResolvedValue([]);
       await expect(
         service.findAllByStore(storeId, page, limit, undefined, 'invalid-status'),
       ).rejects.toThrow(BadRequestException);
@@ -477,6 +632,8 @@ describe('OrderService', () => {
     it('should propagate errors from prisma', async () => {
       const error = new Error('Failed to fetch store orders');
       prismaService.order.findMany.mockRejectedValue(error);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.product.findMany.mockResolvedValue([]);
 
       await expect(service.findAllByStore(storeId, page, limit)).rejects.toThrow('Failed to fetch store orders');
       expect(prismaService.order.findMany).toHaveBeenCalledWith({

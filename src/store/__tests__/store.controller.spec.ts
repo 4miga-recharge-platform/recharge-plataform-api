@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateStoreDto } from '../dto/create-store.dto';
 import { UpdateStoreDto } from '../dto/update-store.dto';
@@ -52,6 +53,7 @@ describe('StoreController', () => {
       removeBanner: jest.fn(),
       addMultipleBanners: jest.fn(),
       removeMultipleBanners: jest.fn(),
+      getDashboardData: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -384,6 +386,147 @@ describe('StoreController', () => {
         removeBannersDto.indices,
       );
       expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('getDashboard', () => {
+    const mockDashboardData = {
+      period: {
+        type: 'current_month',
+        year: 2024,
+        month: 1,
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+      },
+      summary: {
+        totalSales: 50000.0,
+        totalOrders: 150,
+        totalCompletedOrders: 140,
+        totalExpiredOrders: 5,
+        totalRefundedOrders: 5,
+        averageTicket: 357.14,
+        totalCustomers: 120,
+        newCustomers: 30,
+        ordersWithCoupon: 80,
+        ordersWithoutCoupon: 70,
+      },
+      dailyTrend: [
+        {
+          date: '2024-01-15',
+          totalSales: 2500.0,
+          totalOrders: 20,
+        },
+        {
+          date: '2024-01-14',
+          totalSales: 2300.5,
+          totalOrders: 18,
+        },
+      ],
+      salesByProduct: [
+        {
+          productId: 'prod-123',
+          productName: 'Bigo Live Coins',
+          totalSales: 30000.0,
+          totalOrders: 90,
+          percentage: 60.0,
+        },
+        {
+          productId: 'prod-456',
+          productName: 'Free Fire Diamonds',
+          totalSales: 20000.0,
+          totalOrders: 60,
+          percentage: 40.0,
+        },
+      ],
+    };
+
+    it('should return dashboard data successfully with default period', async () => {
+      storeService.getDashboardData.mockResolvedValue(mockDashboardData);
+
+      const result = await controller.getDashboard(mockUser);
+
+      expect(storeService.getDashboardData).toHaveBeenCalledWith(
+        mockUser.storeId,
+        undefined,
+      );
+      expect(result).toEqual(mockDashboardData);
+    });
+
+    it('should return dashboard data successfully with custom period', async () => {
+      const period = '2024-01';
+      storeService.getDashboardData.mockResolvedValue(mockDashboardData);
+
+      const result = await controller.getDashboard(mockUser, period);
+
+      expect(storeService.getDashboardData).toHaveBeenCalledWith(
+        mockUser.storeId,
+        period,
+      );
+      expect(result).toEqual(mockDashboardData);
+    });
+
+    it('should return dashboard data with last_7_days period', async () => {
+      const period = 'last_7_days';
+      storeService.getDashboardData.mockResolvedValue(mockDashboardData);
+
+      const result = await controller.getDashboard(mockUser, period);
+
+      expect(storeService.getDashboardData).toHaveBeenCalledWith(
+        mockUser.storeId,
+        period,
+      );
+      expect(result).toEqual(mockDashboardData);
+    });
+
+    it('should return dashboard data with last_30_days period', async () => {
+      const period = 'last_30_days';
+      storeService.getDashboardData.mockResolvedValue(mockDashboardData);
+
+      const result = await controller.getDashboard(mockUser, period);
+
+      expect(storeService.getDashboardData).toHaveBeenCalledWith(
+        mockUser.storeId,
+        period,
+      );
+      expect(result).toEqual(mockDashboardData);
+    });
+
+    it('should throw BadRequestException when storeId not found in user data', async () => {
+      const userWithoutStoreId = {
+        ...mockUser,
+        storeId: undefined,
+      };
+
+      await expect(
+        controller.getDashboard(userWithoutStoreId as any),
+      ).rejects.toThrow('Store ID not found in user data');
+      expect(storeService.getDashboardData).not.toHaveBeenCalled();
+    });
+
+    it('should handle service errors', async () => {
+      const error = new Error('Failed to fetch dashboard data');
+      storeService.getDashboardData.mockRejectedValue(error);
+
+      await expect(controller.getDashboard(mockUser)).rejects.toThrow(
+        'Failed to fetch dashboard data',
+      );
+      expect(storeService.getDashboardData).toHaveBeenCalledWith(
+        mockUser.storeId,
+        undefined,
+      );
+    });
+
+    it('should handle BadRequestException from service', async () => {
+      const error = new BadRequestException('Invalid period format');
+      storeService.getDashboardData.mockRejectedValue(error);
+
+      await expect(
+        controller.getDashboard(mockUser, 'invalid-period'),
+      ).rejects.toThrow(BadRequestException);
+      expect(storeService.getDashboardData).toHaveBeenCalledWith(
+        mockUser.storeId,
+        'invalid-period',
+      );
     });
   });
 });

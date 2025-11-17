@@ -524,4 +524,225 @@ export class StoreService {
       throw new BadRequestException('Failed to remove offer banner');
     }
   }
+
+  /**
+   * Get dashboard data for a store
+   * Returns consolidated metrics: summary, daily trend, and sales by product
+   *
+   * @param storeId - The store ID
+   * @param period - Period to fetch data for. Options:
+   *   - "current_month" (default) - Current month
+   *   - "2024-01" - Specific month (format: YYYY-MM)
+   *   - "last_7_days" - Last 7 days
+   *   - "last_30_days" - Last 30 days
+   *
+   * @returns Dashboard data with summary, daily trend, and sales by product
+   */
+  async getDashboardData(
+    storeId: string,
+    period?: string,
+  ): Promise<{
+    period: {
+      type: string;
+      year?: number;
+      month?: number;
+      startDate?: string;
+      endDate?: string;
+    };
+    summary: {
+      totalSales: number;
+      totalOrders: number;
+      totalCompletedOrders: number;
+      totalExpiredOrders: number;
+      totalRefundedOrders: number;
+      averageTicket: number;
+      totalCustomers: number;
+      newCustomers: number;
+      ordersWithCoupon: number;
+      ordersWithoutCoupon: number;
+    };
+    dailyTrend: Array<{
+      date: string;
+      totalSales: number;
+      totalOrders: number;
+    }>;
+    salesByProduct: Array<{
+      productId: string;
+      productName: string;
+      totalSales: number;
+      totalOrders: number;
+      percentage: number;
+    }>;
+  }> {
+    try {
+      // Validate store exists
+      await this.findOne(storeId);
+
+      const now = new Date();
+      let targetYear: number;
+      let targetMonth: number;
+      let periodType = 'current_month';
+      let startDate: Date;
+      let endDate: Date;
+
+      // Parse period parameter
+      if (!period || period === 'current_month') {
+        targetYear = now.getFullYear();
+        targetMonth = now.getMonth() + 1; // getMonth() returns 0-11
+        startDate = new Date(targetYear, targetMonth - 1, 1);
+        endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+      } else if (period.match(/^\d{4}-\d{2}$/)) {
+        // Format: YYYY-MM
+        const [year, month] = period.split('-').map(Number);
+        targetYear = year;
+        targetMonth = month;
+        periodType = period;
+        startDate = new Date(targetYear, targetMonth - 1, 1);
+        endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+      } else if (period === 'last_7_days') {
+        endDate = new Date(now);
+        startDate = new Date(now);
+        startDate.setDate(endDate.getDate() - 7);
+        targetYear = now.getFullYear();
+        targetMonth = now.getMonth() + 1;
+        periodType = 'last_7_days';
+      } else if (period === 'last_30_days') {
+        endDate = new Date(now);
+        startDate = new Date(now);
+        startDate.setDate(endDate.getDate() - 30);
+        targetYear = now.getFullYear();
+        targetMonth = now.getMonth() + 1;
+        periodType = 'last_30_days';
+      } else {
+        throw new BadRequestException(
+          `Invalid period format. Use: "current_month", "YYYY-MM", "last_7_days", or "last_30_days"`,
+        );
+      }
+
+      // Fetch data in parallel
+      const [monthlySales, salesByProduct, dailySales] = await Promise.all([
+        // Get monthly sales (summary)
+        this.prisma.storeMonthlySales.findFirst({
+          where: {
+            storeId,
+            year: targetYear,
+            month: targetMonth,
+          },
+        }),
+
+        // Get sales by product for the month
+        this.prisma.storeMonthlySalesByProduct.findMany({
+          where: {
+            storeId,
+            year: targetYear,
+            month: targetMonth,
+          },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            totalSales: 'desc',
+          },
+        }),
+
+        // Get daily sales (last 7 days)
+        this.prisma.storeDailySales.findMany({
+          where: {
+            storeId,
+            date: {
+              gte: new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() - 6,
+              ), // Last 7 days including today
+              lte: new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() + 1,
+              ),
+            },
+          },
+          orderBy: {
+            date: 'desc',
+          },
+          take: 7,
+        }),
+      ]);
+
+      // Prepare summary
+      const summary = monthlySales
+        ? {
+            totalSales: Number(monthlySales.totalSales),
+            totalOrders: monthlySales.totalOrders,
+            totalCompletedOrders: monthlySales.totalCompletedOrders,
+            totalExpiredOrders: monthlySales.totalExpiredOrders,
+            totalRefundedOrders: monthlySales.totalRefundedOrders,
+            averageTicket:
+              monthlySales.totalCompletedOrders > 0
+                ? Number(monthlySales.totalSales) /
+                  monthlySales.totalCompletedOrders
+                : 0,
+            totalCustomers: monthlySales.totalCustomers,
+            newCustomers: monthlySales.newCustomers,
+            ordersWithCoupon: monthlySales.ordersWithCoupon,
+            ordersWithoutCoupon: monthlySales.ordersWithoutCoupon,
+          }
+        : {
+            totalSales: 0,
+            totalOrders: 0,
+            totalCompletedOrders: 0,
+            totalExpiredOrders: 0,
+            totalRefundedOrders: 0,
+            averageTicket: 0,
+            totalCustomers: 0,
+            newCustomers: 0,
+            ordersWithCoupon: 0,
+            ordersWithoutCoupon: 0,
+          };
+
+      // Prepare daily trend
+      const dailyTrend = dailySales.map((daily) => ({
+        date: daily.date.toISOString().split('T')[0], // Format: YYYY-MM-DD
+        totalSales: Number(daily.totalSales),
+        totalOrders: daily.totalOrders,
+      }));
+
+      // Prepare sales by product
+      const totalSalesAmount = summary.totalSales;
+      const salesByProductData = salesByProduct.map((sale) => ({
+        productId: sale.productId,
+        productName: sale.product.name,
+        totalSales: Number(sale.totalSales),
+        totalOrders: sale.totalOrders,
+        percentage:
+          totalSalesAmount > 0
+            ? (Number(sale.totalSales) / totalSalesAmount) * 100
+            : 0,
+      }));
+
+      return {
+        period: {
+          type: periodType,
+          year: targetYear,
+          month: targetMonth,
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+        },
+        summary,
+        dailyTrend,
+        salesByProduct: salesByProductData,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error('Error fetching dashboard data:', error);
+      throw new BadRequestException('Failed to fetch dashboard data');
+    }
+  }
 }
