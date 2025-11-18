@@ -114,6 +114,7 @@ export class StoreController {
           {
             productId: 'prod-123',
             productName: 'Bigo Live Coins',
+            imgCardUrl: 'https://storage.example.com/store/store-123/product/prod-123/card/card.png',
             totalSales: 30000.0,
             totalOrders: 90,
             percentage: 60.0,
@@ -121,11 +122,17 @@ export class StoreController {
           {
             productId: 'prod-456',
             productName: 'Free Fire Diamonds',
+            imgCardUrl: 'https://storage.example.com/product/prod-456/card.png',
             totalSales: 20000.0,
             totalOrders: 60,
             percentage: 40.0,
           },
         ],
+        firstAvailablePeriod: {
+          year: 2023,
+          month: 1,
+          period: '2023-01',
+        },
       },
     },
   })

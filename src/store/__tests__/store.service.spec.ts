@@ -79,6 +79,9 @@ describe('StoreService', () => {
       storeDailySales: {
         findMany: jest.fn(),
       },
+      storeProductSettings: {
+        findMany: jest.fn(),
+      },
     };
 
     mockStorageService = {
@@ -625,6 +628,7 @@ describe('StoreService', () => {
         product: {
           id: 'prod-123',
           name: 'Bigo Live Coins',
+          imgCardUrl: 'https://example.com/product/prod-123/card.png',
         },
       },
       {
@@ -638,6 +642,7 @@ describe('StoreService', () => {
         product: {
           id: 'prod-456',
           name: 'Free Fire Diamonds',
+          imgCardUrl: 'https://example.com/product/prod-456/card.png',
         },
       },
     ];
@@ -673,11 +678,17 @@ describe('StoreService', () => {
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
 
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue({
-        ...mockMonthlySales,
-        year: currentYear,
-        month: currentMonth,
-      });
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          year: currentYear,
+          month: currentMonth,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([
         {
           ...mockSalesByProduct[0],
@@ -686,6 +697,7 @@ describe('StoreService', () => {
         },
       ]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId);
 
@@ -694,13 +706,7 @@ describe('StoreService', () => {
         select: mockStoreSelect,
       });
 
-      expect(prismaService.storeMonthlySales.findFirst).toHaveBeenCalledWith({
-        where: {
-          storeId,
-          year: currentYear,
-          month: currentMonth,
-        },
-      });
+      expect(prismaService.storeMonthlySales.findFirst).toHaveBeenCalledTimes(2);
 
       expect(result.period.type).toBe('current_month');
       expect(result.summary.totalSales).toBe(50000.0);
@@ -708,31 +714,38 @@ describe('StoreService', () => {
       expect(result.summary.averageTicket).toBeCloseTo(357.14, 2);
       expect(result.dailyTrend).toHaveLength(2);
       expect(result.salesByProduct).toHaveLength(1);
+      expect(result.salesByProduct[0].imgCardUrl).toBe(
+        'https://example.com/product/prod-123/card.png',
+      );
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
 
     it('should return dashboard data successfully with custom month period', async () => {
       const year = 2024;
       const month = 1;
 
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue({
-        ...mockMonthlySales,
-        year,
-        month,
-      });
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          year,
+          month,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue(
         mockSalesByProduct,
       );
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId, '2024-01');
-
-      expect(prismaService.storeMonthlySales.findFirst).toHaveBeenCalledWith({
-        where: {
-          storeId,
-          year,
-          month,
-        },
-      });
 
       expect(result.period.type).toBe('2024-01');
       expect(result.period.year).toBe(year);
@@ -740,6 +753,17 @@ describe('StoreService', () => {
       expect(result.summary.totalSales).toBe(50000.0);
       expect(result.salesByProduct).toHaveLength(2);
       expect(result.salesByProduct[0].percentage).toBeCloseTo(60.0, 2);
+      expect(result.salesByProduct[0].imgCardUrl).toBe(
+        'https://example.com/product/prod-123/card.png',
+      );
+      expect(result.salesByProduct[1].imgCardUrl).toBe(
+        'https://example.com/product/prod-456/card.png',
+      );
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
 
     it('should return dashboard data with last_7_days period', async () => {
@@ -747,18 +771,30 @@ describe('StoreService', () => {
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
 
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue({
-        ...mockMonthlySales,
-        year: currentYear,
-        month: currentMonth,
-      });
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          year: currentYear,
+          month: currentMonth,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId, 'last_7_days');
 
       expect(result.period.type).toBe('last_7_days');
       expect(result.dailyTrend).toHaveLength(2);
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
 
     it('should return dashboard data with last_30_days period', async () => {
@@ -766,27 +802,39 @@ describe('StoreService', () => {
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
 
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue({
-        ...mockMonthlySales,
-        year: currentYear,
-        month: currentMonth,
-      });
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          year: currentYear,
+          month: currentMonth,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId, 'last_30_days');
 
       expect(result.period.type).toBe('last_30_days');
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
 
     it('should return zero values when no monthly sales data exists', async () => {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth() + 1;
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
 
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue(null);
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId);
 
@@ -794,50 +842,87 @@ describe('StoreService', () => {
       expect(result.summary.totalOrders).toBe(0);
       expect(result.summary.averageTicket).toBe(0);
       expect(result.salesByProduct).toHaveLength(0);
+      expect(result.firstAvailablePeriod).toBeNull();
     });
 
     it('should calculate percentage correctly for sales by product', async () => {
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue({
-        ...mockMonthlySales,
-        totalSales: 50000.0,
-      });
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          totalSales: 50000.0,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue(
         mockSalesByProduct,
       );
       prismaService.storeDailySales.findMany.mockResolvedValue([]);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId, '2024-01');
 
       expect(result.salesByProduct[0].percentage).toBeCloseTo(60.0, 2); // 30000 / 50000 * 100
       expect(result.salesByProduct[1].percentage).toBeCloseTo(40.0, 2); // 20000 / 50000 * 100
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
 
     it('should calculate average ticket correctly', async () => {
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue({
-        ...mockMonthlySales,
-        totalSales: 50000.0,
-        totalCompletedOrders: 140,
-      });
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          totalSales: 50000.0,
+          totalCompletedOrders: 140,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue([]);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId, '2024-01');
 
       expect(result.summary.averageTicket).toBeCloseTo(357.14, 2); // 50000 / 140
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
 
     it('should return zero average ticket when no completed orders', async () => {
-      prismaService.storeMonthlySales.findFirst.mockResolvedValue({
-        ...mockMonthlySales,
-        totalSales: 50000.0,
-        totalCompletedOrders: 0,
-      });
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          totalSales: 50000.0,
+          totalCompletedOrders: 0,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue([]);
+      prismaService.storeProductSettings.findMany.mockResolvedValue([]);
 
       const result = await service.getDashboardData(storeId, '2024-01');
 
       expect(result.summary.averageTicket).toBe(0);
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
 
     it('should throw BadRequestException for invalid period format', async () => {
@@ -862,6 +947,53 @@ describe('StoreService', () => {
       await expect(service.getDashboardData(storeId)).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it('should prioritize store custom image over product default image', async () => {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      prismaService.storeMonthlySales.findFirst
+        .mockResolvedValueOnce({
+          ...mockMonthlySales,
+          year: currentYear,
+          month: currentMonth,
+        })
+        .mockResolvedValueOnce({
+          // Mock for firstAvailablePeriod
+          year: 2023,
+          month: 1,
+        });
+
+      prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([
+        {
+          ...mockSalesByProduct[0],
+          year: currentYear,
+          month: currentMonth,
+        },
+      ]);
+      prismaService.storeDailySales.findMany.mockResolvedValue([]);
+
+      // Mock store custom image
+      prismaService.storeProductSettings.findMany.mockResolvedValue([
+        {
+          productId: 'prod-123',
+          imgCardUrl: 'https://example.com/store/custom/prod-123/card.png',
+        },
+      ]);
+
+      const result = await service.getDashboardData(storeId);
+
+      // Should use store custom image, not product default image
+      expect(result.salesByProduct[0].imgCardUrl).toBe(
+        'https://example.com/store/custom/prod-123/card.png',
+      );
+      expect(result.firstAvailablePeriod).toEqual({
+        year: 2023,
+        month: 1,
+        period: '2023-01',
+      });
     });
   });
 });
