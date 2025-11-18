@@ -569,10 +569,16 @@ export class StoreService {
     salesByProduct: Array<{
       productId: string;
       productName: string;
+      imgCardUrl: string;
       totalSales: number;
       totalOrders: number;
       percentage: number;
     }>;
+    firstAvailablePeriod: {
+      year: number;
+      month: number;
+      period: string; // "YYYY-MM"
+    } | null;
   }> {
     try {
       // Validate store exists
@@ -620,7 +626,7 @@ export class StoreService {
       }
 
       // Fetch data in parallel
-      const [monthlySales, salesByProduct, dailySales] = await Promise.all([
+      const [monthlySales, salesByProduct, dailySales, firstAvailablePeriodData] = await Promise.all([
         // Get monthly sales (summary)
         this.prisma.storeMonthlySales.findFirst({
           where: {
@@ -642,6 +648,7 @@ export class StoreService {
               select: {
                 id: true,
                 name: true,
+                imgCardUrl: true, // ADICIONAR imgCardUrl
               },
             },
           },
@@ -671,6 +678,21 @@ export class StoreService {
             date: 'desc',
           },
           take: 7,
+        }),
+
+        // Get first available period (oldest record)
+        this.prisma.storeMonthlySales.findFirst({
+          where: {
+            storeId,
+          },
+          select: {
+            year: true,
+            month: true,
+          },
+          orderBy: [
+            { year: 'asc' },
+            { month: 'asc' },
+          ],
         }),
       ]);
 
@@ -712,18 +734,58 @@ export class StoreService {
         totalOrders: daily.totalOrders,
       }));
 
-      // Prepare sales by product
+      // Get product IDs to fetch store customizations
+      const productIds = salesByProduct.map((sale) => sale.productId);
+
+      // Fetch store product settings (customizations) for these products
+      const storeProductSettings = productIds.length > 0
+        ? await this.prisma.storeProductSettings.findMany({
+            where: {
+              storeId,
+              productId: { in: productIds },
+            },
+            select: {
+              productId: true,
+              imgCardUrl: true,
+            },
+          })
+        : [];
+
+      // Create a map for quick lookup: productId -> custom imgCardUrl
+      const storeImageMap = new Map<string, string>();
+      for (const setting of storeProductSettings) {
+        if (setting.imgCardUrl) {
+          storeImageMap.set(setting.productId, setting.imgCardUrl);
+        }
+      }
+
+      // Prepare sales by product with image (prioritize store customization, fallback to product default)
       const totalSalesAmount = summary.totalSales;
-      const salesByProductData = salesByProduct.map((sale) => ({
-        productId: sale.productId,
-        productName: sale.product.name,
-        totalSales: Number(sale.totalSales),
-        totalOrders: sale.totalOrders,
-        percentage:
-          totalSalesAmount > 0
-            ? (Number(sale.totalSales) / totalSalesAmount) * 100
-            : 0,
-      }));
+      const salesByProductData = salesByProduct.map((sale) => {
+        // Priority: StoreProductSettings.imgCardUrl > Product.imgCardUrl
+        const imgCardUrl = storeImageMap.get(sale.productId) ?? sale.product.imgCardUrl ?? '';
+
+        return {
+          productId: sale.productId,
+          productName: sale.product.name,
+          imgCardUrl,
+          totalSales: Number(sale.totalSales),
+          totalOrders: sale.totalOrders,
+          percentage:
+            totalSalesAmount > 0
+              ? (Number(sale.totalSales) / totalSalesAmount) * 100
+              : 0,
+        };
+      });
+
+      // Prepare first available period
+      const firstAvailablePeriod = firstAvailablePeriodData
+        ? {
+            year: firstAvailablePeriodData.year,
+            month: firstAvailablePeriodData.month,
+            period: `${firstAvailablePeriodData.year}-${String(firstAvailablePeriodData.month).padStart(2, '0')}`,
+          }
+        : null;
 
       return {
         period: {
@@ -736,6 +798,7 @@ export class StoreService {
         summary,
         dailyTrend,
         salesByProduct: salesByProductData,
+        firstAvailablePeriod,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
