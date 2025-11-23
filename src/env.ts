@@ -23,6 +23,8 @@ const envSchema = z.object({
   BRAVIVE_BASE_URL: z.string().url().optional().default('https://app.bravive.com/api/v1'),
   BRAVIVE_API_TOKEN: z.string().optional(), // Temporary token for testing
   BRAVIVE_WEBHOOK_SECRET: z.string().optional(), // For webhook validation (future)
+  // Encryption
+  ENCRYPTION_KEY: z.string().min(32, 'ENCRYPTION_KEY must be at least 32 characters long'),
 });
 
 export const env = envSchema.parse(process.env);
