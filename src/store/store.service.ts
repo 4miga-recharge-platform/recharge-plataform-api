@@ -40,6 +40,7 @@ export class StoreService {
     faviconUrl: true,
     bannersUrl: true,
     secondaryBannerUrl: true,
+    braviveApiToken: false, // Never return token in normal queries
     createdAt: false,
     updatedAt: false,
     users: false,
@@ -806,6 +807,50 @@ export class StoreService {
       }
       this.logger.error('Error fetching dashboard data:', error);
       throw new BadRequestException('Failed to fetch dashboard data');
+    }
+  }
+
+  /**
+   * Saves Bravive API token for a store
+   */
+  async saveBraviveToken(storeId: string, token: string): Promise<void> {
+    try {
+      // Verify store exists
+      await this.findOne(storeId);
+
+      await this.prisma.store.update({
+        where: { id: storeId },
+        data: { braviveApiToken: token },
+      });
+
+      this.logger.log(`Bravive token saved for store: ${storeId}`);
+    } catch (error) {
+      this.logger.error(`Failed to save Bravive token: ${error.message}`);
+      throw new BadRequestException('Failed to save Bravive token');
+    }
+  }
+
+  /**
+   * Gets Bravive API token for a store
+   */
+  async getBraviveToken(storeId: string): Promise<string | null> {
+    try {
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { braviveApiToken: true },
+      });
+
+      if (!store) {
+        throw new BadRequestException('Store not found');
+      }
+
+      return store.braviveApiToken;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`Failed to get Bravive token: ${error.message}`);
+      throw new BadRequestException('Failed to get Bravive token');
     }
   }
 }

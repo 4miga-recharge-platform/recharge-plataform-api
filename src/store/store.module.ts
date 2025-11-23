@@ -9,5 +9,6 @@ import { WebhookModule } from '../webhook/webhook.module';
   imports: [PrismaModule, StorageModule, WebhookModule],
   controllers: [StoreController],
   providers: [StoreService],
+  exports: [StoreService],
 })
 export class StoreModule {}
