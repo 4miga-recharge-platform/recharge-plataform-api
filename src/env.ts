@@ -19,6 +19,10 @@ const envSchema = z.object({
   // Webhooks for frontend revalidation
   STORE_WEBHOOKS: z.string().optional(),
   REVALIDATE_TOKEN: z.string().optional(),
+  // Bravive Payment integration
+  BRAVIVE_BASE_URL: z.string().url().optional().default('https://app.bravive.com/api/v1'),
+  BRAVIVE_API_TOKEN: z.string().optional(), // Temporary token for testing
+  BRAVIVE_WEBHOOK_SECRET: z.string().optional(), // For webhook validation (future)
 });
 
 export const env = envSchema.parse(process.env);
