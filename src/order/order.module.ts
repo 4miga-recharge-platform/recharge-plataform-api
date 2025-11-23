@@ -1,11 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { BraviveModule } from '../bravive/bravive.module';
+import { StoreModule } from '../store/store.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    forwardRef(() => BraviveModule), // Use forwardRef to avoid circular dependency
+    StoreModule,
+  ],
   controllers: [OrderController],
   providers: [OrderService],
+  exports: [OrderService], // Export for use in other modules (e.g., BraviveModule)
 })
 export class OrderModule {}
