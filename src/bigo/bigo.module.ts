@@ -10,5 +10,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [HttpModule, PrismaModule],
   controllers: [BigoController],
   providers: [BigoService, BigoSignatureService, BigoRetryService],
+  exports: [BigoService], // Export for use in other modules (e.g., BraviveModule)
 })
 export class BigoModule {}
