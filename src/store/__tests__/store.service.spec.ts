@@ -51,6 +51,7 @@ describe('StoreService', () => {
     faviconUrl: true,
     bannersUrl: true,
     secondaryBannerUrl: true,
+    braviveApiToken: false,
     createdAt: false,
     updatedAt: false,
     users: false,
