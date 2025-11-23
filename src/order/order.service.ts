@@ -3,6 +3,8 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import {
   OrderStatus,
@@ -10,15 +12,23 @@ import {
   Prisma,
   RechargeStatus,
 } from '@prisma/client';
-import { randomInt } from 'crypto';
+import { createHash } from 'crypto';
 import { validateRequiredFields } from 'src/utils/validation.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
+import { BraviveService } from '../bravive/bravive.service';
+import { StoreService } from '../store/store.service';
+import { CreatePaymentDto, PaymentMethod } from '../bravive/dto/create-payment.dto';
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => BraviveService))
+    private readonly braviveService: BraviveService,
+    private readonly storeService: StoreService,
+  ) {}
 
   async findAll(storeId: string, userId: string, page = 1, limit = 6) {
     try {
@@ -470,7 +480,7 @@ export class OrderService {
       const paymentMethod = packageData.paymentMethods[0];
 
       // Execute all operations in a single transaction
-      return await this.prisma.$transaction(async (tx) => {
+      const order = await this.prisma.$transaction(async (tx) => {
         // 1. Create PackageInfo (package snapshot)
         const packageInfo = await tx.packageInfo.create({
           data: {
@@ -507,27 +517,29 @@ export class OrderService {
             name: paymentMethod.name,
             status: PaymentStatus.PAYMENT_PENDING,
             statusUpdatedAt: new Date(),
-            qrCode:
-              paymentMethod.name === 'pix'
-                ? await this.generatePixQRCode(Number(paymentMethod.price))
-                : null,
-            qrCodetextCopyPaste:
-              paymentMethod.name === 'pix'
-                ? await this.generatePixCopyPaste(Number(paymentMethod.price))
-                : null,
+            qrCode: null,
+            qrCodetextCopyPaste: null,
           },
         });
 
-        let orderNumber;
-        let existingOrder;
+        let orderNumber: string;
+        let existingOrder: any;
+        let attempts = 0;
+        const maxAttempts = 5; // Safety limit
+
         do {
-          // Generate a random 12-digit number
-          orderNumber = this.generateOrderNumber();
-          // Check if it already exists
+          // Generate order number with Base36 encoding
+          orderNumber = this.generateOrderNumber(storeId);
+          // Check if it already exists (very rare with Base36 + random)
           existingOrder = await tx.order.findUnique({
             where: { orderNumber },
           });
-        } while (existingOrder); // Repeat if it already exists
+          attempts++;
+
+          if (attempts >= maxAttempts) {
+            throw new BadRequestException('Failed to generate unique order number');
+          }
+        } while (existingOrder);
 
         // 5. Apply coupon discount if provided
         let finalPrice = paymentMethod.price;
@@ -588,6 +600,94 @@ export class OrderService {
 
         return order;
       });
+
+      // After transaction: Integrate with Bravive if token is configured
+      const createdOrder = await this.prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          payment: true,
+          orderItem: {
+            include: {
+              recharge: true,
+              package: true,
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              documentValue: true,
+              documentType: true,
+            },
+          },
+        },
+      });
+
+      if (!createdOrder) {
+        throw new NotFoundException('Order not found after creation');
+      }
+
+      // Only integrate with Bravive if payment method is PIX
+      if (paymentMethod.name === 'pix') {
+        try {
+          // Get Bravive token from store
+          const braviveToken = await this.storeService.getBraviveToken(storeId);
+
+          if (braviveToken) {
+            // Prepare payment data for Bravive
+            const bravivePaymentDto: CreatePaymentDto = {
+              amount: Math.round(Number(createdOrder.price) * 100), // Convert to cents
+              currency: 'BRL',
+              description: `Pedido ${createdOrder.orderNumber} - ${packageData.name}`,
+              payer_name: createdOrder.user.name,
+              payer_email: createdOrder.user.email,
+              payer_phone: createdOrder.user.phone,
+              payer_document: createdOrder.user.documentValue,
+              method: PaymentMethod.PIX,
+              webhook_url: `${process.env.BASE_URL || 'https://api.exemplo.com'}/bravive/webhook`,
+            };
+
+            // Create payment in Bravive
+            const braviveResponse = await this.braviveService.createPayment(
+              bravivePaymentDto,
+              braviveToken,
+            );
+
+            // Update Payment with Bravive data
+            await this.prisma.payment.update({
+              where: { id: createdOrder.payment.id },
+              data: {
+                paymentProvider: 'bravive',
+                externalId: braviveResponse.id,
+                qrCode: braviveResponse.pix_qr_code || null,
+                qrCodetextCopyPaste: braviveResponse.pix_code || null,
+              },
+            });
+
+            // Fetch updated order with payment data
+            return await this.prisma.order.findUnique({
+              where: { id: createdOrder.id },
+              include: {
+                payment: true,
+                orderItem: {
+                  include: {
+                    recharge: true,
+                    package: true,
+                  },
+                },
+              },
+            });
+          }
+        } catch (braviveError) {
+          // Log error but don't fail the order creation
+          // Payment will remain with null QR code, can be retried later
+          console.error('Failed to create payment in Bravive:', braviveError);
+        }
+      }
+
+      return createdOrder;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         // Handle specific Prisma errors
@@ -1004,32 +1104,38 @@ export class OrderService {
     }
   }
 
-  private generateOrderNumber(): string {
-    // Generate a random 12-digit number
-    const min = 100000000000; // 12 digits (starting with 1)
-    const max = 999999999999; // 12 digits (all 9s)
-    return randomInt(min, max).toString();
+  /**
+   * Converts a number to Base36 (0-9, A-Z)
+   */
+  private toBase36(num: number): string {
+    return num.toString(36).toUpperCase();
   }
 
-  private async generatePixQRCode(amount: number): Promise<string> {
-    // Here you would implement the real QR Code generation logic
-    return `qrcode${amount}`;
+  /**
+   * Generates order number using Base36 encoding
+   * Format: {TIMESTAMP_BASE36}{STORE_HASH}{RANDOM_BASE36}
+   * Example: K8J3M2A3B284 (12 characters)
+   */
+  private generateOrderNumber(storeId: string): string {
+    // 1. Timestamp in Base36 (last 6-7 characters for compactness)
+    const timestamp = this.toBase36(Date.now()).slice(-6);
+
+    // 2. Store ID hash (4 characters from MD5)
+    const hash = createHash('md5')
+      .update(storeId)
+      .digest('hex')
+      .substring(0, 4)
+      .toUpperCase();
+
+    // 3. Random in Base36 (2 characters, 0-1295 range)
+    const random = this.toBase36(Math.floor(Math.random() * 1296)).padStart(
+      2,
+      '0',
+    );
+
+    return `${timestamp}${hash}${random}`;
   }
 
-  private async generatePixCopyPaste(amount: number): Promise<string> {
-    //
-    //
-    //
-    //
-    //
-    // Here you would implement the real PIX Copy and Paste code generation logic
-    //
-    //
-    //
-    //
-    //
-    return `qrcode-copypaste${amount}`;
-  }
 
   async validateCoupon(
     validateCouponDto: ValidateCouponDto,

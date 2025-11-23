@@ -6,6 +6,8 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BraviveService } from '../../bravive/bravive.service';
+import { StoreService } from '../../store/store.service';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { ValidateCouponDto } from '../dto/validate-coupon.dto';
 import { OrderService } from '../order.service';
@@ -18,6 +20,8 @@ jest.mock('../../utils/validation.util', () => ({
 describe('OrderService', () => {
   let service: OrderService;
   let prismaService: any;
+  let braviveService: any;
+  let storeService: any;
 
   const mockUser = {
     id: 'user-123',
@@ -112,6 +116,7 @@ describe('OrderService', () => {
         findUnique: jest.fn(),
         create: jest.fn(),
         count: jest.fn(),
+        update: jest.fn(),
       },
       package: {
         findUnique: jest.fn(),
@@ -136,6 +141,7 @@ describe('OrderService', () => {
       },
       payment: {
         create: jest.fn(),
+        update: jest.fn(),
       },
       coupon: {
         findFirst: jest.fn(),
@@ -153,6 +159,19 @@ describe('OrderService', () => {
       $transaction: jest.fn(),
     };
 
+    const mockBraviveService = {
+      createPayment: jest.fn(),
+      getPayment: jest.fn(),
+      listPayments: jest.fn(),
+      handleWebhook: jest.fn(),
+    };
+
+    const mockStoreService = {
+      getBraviveToken: jest.fn(),
+      saveBraviveToken: jest.fn(),
+      findOne: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderService,
@@ -160,16 +179,34 @@ describe('OrderService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: BraviveService,
+          useValue: mockBraviveService,
+        },
+        {
+          provide: StoreService,
+          useValue: mockStoreService,
+        },
       ],
     }).compile();
 
     service = module.get<OrderService>(OrderService);
     prismaService = module.get(PrismaService);
+    braviveService = module.get(BraviveService);
+    storeService = module.get(StoreService);
 
     jest.clearAllMocks();
     prismaService.storeProductSettings.findMany.mockResolvedValue([]);
     prismaService.product.findMany.mockResolvedValue([]);
     prismaService.package.findMany.mockResolvedValue([]);
+
+    // Default mocks for BraviveService and StoreService
+    storeService.getBraviveToken.mockResolvedValue(null); // No token by default
+    braviveService.createPayment.mockResolvedValue({
+      id: 'bravive-payment-123',
+      pix_qr_code: 'qrcode',
+      pix_code: 'pix-code',
+    });
   });
 
   afterEach(() => {
@@ -713,6 +750,23 @@ describe('OrderService', () => {
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.$transaction.mockImplementation(mockTransaction);
 
+      // Mock the order.findUnique call after transaction (for Bravive integration)
+      const createdOrderWithUser = {
+        ...mockOrder,
+        user: {
+          id: mockUser.id,
+          name: mockUser.name,
+          email: mockUser.email,
+          phone: '123456789',
+          documentValue: '12345678900',
+          documentType: 'CPF',
+        },
+      };
+      prismaService.order.findUnique.mockResolvedValue(createdOrderWithUser);
+
+      // Mock StoreService.getBraviveToken (returns null by default - no Bravive integration)
+      storeService.getBraviveToken.mockResolvedValue(null);
+
       const result = await service.create(createOrderDto, userId);
 
       expect(validateRequiredFields).toHaveBeenCalledWith(createOrderDto, [
@@ -741,7 +795,7 @@ describe('OrderService', () => {
         },
       });
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual(createdOrderWithUser);
     });
 
     it('should throw ForbiddenException when user does not belong to store', async () => {
@@ -901,9 +955,24 @@ describe('OrderService', () => {
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.$transaction.mockImplementation(mockTransaction);
 
+      // Mock the order.findUnique call after transaction
+      const createdOrderWithUser = {
+        ...mockOrder,
+        user: {
+          id: mockUser.id,
+          name: mockUser.name,
+          email: mockUser.email,
+          phone: '123456789',
+          documentValue: '12345678900',
+          documentType: 'CPF',
+        },
+      };
+      prismaService.order.findUnique.mockResolvedValue(createdOrderWithUser);
+      storeService.getBraviveToken.mockResolvedValue(null);
+
       const result = await service.create(createOrderWithCouponDto, userId);
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual(createdOrderWithUser);
     });
 
     it('should update existing influencer monthly sales when record exists', async () => {
@@ -993,9 +1062,24 @@ describe('OrderService', () => {
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.$transaction.mockImplementation(mockTransaction);
 
+      // Mock the order.findUnique call after transaction
+      const createdOrderWithUser = {
+        ...mockOrder,
+        user: {
+          id: mockUser.id,
+          name: mockUser.name,
+          email: mockUser.email,
+          phone: '123456789',
+          documentValue: '12345678900',
+          documentType: 'CPF',
+        },
+      };
+      prismaService.order.findUnique.mockResolvedValue(createdOrderWithUser);
+      storeService.getBraviveToken.mockResolvedValue(null);
+
       const result = await service.create(createOrderWithCouponDto, userId);
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual(createdOrderWithUser);
     });
   });
 

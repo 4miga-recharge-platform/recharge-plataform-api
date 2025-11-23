@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // url      = env("DATABASE_URL")
 }
 
 model Store {
@@ -23,6 +23,7 @@ model Store {
   wppNumber             String?                      @unique
   domain                String                       @unique
   secondaryBannerUrl    String?
+  braviveApiToken       String?
   coupons               Coupon[]
   influencers           Influencer[]
   orders                Order[]
@@ -174,7 +175,11 @@ model Payment {
   statusUpdatedAt     DateTime?
   qrCode              String?
   qrCodetextCopyPaste String?
+  externalId          String?
+  paymentProvider     String?
   order               Order?
+
+  @@index([externalId])
 }
 
 model OrderItem {

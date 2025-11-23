@@ -4,6 +4,7 @@ import { StoreService } from '../store.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../storage/storage.service';
 import { WebhookService } from '../../webhook/webhook.service';
+import { CryptoService } from '../../crypto/crypto.service';
 import { CreateStoreDto } from '../dto/create-store.dto';
 import { UpdateStoreDto } from '../dto/update-store.dto';
 
@@ -51,6 +52,7 @@ describe('StoreService', () => {
     faviconUrl: true,
     bannersUrl: true,
     secondaryBannerUrl: true,
+    braviveApiToken: false,
     createdAt: false,
     updatedAt: false,
     users: false,
@@ -60,6 +62,7 @@ describe('StoreService', () => {
 
   let mockStorageService: any;
   let mockWebhookService: any;
+  let mockCryptoService: any;
 
   beforeEach(async () => {
     const mockPrismaService = {
@@ -96,6 +99,17 @@ describe('StoreService', () => {
       notifyPackageUpdate: jest.fn(),
     };
 
+    mockCryptoService = {
+      encrypt: jest.fn((text: string) => `encrypted_${text}`),
+      decrypt: jest.fn((text: string) => {
+        // Remove 'encrypted_' prefix if present
+        if (text.startsWith('encrypted_')) {
+          return text.replace('encrypted_', '');
+        }
+        return text; // Return as-is if not encrypted (legacy)
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StoreService,
@@ -110,6 +124,10 @@ describe('StoreService', () => {
         {
           provide: WebhookService,
           useValue: mockWebhookService,
+        },
+        {
+          provide: CryptoService,
+          useValue: mockCryptoService,
         },
       ],
     }).compile();
@@ -994,6 +1012,93 @@ describe('StoreService', () => {
         month: 1,
         period: '2023-01',
       });
+    });
+  });
+
+  describe('saveBraviveToken', () => {
+    const storeId = 'store-123';
+    const token = 'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+
+    it('should encrypt and save Bravive token successfully', async () => {
+      const encryptedToken = 'encrypted_VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+      prismaService.store.findUnique.mockResolvedValue(mockStore);
+      prismaService.store.update.mockResolvedValue({
+        ...mockStore,
+        braviveApiToken: encryptedToken,
+      });
+
+      await service.saveBraviveToken(storeId, token);
+
+      expect(mockCryptoService.encrypt).toHaveBeenCalledWith(token);
+      expect(prismaService.store.update).toHaveBeenCalledWith({
+        where: { id: storeId },
+        data: { braviveApiToken: encryptedToken },
+      });
+    });
+
+    it('should throw BadRequestException when store not found', async () => {
+      // Mock findOne to throw error (store not found)
+      jest.spyOn(service, 'findOne').mockRejectedValue(
+        new BadRequestException('Failed to fetch store'),
+      );
+
+      await expect(service.saveBraviveToken(storeId, token)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('getBraviveToken', () => {
+    const storeId = 'store-123';
+    const encryptedToken = 'encrypted_VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+    const decryptedToken = 'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+
+    it('should decrypt and return Bravive token successfully', async () => {
+      prismaService.store.findUnique.mockResolvedValue({
+        braviveApiToken: encryptedToken,
+      });
+
+      const result = await service.getBraviveToken(storeId);
+
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+        select: { braviveApiToken: true },
+      });
+      expect(mockCryptoService.decrypt).toHaveBeenCalledWith(encryptedToken);
+      expect(result).toBe(decryptedToken);
+    });
+
+    it('should return null when token is not set', async () => {
+      prismaService.store.findUnique.mockResolvedValue({
+        braviveApiToken: null,
+      });
+
+      const result = await service.getBraviveToken(storeId);
+
+      expect(result).toBeNull();
+      expect(mockCryptoService.decrypt).not.toHaveBeenCalled();
+    });
+
+    it('should return plain text token if decryption fails (legacy support)', async () => {
+      const plainTextToken = 'plain_token_123';
+      prismaService.store.findUnique.mockResolvedValue({
+        braviveApiToken: plainTextToken,
+      });
+      mockCryptoService.decrypt.mockImplementation(() => {
+        throw new Error('Decryption failed');
+      });
+
+      const result = await service.getBraviveToken(storeId);
+
+      expect(result).toBe(plainTextToken);
+    });
+
+    it('should throw BadRequestException when store not found', async () => {
+      prismaService.store.findUnique.mockResolvedValue(null);
+
+      await expect(service.getBraviveToken(storeId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

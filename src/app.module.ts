@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { BigoModule } from './bigo/bigo.module';
+import { BraviveModule } from './bravive/bravive.module';
 import { CouponModule } from './coupon/coupon.module';
 import { EmailModule } from './email/email.module';
 import { InfluencerModule } from './influencer/influencer.module';
@@ -29,6 +30,7 @@ import { WebhookModule } from './webhook/webhook.module';
     AuthModule,
     OrderModule,
     BigoModule,
+    BraviveModule,
     SseModule,
     InfluencerModule,
     CouponModule,

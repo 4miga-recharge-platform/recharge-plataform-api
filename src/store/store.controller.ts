@@ -32,6 +32,7 @@ import { FileValidationInterceptor } from '../storage/interceptors/file-validati
 import { FilesValidationInterceptor } from '../storage/interceptors/files-validation.interceptor';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdateBraviveTokenDto } from './dto/update-bravive-token.dto';
 import { RemoveBannersBatchDto } from './dto/remove-banners-batch.dto';
 import { StoreService } from './store.service';
 
@@ -171,6 +172,26 @@ export class StoreController {
       throw new BadRequestException('Store ID not found in user data')
     }
     return this.storeService.update(user.storeId, updateStoreDto);
+  }
+
+  @Patch('bravive-token')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update Bravive API token for the logged admin store' })
+  @ApiResponse({
+    status: 200,
+    description: 'Bravive token updated successfully',
+  })
+  async updateBraviveToken(
+    @LoggedUser() user: User,
+    @Body() dto: UpdateBraviveTokenDto,
+  ) {
+    if (!user.storeId) {
+      throw new BadRequestException('Store ID not found in user data');
+    }
+    await this.storeService.saveBraviveToken(user.storeId, dto.braviveApiToken);
+    return { message: 'Bravive token updated successfully' };
   }
 
   @Delete('offer-banner')

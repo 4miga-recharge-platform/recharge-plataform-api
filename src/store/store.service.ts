@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { validateRequiredFields, validateUpdateFields } from 'src/utils/validation.util';
+import {
+  validateRequiredFields,
+  validateUpdateFields,
+} from 'src/utils/validation.util';
+import { CryptoService } from '../crypto/crypto.service';
 import { StorageService } from '../storage/storage.service';
 import { WebhookService } from '../webhook/webhook.service';
 import { CreateStoreDto } from './dto/create-store.dto';
@@ -24,6 +28,7 @@ export class StoreService {
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
     private readonly webhookService: WebhookService,
+    private readonly cryptoService: CryptoService,
   ) {}
 
   private storeSelect = {
@@ -40,6 +45,7 @@ export class StoreService {
     faviconUrl: true,
     bannersUrl: true,
     secondaryBannerUrl: true,
+    braviveApiToken: false, // Never return token in normal queries
     createdAt: false,
     updatedAt: false,
     users: false,
@@ -626,7 +632,12 @@ export class StoreService {
       }
 
       // Fetch data in parallel
-      const [monthlySales, salesByProduct, dailySales, firstAvailablePeriodData] = await Promise.all([
+      const [
+        monthlySales,
+        salesByProduct,
+        dailySales,
+        firstAvailablePeriodData,
+      ] = await Promise.all([
         // Get monthly sales (summary)
         this.prisma.storeMonthlySales.findFirst({
           where: {
@@ -689,10 +700,7 @@ export class StoreService {
             year: true,
             month: true,
           },
-          orderBy: [
-            { year: 'asc' },
-            { month: 'asc' },
-          ],
+          orderBy: [{ year: 'asc' }, { month: 'asc' }],
         }),
       ]);
 
@@ -738,18 +746,19 @@ export class StoreService {
       const productIds = salesByProduct.map((sale) => sale.productId);
 
       // Fetch store product settings (customizations) for these products
-      const storeProductSettings = productIds.length > 0
-        ? await this.prisma.storeProductSettings.findMany({
-            where: {
-              storeId,
-              productId: { in: productIds },
-            },
-            select: {
-              productId: true,
-              imgCardUrl: true,
-            },
-          })
-        : [];
+      const storeProductSettings =
+        productIds.length > 0
+          ? await this.prisma.storeProductSettings.findMany({
+              where: {
+                storeId,
+                productId: { in: productIds },
+              },
+              select: {
+                productId: true,
+                imgCardUrl: true,
+              },
+            })
+          : [];
 
       // Create a map for quick lookup: productId -> custom imgCardUrl
       const storeImageMap = new Map<string, string>();
@@ -763,7 +772,8 @@ export class StoreService {
       const totalSalesAmount = summary.totalSales;
       const salesByProductData = salesByProduct.map((sale) => {
         // Priority: StoreProductSettings.imgCardUrl > Product.imgCardUrl
-        const imgCardUrl = storeImageMap.get(sale.productId) ?? sale.product.imgCardUrl ?? '';
+        const imgCardUrl =
+          storeImageMap.get(sale.productId) ?? sale.product.imgCardUrl ?? '';
 
         return {
           productId: sale.productId,
@@ -806,6 +816,69 @@ export class StoreService {
       }
       this.logger.error('Error fetching dashboard data:', error);
       throw new BadRequestException('Failed to fetch dashboard data');
+    }
+  }
+
+  /**
+   * Saves Bravive API token for a store (encrypted before saving)
+   */
+  async saveBraviveToken(storeId: string, token: string): Promise<void> {
+    try {
+      // Verify store exists
+      await this.findOne(storeId);
+
+      // Encrypt token before saving
+      const encryptedToken = this.cryptoService.encrypt(token);
+
+      await this.prisma.store.update({
+        where: { id: storeId },
+        data: { braviveApiToken: encryptedToken },
+      });
+
+      this.logger.log(`Bravive token saved (encrypted) for store: ${storeId}`);
+    } catch (error) {
+      this.logger.error(`Failed to save Bravive token: ${error.message}`);
+      throw new BadRequestException('Failed to save Bravive token');
+    }
+  }
+
+  /**
+   * Gets Bravive API token for a store (decrypted after reading)
+   */
+  async getBraviveToken(storeId: string): Promise<string | null> {
+    try {
+      const store = await this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { braviveApiToken: true },
+      });
+
+      if (!store) {
+        throw new BadRequestException('Store not found');
+      }
+
+      if (!store.braviveApiToken) {
+        return null;
+      }
+
+      // Decrypt token after reading
+      try {
+        const decryptedToken = this.cryptoService.decrypt(
+          store.braviveApiToken,
+        );
+        return decryptedToken;
+      } catch (decryptError) {
+        // If decryption fails, token might be in plain text (legacy) or corrupted
+        this.logger.warn(
+          `Failed to decrypt token for store ${storeId}: ${decryptError.message}. Token may be in plain text or corrupted.`,
+        );
+        return store.braviveApiToken;
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`Failed to get Bravive token: ${error.message}`);
+      throw new BadRequestException('Failed to get Bravive token');
     }
   }
 }
