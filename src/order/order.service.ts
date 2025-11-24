@@ -20,6 +20,7 @@ import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { BraviveService } from '../bravive/bravive.service';
 import { StoreService } from '../store/store.service';
 import { CreatePaymentDto, PaymentMethod } from '../bravive/dto/create-payment.dto';
+import { BigoService } from '../bigo/bigo.service';
 
 @Injectable()
 export class OrderService {
@@ -28,6 +29,7 @@ export class OrderService {
     @Inject(forwardRef(() => BraviveService))
     private readonly braviveService: BraviveService,
     private readonly storeService: StoreService,
+    private readonly bigoService: BigoService,
   ) {}
 
   async findAll(storeId: string, userId: string, page = 1, limit = 6) {
@@ -478,6 +480,13 @@ export class OrderService {
       }
 
       const paymentMethod = packageData.paymentMethods[0];
+
+      // Validate recharge precheck before creating order
+      const seqid = `precheck_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`.substring(0, 32);
+      await this.bigoService.rechargePrecheck({
+        recharge_bigoid: userIdForRecharge,
+        seqid: seqid,
+      });
 
       // Execute all operations in a single transaction
       const order = await this.prisma.$transaction(async (tx) => {
