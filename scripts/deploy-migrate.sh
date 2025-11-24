@@ -38,6 +38,8 @@ echo "🚀 Deploying to Cloud Run..."
 gcloud run deploy recharge-api \
   --image gcr.io/pure-sunlight-468021-r1/recharge-api:latest \
   --allow-unauthenticated \
+  --vpc-connector recharge-api-connector \
+  --vpc-egress all-traffic \
   --set-env-vars DATABASE_URL="${DATABASE_URL}",NODE_ENV="${NODE_ENV}",JWT_SECRET="${JWT_SECRET}",RESEND_API_KEY="${RESEND_API_KEY}",RESEND_FROM_EMAIL="${RESEND_FROM_EMAIL}",BIGO_HOST_DOMAIN="${BIGO_HOST_DOMAIN}",BIGO_HOST_BACKUP_DOMAIN="${BIGO_HOST_BACKUP_DOMAIN}",BIGO_CLIENT_ID="${BIGO_CLIENT_ID}",BIGO_PRIVATE_KEY="${BIGO_PRIVATE_KEY}",BIGO_RESELLER_BIGOID="${BIGO_RESELLER_BIGOID}"
 
 echo "✅ Complete deployment with migrations finished!"
