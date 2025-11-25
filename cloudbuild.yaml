@@ -30,6 +30,10 @@ steps:
       - '10'
       - '--min-instances'
       - '1'
+      - '--vpc-connector'
+      - 'recharge-api-connector'
+      - '--vpc-egress'
+      - 'all-traffic'
       - '--set-env-vars'
       - 'NODE_ENV=production'
 

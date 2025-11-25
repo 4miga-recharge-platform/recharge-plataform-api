@@ -163,7 +163,6 @@ export class BraviveService {
             Number(order.price), // Convert Decimal to number
             recharge?.amountCredits,
             recharge?.userIdForRecharge, // bigoId is the userIdForRecharge
-            order.user?.documentValue || '',
           );
           break;
 
@@ -204,7 +203,6 @@ export class BraviveService {
     orderPrice: string | number,
     amountCredits: number | undefined,
     bigoId: string | undefined,
-    userDocument: string,
   ): Promise<void> {
     this.logger.log(`Processing approved payment for order ${orderNumber}`);
 

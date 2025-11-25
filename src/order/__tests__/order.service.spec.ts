@@ -8,6 +8,7 @@ import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BraviveService } from '../../bravive/bravive.service';
 import { StoreService } from '../../store/store.service';
+import { BigoService } from '../../bigo/bigo.service';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { ValidateCouponDto } from '../dto/validate-coupon.dto';
 import { OrderService } from '../order.service';
@@ -22,6 +23,7 @@ describe('OrderService', () => {
   let prismaService: any;
   let braviveService: any;
   let storeService: any;
+  let bigoService: any;
 
   const mockUser = {
     id: 'user-123',
@@ -172,6 +174,11 @@ describe('OrderService', () => {
       findOne: jest.fn(),
     };
 
+    const mockBigoService = {
+      rechargePrecheck: jest.fn(),
+      diamondRecharge: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderService,
@@ -187,6 +194,10 @@ describe('OrderService', () => {
           provide: StoreService,
           useValue: mockStoreService,
         },
+        {
+          provide: BigoService,
+          useValue: mockBigoService,
+        },
       ],
     }).compile();
 
@@ -194,10 +205,13 @@ describe('OrderService', () => {
     prismaService = module.get(PrismaService);
     braviveService = module.get(BraviveService);
     storeService = module.get(StoreService);
+    bigoService = module.get(BigoService);
 
     jest.clearAllMocks();
     prismaService.storeProductSettings.findMany.mockResolvedValue([]);
     prismaService.product.findMany.mockResolvedValue([]);
+    // Mock rechargePrecheck to succeed by default
+    bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
     prismaService.package.findMany.mockResolvedValue([]);
 
     // Default mocks for BraviveService and StoreService
@@ -748,6 +762,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.$transaction.mockImplementation(mockTransaction);
 
       // Mock the order.findUnique call after transaction (for Bravive integration)
@@ -834,6 +849,7 @@ describe('OrderService', () => {
       prismaService.package.findUnique.mockResolvedValue(
         packageFromDifferentStore,
       );
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow(
         new BadRequestException('Package does not belong to this store'),
@@ -853,6 +869,7 @@ describe('OrderService', () => {
       prismaService.package.findUnique.mockResolvedValue(
         packageWithoutPaymentMethods,
       );
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow(
         new NotFoundException('Payment method not available for this package'),
@@ -865,6 +882,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.$transaction.mockRejectedValue(new Error('Database error'));
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow(
@@ -953,6 +971,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.$transaction.mockImplementation(mockTransaction);
 
       // Mock the order.findUnique call after transaction
@@ -1060,6 +1079,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.$transaction.mockImplementation(mockTransaction);
 
       // Mock the order.findUnique call after transaction
