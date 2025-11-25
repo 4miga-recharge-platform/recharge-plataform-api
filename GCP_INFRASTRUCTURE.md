@@ -45,7 +45,7 @@ Este documento descreve todos os serviços ativos no Google Cloud Platform, suas
 ## 🗄️ Banco de Dados (Cloud SQL)
 
 ### 4. **recharge-db**
-- **Função**: Banco de dados PostgreSQL 15
+- **Função**: Banco de dados PostgreSQL 16
 - **Tier**: `db-g1-small`
 - **Região**: `us-central1-c`
 - **Especificações**: 1 vCPU, ~1.7GB RAM, 10GB PD-SSD
@@ -235,5 +235,5 @@ Internet
 
 ---
 
-*Última atualização: 24 de Novemvbro de 2025*
+*Última atualização: 2025-11-25 - Upgrade de PostgreSQL 15 para 16*
 
