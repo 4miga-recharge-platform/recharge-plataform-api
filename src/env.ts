@@ -5,6 +5,8 @@ config();
 const envSchema = z.object({
   PORT: z.coerce.number().default(3333),
   DATABASE_URL: z.string().startsWith("postgresql://"),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
+  BASE_URL: z.string().url(),
   // BIGO integration (optional for development)
   BIGO_HOST_DOMAIN: z.string().optional(),
   BIGO_HOST_BACKUP_DOMAIN: z.string().optional(),

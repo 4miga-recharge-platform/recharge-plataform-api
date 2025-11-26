@@ -47,14 +47,14 @@ export class CreatePaymentDto {
 
   @ApiProperty({
     description: 'Payer phone',
-    example: '+5511999999999',
+    example: '5511999999999',
   })
   @IsString()
   payer_phone: string;
 
   @ApiProperty({
     description: 'Payer document (CPF/CNPJ)',
-    example: '123.456.789-00',
+    example: '12345678900',
   })
   @IsString()
   payer_document: string;
