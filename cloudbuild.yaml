@@ -36,6 +36,10 @@ steps:
       - 'all-traffic'
       - '--set-env-vars'
       - 'NODE_ENV=production'
+      # Note: BASE_URL, ENCRYPTION_KEY, and other env vars should be configured via:
+      # - Cloud Run Secret Manager (recommended for sensitive values)
+      # - Cloud Build substitutions
+      # - Or update this file to include all required env vars
 
 images:
   - 'gcr.io/$PROJECT_ID/recharge-api:latest'

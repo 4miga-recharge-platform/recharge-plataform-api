@@ -19,6 +19,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { BraviveService } from './bravive.service';
 import { PaymentResponseDto } from './dto/payment-response.dto';
 import { WebhookPaymentDto } from './dto/webhook-payment.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @ApiTags('bravive')
 @Controller('bravive')
@@ -34,6 +35,33 @@ export class BraviveController {
   async handleWebhook(@Body() webhookDto: WebhookPaymentDto) {
     await this.braviveService.handleWebhook(webhookDto);
     return { message: 'Webhook received' };
+  }
+
+  @Post('payment')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new payment in Bravive (for testing)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Payment created successfully',
+    type: PaymentResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input data',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Authorization not provided',
+  })
+  async createPayment(@Body() createPaymentDto: CreatePaymentDto) {
+    // TODO: Get token from logged user's store
+    // Temporarily using token from .env
+    const token = process.env.BRAVIVE_API_TOKEN;
+    if (!token) {
+      throw new Error('BRAVIVE_API_TOKEN not configured');
+    }
+    return this.braviveService.createPayment(createPaymentDto, token);
   }
 
   @Get('payments/:id')

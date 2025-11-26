@@ -21,6 +21,7 @@ import { BraviveService } from '../bravive/bravive.service';
 import { StoreService } from '../store/store.service';
 import { CreatePaymentDto, PaymentMethod } from '../bravive/dto/create-payment.dto';
 import { BigoService } from '../bigo/bigo.service';
+import { env } from '../env';
 
 @Injectable()
 export class OrderService {
@@ -655,7 +656,7 @@ export class OrderService {
               payer_phone: createdOrder.user.phone,
               payer_document: createdOrder.user.documentValue,
               method: PaymentMethod.PIX,
-              webhook_url: `${process.env.BASE_URL || 'https://api.exemplo.com'}/bravive/webhook`,
+              webhook_url: `${env.BASE_URL}/bravive/webhook`,
             };
 
             // Create payment in Bravive
