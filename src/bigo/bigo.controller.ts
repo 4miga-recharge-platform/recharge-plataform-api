@@ -97,12 +97,12 @@ export class BigoController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Test signature generation with Bigo test endpoint',
     description: 'This endpoint validates if the RSA signature is correctly generated. Use this to debug authentication issues before testing other endpoints.'
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Signature test completed. If success=true, the signature is valid.',
     schema: {
       type: 'object',
