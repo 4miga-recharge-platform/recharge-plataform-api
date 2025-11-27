@@ -48,6 +48,8 @@ export class BigoService {
           seqid: dto.seqid,
           endpoint: '/sign/agent/recharge_pre_check',
           status: 'SUCCESS',
+          rescode: response.rescode ?? null,
+          message: response.message ?? null,
           requestBody: dto as any,
           responseBody: response,
         },
@@ -108,6 +110,8 @@ export class BigoService {
         where: { id: logEntry.id },
         data: {
           status: 'SUCCESS',
+          rescode: response.rescode ?? null,
+          message: response.message ?? null,
           responseBody: response,
         },
       });
@@ -152,6 +156,8 @@ export class BigoService {
         where: { id: logEntry.id },
         data: {
           status: 'SUCCESS',
+          rescode: response.rescode ?? null,
+          message: response.message ?? null,
           responseBody: response,
         },
       });
@@ -264,6 +270,82 @@ export class BigoService {
 
   async getRetryStats() {
     return this.retryService.getRetryStats();
+  }
+
+  /**
+   * Test signature generation with Bigo's test endpoint
+   * This endpoint validates if the signature is correctly generated
+   * As per Bigo documentation: https://{{host_domain}}/oauth2/test_sign
+   */
+  async testSignature() {
+    this.logger.log('Testing signature with Bigo test endpoint');
+
+    const testData = { msg: 'hello' };
+    const endpoint = '/oauth2/test_sign';
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const headers = await this.signatureService.generateHeaders(testData, endpoint, timestamp);
+
+    // Debug: Log what we're sending
+    this.logger.debug(`Bigo test signature debug info:`, {
+      url: `${this.baseUrl}${endpoint}`,
+      clientId: headers['bigo-client-id'],
+      timestamp: headers['bigo-timestamp'],
+      signature: headers['bigo-oauth-signature'],
+      body: testData,
+    });
+
+    // Try primary domain first
+    const primaryUrl = `${this.baseUrl}${endpoint}`;
+    this.logger.debug(`Testing signature with primary domain: ${primaryUrl}`);
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(primaryUrl, testData, { headers })
+      );
+
+      // Test endpoint returns 200 if signature is valid, with the same message
+      this.logger.log('Signature test successful');
+      return {
+        success: true,
+        message: 'Signature is valid',
+        response: response.data,
+        timestamp,
+        endpoint,
+      };
+    } catch (error: any) {
+      this.logger.error(`Signature test failed: ${error.message}`);
+
+      // Try backup domain if configured
+      const backupDomain = env.BIGO_HOST_BACKUP_DOMAIN;
+      if (backupDomain) {
+        const backupUrl = `${backupDomain}${endpoint}`;
+        this.logger.debug(`Retrying signature test with backup domain: ${backupUrl}`);
+
+        try {
+          const backupResponse = await firstValueFrom(
+            this.httpService.post(backupUrl, testData, { headers })
+          );
+
+          this.logger.log('Signature test successful with backup domain');
+          return {
+            success: true,
+            message: 'Signature is valid (using backup domain)',
+            response: backupResponse.data,
+            timestamp,
+            endpoint,
+          };
+        } catch (backupError: any) {
+          this.logger.error(`Backup domain signature test also failed: ${backupError.message}`);
+          throw new BadRequestException(
+            `Signature test failed: ${backupError.message || 'Unknown error'}`,
+          );
+        }
+      } else {
+        throw new BadRequestException(
+          `Signature test failed: ${error.message || 'Unknown error'}`,
+        );
+      }
+    }
   }
 
     /**
