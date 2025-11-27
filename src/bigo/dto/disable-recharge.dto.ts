@@ -4,13 +4,13 @@ import { IsString, IsNotEmpty, Length, Matches } from 'class-validator';
 export class DisableRechargeDto {
   @ApiProperty({
     description: 'Request serial number, should be unique, easier to track request. Only contain numbers and lowercase letters. The length must be between 13 and 32',
-    example: '83jyhm2784_089j',
+    example: '83jyhm2784089j',
   })
   @IsString()
   @IsNotEmpty()
   @Length(13, 32)
-  @Matches(/^[a-z0-9_]+$/, {
-    message: 'seqid must contain only lowercase letters, numbers and underscores',
+  @Matches(/^[a-z0-9]+$/, {
+    message: 'seqid must contain only lowercase letters and numbers',
   })
   seqid: string;
 }
