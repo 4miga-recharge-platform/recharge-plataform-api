@@ -7,7 +7,7 @@ export class AdminLoginDto {
   @IsEmail()
   @ApiProperty({
     description: 'Admin email',
-    example: 'admin@exemplo.com',
+    example: 'cliente1@exemplo.com',
   })
   email: string;
 

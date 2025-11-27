@@ -83,18 +83,19 @@ describe('BigoSignatureService', () => {
   });
 
   describe('createMessageToSign', () => {
-    it('should create message in correct format', () => {
+    it('should create message in correct format without newlines', () => {
       const data = { msg: 'hello' };
       const endpoint = '/oauth2/test_sign';
       const timestamp = '1688701573';
 
       const message = (service as any).createMessageToSign(data, endpoint, timestamp);
 
+      // As per Bigo example code: JSON.stringify(data) + endpoint + timestamp
       const expectedMessage = '{"msg":"hello"}/oauth2/test_sign1688701573';
       expect(message).toBe(expectedMessage);
     });
 
-    it('should handle complex data structures', () => {
+    it('should handle complex data structures without newlines', () => {
       const data = {
         recharge_bigoid: '52900149',
         seqid: '83jyhm2784_089j',
@@ -105,6 +106,7 @@ describe('BigoSignatureService', () => {
 
       const message = (service as any).createMessageToSign(data, endpoint, timestamp);
 
+      // Format: JSON.stringify(data) + endpoint + timestamp
       const expectedMessage = '{"recharge_bigoid":"52900149","seqid":"83jyhm2784_089j","value":712}/sign/agent/rs_recharge1234567890';
       expect(message).toBe(expectedMessage);
     });
@@ -172,9 +174,10 @@ describe('BigoSignatureService', () => {
       });
     });
 
-    it('should use correct test data from documentation', () => {
+    it('should use correct test data from Bigo example code without newlines', () => {
       const testData = service.testSignatureGeneration();
 
+      // As per Bigo example code: JSON.stringify(data) + endpoint + timestamp
       expect(testData.message).toBe('{"msg":"hello"}/oauth2/test_sign1688701573');
       expect(testData.timestamp).toBe('1688701573');
     });

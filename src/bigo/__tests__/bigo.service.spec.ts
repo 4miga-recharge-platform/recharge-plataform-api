@@ -152,6 +152,8 @@ describe('BigoService', () => {
           seqid: mockRechargePrecheckDto.seqid,
           endpoint: '/sign/agent/recharge_pre_check',
           status: 'SUCCESS',
+          rescode: mockBigoResponse.data.rescode,
+          message: mockBigoResponse.data.message,
           requestBody: mockRechargePrecheckDto,
           responseBody: mockBigoResponse.data,
         },

@@ -247,7 +247,7 @@ export class BigoRetryService implements OnModuleDestroy {
   async getRetryStats() {
     const stats = await this.prisma.bigoRecharge.groupBy({
       by: ['status'],
-      _count: { status: true },
+      _count: true,
     });
 
     const pendingCount = await this.prisma.bigoRecharge.count({
@@ -263,7 +263,7 @@ export class BigoRetryService implements OnModuleDestroy {
         status: { in: ['FAILED', 'RETRY_PENDING'] },
         rescode: { in: [7212012, 500001] },
       },
-      _count: { rescode: true },
+      _count: true,
     });
 
     return {

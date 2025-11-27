@@ -483,7 +483,19 @@ export class OrderService {
       const paymentMethod = packageData.paymentMethods[0];
 
       // Validate recharge precheck before creating order
-      const seqid = `precheck_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`.substring(0, 32);
+      // Generate seqid without underscores (only lowercase letters and numbers)
+      // Format: precheck + timestamp (base36) + random (base36)
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 15); // Longer random part
+      let seqid = `precheck${timestamp}${random}`.toLowerCase();
+
+      // Ensure it's within valid length (13-32)
+      if (seqid.length > 32) {
+        seqid = seqid.substring(0, 32);
+      } else if (seqid.length < 13) {
+        seqid = seqid.padEnd(13, '0');
+      }
+
       await this.bigoService.rechargePrecheck({
         recharge_bigoid: userIdForRecharge,
         seqid: seqid,
