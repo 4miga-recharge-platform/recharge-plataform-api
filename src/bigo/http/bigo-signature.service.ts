@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { createHash, createSign, generateKeyPairSync } from 'crypto';
+import { createSign, generateKeyPairSync } from 'crypto';
 import { env } from '../../env';
 
 @Injectable()
@@ -30,11 +30,8 @@ export class BigoSignatureService {
       // Step 1: Create the message to sign
       const messageToSign = this.createMessageToSign(data, endpoint, timestamp);
 
-      // Step 2: Hash the message with SHA256
-      const messageHash = createHash('sha256').update(messageToSign).digest();
-
-      // Step 3: Sign the hash with private key
-      const signature = await this.signWithPrivateKey(messageHash);
+      // Step 2: Sign the message with RSA-SHA256 (createSign will hash internally)
+      const signature = await this.signWithPrivateKey(messageToSign);
 
       return signature;
     } catch (error) {
@@ -44,12 +41,12 @@ export class BigoSignatureService {
   }
 
   private createMessageToSign(data: any, endpoint: string, timestamp: string): string {
-    // Format: JSON data + endpoint + timestamp (exactly as per Bigo documentation)
-    const jsonData = JSON.stringify(data);
-    return `${jsonData}${endpoint}${timestamp}`;
+    // Format: JSON string + endpoint + timestamp (as per Bigo example code)
+    const request = JSON.stringify(data);
+    return `${request}${endpoint}${timestamp}`;
   }
 
-  private async signWithPrivateKey(messageHash: Buffer): Promise<string> {
+  private async signWithPrivateKey(message: string): Promise<string> {
     let privateKey = env.BIGO_PRIVATE_KEY;
 
     if (!privateKey) {
@@ -63,9 +60,9 @@ export class BigoSignatureService {
         privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
       }
 
-      // Create sign object with RSA-SHA256
+      // Create sign object with RSA-SHA256 (it will hash the message internally)
       const sign = createSign('RSA-SHA256');
-      sign.update(messageHash);
+      sign.update(message, 'utf8');
 
       // Sign with private key
       const signature = sign.sign(privateKey, 'base64');
@@ -105,10 +102,9 @@ export class BigoSignatureService {
     const timestamp = '1688701573'; // Using the example timestamp from documentation
 
     const messageToSign = this.createMessageToSign(testData, endpoint, timestamp);
-    const messageHash = createHash('sha256').update(messageToSign).digest();
 
     // Note: This will only work if BIGO_PRIVATE_KEY is set
-    const signature = this.signWithPrivateKeySync(messageHash);
+    const signature = this.signWithPrivateKeySync(messageToSign);
 
     return {
       message: messageToSign,
@@ -117,17 +113,23 @@ export class BigoSignatureService {
     };
   }
 
-  private signWithPrivateKeySync(messageHash: Buffer): string {
-    const privateKey = env.BIGO_PRIVATE_KEY;
+  private signWithPrivateKeySync(message: string): string {
+    let privateKey = env.BIGO_PRIVATE_KEY;
 
     if (!privateKey) {
       throw new Error('BIGO_PRIVATE_KEY is required for signature generation');
     }
 
     try {
-      // Create sign object with RSA-SHA256
+      // Check if private key is base64 encoded
+      if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        // Decode from base64
+        privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+      }
+
+      // Create sign object with RSA-SHA256 (it will hash the message internally)
       const sign = createSign('RSA-SHA256');
-      sign.update(messageHash);
+      sign.update(message, 'utf8');
 
       // Sign with private key
       const signature = sign.sign(privateKey, 'base64');
