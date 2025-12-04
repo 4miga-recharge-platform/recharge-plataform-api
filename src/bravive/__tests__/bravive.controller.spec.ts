@@ -1,12 +1,31 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { BraviveController } from '../bravive.controller';
 import { BraviveService } from '../bravive.service';
+import { StoreService } from '../../store/store.service';
 import { PaymentResponseDto } from '../dto/payment-response.dto';
 import { WebhookPaymentDto, WebhookStatus } from '../dto/webhook-payment.dto';
+import { CreatePaymentDto, PaymentMethod } from '../dto/create-payment.dto';
+import { User } from '../../user/entities/user.entity';
 
 describe('BraviveController', () => {
   let controller: BraviveController;
   let braviveService: any;
+  let storeService: any;
+
+  const mockUser: User = {
+    id: 'user-123',
+    name: 'John Doe',
+    email: 'john@example.com',
+    phone: '5511999999999',
+    password: 'hashedPassword',
+    documentType: 'cpf',
+    documentValue: '12345678900',
+    role: 'RESELLER_ADMIN_4MIGA_USER',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    storeId: 'store-123',
+  };
 
   const mockPaymentResponse: PaymentResponseDto = {
     id: 'payment-123',
@@ -41,6 +60,11 @@ describe('BraviveController', () => {
       handleWebhook: jest.fn(),
       getPayment: jest.fn(),
       listPayments: jest.fn(),
+      createPayment: jest.fn(),
+    };
+
+    const mockStoreService = {
+      getBraviveToken: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -50,11 +74,16 @@ describe('BraviveController', () => {
           provide: BraviveService,
           useValue: mockBraviveService,
         },
+        {
+          provide: StoreService,
+          useValue: mockStoreService,
+        },
       ],
     }).compile();
 
     controller = module.get<BraviveController>(BraviveController);
     braviveService = module.get(BraviveService);
+    storeService = module.get(StoreService);
 
     jest.clearAllMocks();
   });
@@ -83,47 +112,89 @@ describe('BraviveController', () => {
     });
   });
 
+  describe('createPayment', () => {
+    const mockCreatePaymentDto: CreatePaymentDto = {
+      amount: 10000,
+      currency: 'BRL',
+      description: 'Test payment',
+      payer_name: 'John Doe',
+      payer_email: 'john@example.com',
+      payer_phone: '+5511999999999',
+      payer_document: '12345678900',
+      method: PaymentMethod.PIX,
+      webhook_url: 'https://api.example.com/bravive/webhook',
+    };
+
+    it('should create a payment successfully', async () => {
+      storeService.getBraviveToken.mockResolvedValue('test-token');
+      braviveService.createPayment.mockResolvedValue(mockPaymentResponse);
+
+      const result = await controller.createPayment(mockCreatePaymentDto, mockUser);
+
+      expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
+      expect(braviveService.createPayment).toHaveBeenCalledWith(
+        mockCreatePaymentDto,
+        'test-token',
+      );
+      expect(result).toEqual(mockPaymentResponse);
+    });
+
+    it('should throw error when storeId is not found in user', async () => {
+      const userWithoutStore = { ...mockUser, storeId: null };
+
+      await expect(
+        controller.createPayment(mockCreatePaymentDto, userWithoutStore as unknown as User),
+      ).rejects.toThrow('Store ID not found in user data');
+    });
+
+    it('should throw error when Bravive token is not configured', async () => {
+      storeService.getBraviveToken.mockResolvedValue(null);
+
+      await expect(
+        controller.createPayment(mockCreatePaymentDto, mockUser),
+      ).rejects.toThrow('Bravive token not configured for this store');
+
+      expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
+    });
+  });
+
   describe('getPayment', () => {
     it('should get payment by ID successfully', async () => {
-      const originalEnv = process.env.BRAVIVE_API_TOKEN;
-      process.env.BRAVIVE_API_TOKEN = 'test-token';
+      storeService.getBraviveToken.mockResolvedValue('test-token');
       braviveService.getPayment.mockResolvedValue(mockPaymentResponse);
 
-      const result = await controller.getPayment('payment-123');
+      const result = await controller.getPayment('payment-123', mockUser);
 
+      expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
       expect(braviveService.getPayment).toHaveBeenCalledWith(
         'payment-123',
         'test-token',
       );
       expect(result).toEqual(mockPaymentResponse);
-
-      // Restore original env
-      if (originalEnv) {
-        process.env.BRAVIVE_API_TOKEN = originalEnv;
-      } else {
-        delete process.env.BRAVIVE_API_TOKEN;
-      }
     });
 
-    it('should throw error when BRAVIVE_API_TOKEN is not configured', async () => {
-      const originalEnv = process.env.BRAVIVE_API_TOKEN;
-      delete process.env.BRAVIVE_API_TOKEN;
+    it('should throw error when storeId is not found in user', async () => {
+      const userWithoutStore = { ...mockUser, storeId: null };
 
-      await expect(controller.getPayment('payment-123')).rejects.toThrow(
-        'BRAVIVE_API_TOKEN not configured',
+      await expect(
+        controller.getPayment('payment-123', userWithoutStore as unknown as User),
+      ).rejects.toThrow('Store ID not found in user data');
+    });
+
+    it('should throw error when Bravive token is not configured', async () => {
+      storeService.getBraviveToken.mockResolvedValue(null);
+
+      await expect(controller.getPayment('payment-123', mockUser)).rejects.toThrow(
+        'Bravive token not configured for this store',
       );
 
-      // Restore original env
-      if (originalEnv) {
-        process.env.BRAVIVE_API_TOKEN = originalEnv;
-      }
+      expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
     });
   });
 
   describe('listPayments', () => {
     it('should list payments successfully', async () => {
-      const originalEnv = process.env.BRAVIVE_API_TOKEN;
-      process.env.BRAVIVE_API_TOKEN = 'test-token';
+      storeService.getBraviveToken.mockResolvedValue('test-token');
       const mockPayments = {
         data: [mockPaymentResponse],
         total: 1,
@@ -132,8 +203,15 @@ describe('BraviveController', () => {
       };
       braviveService.listPayments.mockResolvedValue(mockPayments);
 
-      const result = await controller.listPayments(10, 1, 'PIX', 'PENDING');
+      const result = await controller.listPayments(
+        mockUser,
+        10,
+        1,
+        'PIX',
+        'PENDING',
+      );
 
+      expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
       expect(braviveService.listPayments).toHaveBeenCalledWith('test-token', {
         limit: 10,
         page: 1,
@@ -141,26 +219,19 @@ describe('BraviveController', () => {
         status: 'PENDING',
       });
       expect(result).toEqual(mockPayments);
-
-      // Restore original env
-      if (originalEnv) {
-        process.env.BRAVIVE_API_TOKEN = originalEnv;
-      } else {
-        delete process.env.BRAVIVE_API_TOKEN;
-      }
     });
 
     it('should list payments without query params', async () => {
-      const originalEnv = process.env.BRAVIVE_API_TOKEN;
-      process.env.BRAVIVE_API_TOKEN = 'test-token';
+      storeService.getBraviveToken.mockResolvedValue('test-token');
       const mockPayments = {
         data: [mockPaymentResponse],
         total: 1,
       };
       braviveService.listPayments.mockResolvedValue(mockPayments);
 
-      const result = await controller.listPayments();
+      const result = await controller.listPayments(mockUser);
 
+      expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
       expect(braviveService.listPayments).toHaveBeenCalledWith('test-token', {
         limit: undefined,
         page: undefined,
@@ -168,27 +239,24 @@ describe('BraviveController', () => {
         status: undefined,
       });
       expect(result).toEqual(mockPayments);
-
-      // Restore original env
-      if (originalEnv) {
-        process.env.BRAVIVE_API_TOKEN = originalEnv;
-      } else {
-        delete process.env.BRAVIVE_API_TOKEN;
-      }
     });
 
-    it('should throw error when BRAVIVE_API_TOKEN is not configured', async () => {
-      const originalEnv = process.env.BRAVIVE_API_TOKEN;
-      delete process.env.BRAVIVE_API_TOKEN;
+    it('should throw error when storeId is not found in user', async () => {
+      const userWithoutStore = { ...mockUser, storeId: null };
 
-      await expect(controller.listPayments()).rejects.toThrow(
-        'BRAVIVE_API_TOKEN not configured',
+      await expect(
+        controller.listPayments(userWithoutStore as unknown as User),
+      ).rejects.toThrow('Store ID not found in user data');
+    });
+
+    it('should throw error when Bravive token is not configured', async () => {
+      storeService.getBraviveToken.mockResolvedValue(null);
+
+      await expect(controller.listPayments(mockUser)).rejects.toThrow(
+        'Bravive token not configured for this store',
       );
 
-      // Restore original env
-      if (originalEnv) {
-        process.env.BRAVIVE_API_TOKEN = originalEnv;
-      }
+      expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
     });
   });
 });
