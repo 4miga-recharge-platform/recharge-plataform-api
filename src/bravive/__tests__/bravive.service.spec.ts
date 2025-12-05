@@ -411,14 +411,55 @@ describe('BraviveService', () => {
       expect(bigoService.diamondRecharge).toHaveBeenCalled();
     });
 
-    it('should handle unhandled webhook status', async () => {
-      const unhandledWebhook = {
+    it('should handle CHARGEBACK webhook', async () => {
+      const chargebackWebhook = {
+        ...mockWebhookDto,
+        status: WebhookStatus.CHARGEBACK,
+      };
+      prismaService.payment.findFirst.mockResolvedValue(mockPayment);
+      prismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback({
+          payment: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+          order: {
+            findUnique: jest.fn().mockResolvedValue({
+              ...mockPayment.order,
+              orderItem: mockPayment.order.orderItem,
+            }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          recharge: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+        });
+      });
+
+      await service.handleWebhook(chargebackWebhook);
+
+      expect(prismaService.payment.findFirst).toHaveBeenCalled();
+      expect(bigoService.diamondRecharge).not.toHaveBeenCalled();
+    });
+
+    it('should handle IN_DISPUTE webhook', async () => {
+      const disputedWebhook = {
         ...mockWebhookDto,
         status: WebhookStatus.IN_DISPUTE,
       };
       prismaService.payment.findFirst.mockResolvedValue(mockPayment);
+      prismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback({
+          payment: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'payment-db-123',
+              status: 'PAYMENT_APPROVED',
+            }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+        });
+      });
 
-      await service.handleWebhook(unhandledWebhook);
+      await service.handleWebhook(disputedWebhook);
 
       expect(prismaService.payment.findFirst).toHaveBeenCalled();
       expect(bigoService.diamondRecharge).not.toHaveBeenCalled();
