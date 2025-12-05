@@ -763,24 +763,18 @@ describe('OrderService', () => {
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
+      prismaService.order.findUnique
+        .mockResolvedValueOnce(null) // For orderNumber uniqueness check
+        .mockResolvedValueOnce(mockOrder); // For final order fetch
       prismaService.$transaction.mockImplementation(mockTransaction);
 
-      // Mock the order.findUnique call after transaction (for Bravive integration)
-      const createdOrderWithUser = {
-        ...mockOrder,
-        user: {
-          id: mockUser.id,
-          name: mockUser.name,
-          email: mockUser.email,
-          phone: '123456789',
-          documentValue: '12345678900',
-          documentType: 'CPF',
-        },
-      };
-      prismaService.order.findUnique.mockResolvedValue(createdOrderWithUser);
-
-      // Mock StoreService.getBraviveToken (returns null by default - no Bravive integration)
-      storeService.getBraviveToken.mockResolvedValue(null);
+      // Mock StoreService.getBraviveToken (mock token for PIX payment)
+      storeService.getBraviveToken.mockResolvedValue('bravive-token-123');
+      braviveService.createPayment.mockResolvedValue({
+        id: 'bravive-payment-123',
+        pix_qr_code: 'qrcode',
+        pix_code: 'pix-code',
+      });
 
       const result = await service.create(createOrderDto, userId);
 
@@ -810,7 +804,7 @@ describe('OrderService', () => {
         },
       });
 
-      expect(result).toEqual(createdOrderWithUser);
+      expect(result).toEqual(mockOrder);
     });
 
     it('should throw ForbiddenException when user does not belong to store', async () => {
@@ -883,6 +877,13 @@ describe('OrderService', () => {
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
+      prismaService.order.findUnique.mockResolvedValue(null);
+      storeService.getBraviveToken.mockResolvedValue('bravive-token-123');
+      braviveService.createPayment.mockResolvedValue({
+        id: 'bravive-payment-123',
+        pix_qr_code: 'qrcode',
+        pix_code: 'pix-code',
+      });
       prismaService.$transaction.mockRejectedValue(new Error('Database error'));
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow(
@@ -972,26 +973,20 @@ describe('OrderService', () => {
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
+      prismaService.order.findUnique
+        .mockResolvedValueOnce(null) // For orderNumber uniqueness check
+        .mockResolvedValueOnce(mockOrder); // For final order fetch
       prismaService.$transaction.mockImplementation(mockTransaction);
-
-      // Mock the order.findUnique call after transaction
-      const createdOrderWithUser = {
-        ...mockOrder,
-        user: {
-          id: mockUser.id,
-          name: mockUser.name,
-          email: mockUser.email,
-          phone: '123456789',
-          documentValue: '12345678900',
-          documentType: 'CPF',
-        },
-      };
-      prismaService.order.findUnique.mockResolvedValue(createdOrderWithUser);
-      storeService.getBraviveToken.mockResolvedValue(null);
+      storeService.getBraviveToken.mockResolvedValue('bravive-token-123');
+      braviveService.createPayment.mockResolvedValue({
+        id: 'bravive-payment-123',
+        pix_qr_code: 'qrcode',
+        pix_code: 'pix-code',
+      });
 
       const result = await service.create(createOrderWithCouponDto, userId);
 
-      expect(result).toEqual(createdOrderWithUser);
+      expect(result).toEqual(mockOrder);
     });
 
     it('should update existing influencer monthly sales when record exists', async () => {
@@ -1080,26 +1075,81 @@ describe('OrderService', () => {
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
+      prismaService.order.findUnique
+        .mockResolvedValueOnce(null) // For orderNumber uniqueness check
+        .mockResolvedValueOnce(mockOrder); // For final order fetch
       prismaService.$transaction.mockImplementation(mockTransaction);
-
-      // Mock the order.findUnique call after transaction
-      const createdOrderWithUser = {
-        ...mockOrder,
-        user: {
-          id: mockUser.id,
-          name: mockUser.name,
-          email: mockUser.email,
-          phone: '123456789',
-          documentValue: '12345678900',
-          documentType: 'CPF',
-        },
-      };
-      prismaService.order.findUnique.mockResolvedValue(createdOrderWithUser);
-      storeService.getBraviveToken.mockResolvedValue(null);
+      storeService.getBraviveToken.mockResolvedValue('bravive-token-123');
+      braviveService.createPayment.mockResolvedValue({
+        id: 'bravive-payment-123',
+        pix_qr_code: 'qrcode',
+        pix_code: 'pix-code',
+      });
 
       const result = await service.create(createOrderWithCouponDto, userId);
 
-      expect(result).toEqual(createdOrderWithUser);
+      expect(result).toEqual(mockOrder);
+    });
+
+    it('should throw BadRequestException when rechargePrecheck fails', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {});
+
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      bigoService.rechargePrecheck.mockRejectedValue(
+        new BadRequestException('Failed to validate bigoId: Invalid bigoId'),
+      );
+
+      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(bigoService.rechargePrecheck).toHaveBeenCalled();
+      expect(prismaService.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when Bravive payment creation fails for PIX', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {});
+
+      prismaService.user.findFirst.mockResolvedValue({
+        ...mockUser,
+        phone: '123456789',
+        documentValue: '12345678900',
+      });
+      prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
+      prismaService.order.findUnique.mockResolvedValue(null);
+      storeService.getBraviveToken.mockResolvedValue('bravive-token-123');
+      braviveService.createPayment.mockRejectedValue(
+        new Error('Bravive API error'),
+      );
+
+      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+        new BadRequestException('Payment processing failed'),
+      );
+      expect(braviveService.createPayment).toHaveBeenCalled();
+      expect(prismaService.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when Bravive token is not configured for PIX', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      validateRequiredFields.mockImplementation(() => {});
+
+      prismaService.user.findFirst.mockResolvedValue({
+        ...mockUser,
+        phone: '123456789',
+        documentValue: '12345678900',
+      });
+      prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
+      prismaService.order.findUnique.mockResolvedValue(null);
+      storeService.getBraviveToken.mockResolvedValue(null);
+
+      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+        new BadRequestException('Payment processing failed: Bravive token not configured'),
+      );
+      expect(prismaService.$transaction).not.toHaveBeenCalled();
     });
   });
 
@@ -1552,6 +1602,127 @@ describe('OrderService', () => {
           updatedAt: expect.any(Date),
         },
       });
+    });
+  });
+
+  describe('validateCouponByPackage', () => {
+    const packageId = 'package-123';
+    const paymentMethodId = 'payment-method-123';
+    const couponTitle = 'WELCOME10';
+    const storeId = 'store-123';
+    const userId = 'user-123';
+
+    it('should validate coupon successfully for a package', async () => {
+      const mockValidation = {
+        valid: true,
+        discountAmount: 2.0,
+        finalAmount: 17.99,
+        coupon: mockCoupon,
+      };
+
+      prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
+
+      const result = await service.validateCouponByPackage(
+        packageId,
+        paymentMethodId,
+        couponTitle,
+        storeId,
+        userId,
+      );
+
+      expect(prismaService.package.findUnique).toHaveBeenCalledWith({
+        where: { id: packageId },
+        include: {
+          paymentMethods: {
+            where: {
+              id: paymentMethodId,
+            },
+          },
+        },
+      });
+      expect(service.validateCoupon).toHaveBeenCalledWith(
+        { couponTitle, orderAmount: 19.99 },
+        storeId,
+        userId,
+      );
+      expect(result).toEqual(mockValidation);
+    });
+
+    it('should throw NotFoundException when package not found', async () => {
+      prismaService.package.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.validateCouponByPackage(
+          packageId,
+          paymentMethodId,
+          couponTitle,
+          storeId,
+          userId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException when package does not belong to store', async () => {
+      const packageFromDifferentStore = {
+        ...mockPackage,
+        storeId: 'different-store-123',
+      };
+
+      prismaService.package.findUnique.mockResolvedValue(
+        packageFromDifferentStore,
+      );
+
+      await expect(
+        service.validateCouponByPackage(
+          packageId,
+          paymentMethodId,
+          couponTitle,
+          storeId,
+          userId,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw NotFoundException when payment method not found', async () => {
+      const packageWithoutPaymentMethod = {
+        ...mockPackage,
+        paymentMethods: [],
+      };
+
+      prismaService.package.findUnique.mockResolvedValue(
+        packageWithoutPaymentMethod,
+      );
+
+      await expect(
+        service.validateCouponByPackage(
+          packageId,
+          paymentMethodId,
+          couponTitle,
+          storeId,
+          userId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should return validation result when coupon is invalid', async () => {
+      const mockValidation = {
+        valid: false,
+        message: 'Coupon has expired',
+      };
+
+      prismaService.package.findUnique.mockResolvedValue(mockPackage);
+      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
+
+      const result = await service.validateCouponByPackage(
+        packageId,
+        paymentMethodId,
+        couponTitle,
+        storeId,
+        userId,
+      );
+
+      expect(result).toEqual(mockValidation);
     });
   });
 });

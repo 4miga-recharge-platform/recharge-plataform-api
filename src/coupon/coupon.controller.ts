@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -136,41 +135,5 @@ export class CouponController {
   @ApiOperation({ summary: 'Delete a coupon by id' })
   remove(@Param('id') id: string) {
     return this.couponService.remove(id);
-  }
-
-  @Post(':id/validate')
-  @ApiOperation({ summary: 'Validate a coupon for an order' })
-  @ApiQuery({
-    name: 'orderAmount',
-    required: true,
-    description: 'Order amount',
-  })
-  validateCoupon(
-    @Param('id') id: string,
-    @Query('orderAmount') orderAmount: string,
-  ) {
-    const amount = parseFloat(orderAmount);
-    if (isNaN(amount) || amount < 0) {
-      throw new BadRequestException('Invalid order amount');
-    }
-    return this.couponService.validateCoupon(id, amount);
-  }
-
-  @Post(':id/apply')
-  @ApiOperation({ summary: 'Apply a coupon to an order' })
-  @ApiQuery({
-    name: 'orderAmount',
-    required: true,
-    description: 'Order amount',
-  })
-  applyCoupon(
-    @Param('id') id: string,
-    @Query('orderAmount') orderAmount: string,
-  ) {
-    const amount = parseFloat(orderAmount);
-    if (isNaN(amount) || amount < 0) {
-      throw new BadRequestException('Invalid order amount');
-    }
-    return this.couponService.applyCoupon(id, amount);
   }
 }

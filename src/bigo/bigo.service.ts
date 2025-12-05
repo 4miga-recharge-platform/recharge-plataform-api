@@ -63,7 +63,7 @@ export class BigoService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(`Recharge precheck failed: ${error.message}`);
+      throw new BadRequestException(`Failed to validate bigoId`);
     }
   }
 

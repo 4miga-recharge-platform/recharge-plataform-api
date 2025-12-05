@@ -18,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
+import { ValidateCouponByPackageDto } from './dto/validate-coupon-by-package.dto';
 import { CouponValidationResponseDto } from './dto/coupon-validation-response.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { OrderStatus } from '@prisma/client';
@@ -176,6 +177,34 @@ export class OrderController {
       validateCouponDto.orderAmount,
       req.user.storeId,
       req.user.id
+    );
+  }
+
+  @Post('validate-coupon-by-package')
+  @ApiOperation({ summary: 'Validate a coupon for a specific package' })
+  @ApiResponse({
+    status: 200,
+    description: 'Coupon validation result',
+    type: CouponValidationResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid coupon, package not found, or validation failed',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Package or payment method not found',
+  })
+  validateCouponByPackage(
+    @Body() validateCouponByPackageDto: ValidateCouponByPackageDto,
+    @Request() req,
+  ) {
+    return this.orderService.validateCouponByPackage(
+      validateCouponByPackageDto.packageId,
+      validateCouponByPackageDto.paymentMethodId,
+      validateCouponByPackageDto.couponTitle,
+      req.user.storeId,
+      req.user.id,
     );
   }
 }
