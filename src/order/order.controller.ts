@@ -17,7 +17,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { ValidateCouponByPackageDto } from './dto/validate-coupon-by-package.dto';
 import { CouponValidationResponseDto } from './dto/coupon-validation-response.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -143,41 +142,6 @@ export class OrderController {
   })
   create(@Body() createOrderDto: CreateOrderDto, @Request() req) {
     return this.orderService.create(createOrderDto, req.user.id);
-  }
-
-  @Post('validate-coupon')
-  @ApiOperation({ summary: 'Validate a coupon for an order' })
-  @ApiResponse({
-    status: 200,
-    description: 'Coupon validation result',
-    type: CouponValidationResponseDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid coupon or validation failed',
-  })
-  validateCoupon(@Body() validateCouponDto: ValidateCouponDto, @Request() req) {
-    return this.orderService.validateCoupon(validateCouponDto, req.user.storeId, req.user.id);
-  }
-
-  @Post('apply-coupon')
-  @ApiOperation({ summary: 'Apply a coupon to calculate final price' })
-  @ApiResponse({
-    status: 200,
-    description: 'Coupon applied successfully with final price',
-    type: CouponValidationResponseDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid coupon or application failed',
-  })
-  applyCoupon(@Body() validateCouponDto: ValidateCouponDto, @Request() req) {
-    return this.orderService.applyCoupon(
-      validateCouponDto.couponTitle,
-      validateCouponDto.orderAmount,
-      req.user.storeId,
-      req.user.id
-    );
   }
 
   @Post('validate-coupon-by-package')

@@ -1234,32 +1234,6 @@ export class OrderService {
     }
   }
 
-  async applyCoupon(
-    couponTitle: string,
-    orderAmount: number,
-    storeId: string,
-    userId: string,
-  ): Promise<any> {
-    try {
-      const validation = await this.validateCoupon(
-        { couponTitle, orderAmount },
-        storeId,
-        userId,
-      );
-
-      if (!validation.valid) {
-        throw new BadRequestException(validation.message);
-      }
-
-      return validation;
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new BadRequestException('Failed to apply coupon');
-    }
-  }
-
   async validateCouponByPackage(
     packageId: string,
     paymentMethodId: string,

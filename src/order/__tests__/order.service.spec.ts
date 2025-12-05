@@ -1357,61 +1357,6 @@ describe('OrderService', () => {
     });
   });
 
-  describe('applyCoupon', () => {
-    const couponTitle = 'WELCOME10';
-    const orderAmount = 50.0;
-    const storeId = 'store-123';
-    const userId = 'user-123';
-
-    it('should apply a valid coupon successfully', async () => {
-      const mockValidation = {
-        valid: true,
-        discountAmount: 5.0,
-        finalAmount: 45.0,
-        coupon: mockCoupon,
-      };
-
-      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
-
-      const result = await service.applyCoupon(
-        couponTitle,
-        orderAmount,
-        storeId,
-        userId,
-      );
-
-      expect(service.validateCoupon).toHaveBeenCalledWith(
-        { couponTitle, orderAmount },
-        storeId,
-        userId,
-      );
-      expect(result).toEqual(mockValidation);
-    });
-
-    it('should throw BadRequestException when coupon validation fails', async () => {
-      const mockValidation = {
-        valid: false,
-        message: 'Coupon has expired',
-      };
-
-      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
-
-      await expect(
-        service.applyCoupon(couponTitle, orderAmount, storeId, userId),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should handle validation errors', async () => {
-      jest
-        .spyOn(service, 'validateCoupon')
-        .mockRejectedValue(new Error('Validation error'));
-
-      await expect(
-        service.applyCoupon(couponTitle, orderAmount, storeId, userId),
-      ).rejects.toThrow(BadRequestException);
-    });
-  });
-
   describe('confirmCouponUsage', () => {
     it('should confirm coupon usage and update influencer monthly sales', async () => {
       const orderWithCoupon = {
