@@ -1,12 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { StoreService } from '../../store/store.service';
+import { User } from '../../user/entities/user.entity';
 import { BraviveController } from '../bravive.controller';
 import { BraviveService } from '../bravive.service';
-import { StoreService } from '../../store/store.service';
+import { CreatePaymentDto, PaymentMethod } from '../dto/create-payment.dto';
 import { PaymentResponseDto } from '../dto/payment-response.dto';
 import { WebhookPaymentDto, WebhookStatus } from '../dto/webhook-payment.dto';
-import { CreatePaymentDto, PaymentMethod } from '../dto/create-payment.dto';
-import { User } from '../../user/entities/user.entity';
 
 describe('BraviveController', () => {
   let controller: BraviveController;
@@ -129,7 +128,10 @@ describe('BraviveController', () => {
       storeService.getBraviveToken.mockResolvedValue('test-token');
       braviveService.createPayment.mockResolvedValue(mockPaymentResponse);
 
-      const result = await controller.createPayment(mockCreatePaymentDto, mockUser);
+      const result = await controller.createPayment(
+        mockCreatePaymentDto,
+        mockUser,
+      );
 
       expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
       expect(braviveService.createPayment).toHaveBeenCalledWith(
@@ -143,7 +145,10 @@ describe('BraviveController', () => {
       const userWithoutStore = { ...mockUser, storeId: null };
 
       await expect(
-        controller.createPayment(mockCreatePaymentDto, userWithoutStore as unknown as User),
+        controller.createPayment(
+          mockCreatePaymentDto,
+          userWithoutStore as unknown as User,
+        ),
       ).rejects.toThrow('Store ID not found in user data');
     });
 
@@ -177,16 +182,19 @@ describe('BraviveController', () => {
       const userWithoutStore = { ...mockUser, storeId: null };
 
       await expect(
-        controller.getPayment('payment-123', userWithoutStore as unknown as User),
+        controller.getPayment(
+          'payment-123',
+          userWithoutStore as unknown as User,
+        ),
       ).rejects.toThrow('Store ID not found in user data');
     });
 
     it('should throw error when Bravive token is not configured', async () => {
       storeService.getBraviveToken.mockResolvedValue(null);
 
-      await expect(controller.getPayment('payment-123', mockUser)).rejects.toThrow(
-        'Bravive token not configured for this store',
-      );
+      await expect(
+        controller.getPayment('payment-123', mockUser),
+      ).rejects.toThrow('Bravive token not configured for this store');
 
       expect(storeService.getBraviveToken).toHaveBeenCalledWith('store-123');
     });
@@ -260,4 +268,3 @@ describe('BraviveController', () => {
     });
   });
 });
-

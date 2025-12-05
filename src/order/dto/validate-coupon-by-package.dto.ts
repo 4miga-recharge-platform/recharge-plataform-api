@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class ValidateCouponByPackageDto {
   @IsUUID()
@@ -26,4 +26,3 @@ export class ValidateCouponByPackageDto {
   })
   couponTitle: string;
 }
-

@@ -1388,6 +1388,34 @@ describe('OrderService', () => {
               totalSales: 17.99,
             }),
           },
+          order: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'order-123',
+              orderStatus: 'COMPLETED',
+              storeId: 'store-123',
+              userId: 'user-123',
+              price: 17.99,
+              createdAt: new Date(),
+              orderItem: { productId: 'product-123' },
+              couponUsages: [],
+            }),
+            count: jest.fn().mockResolvedValue(0),
+          },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            update: jest.fn().mockResolvedValue({}),
+            create: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            update: jest.fn().mockResolvedValue({}),
+            create: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            update: jest.fn().mockResolvedValue({}),
+            create: jest.fn().mockResolvedValue({}),
+          },
         };
         return await callback(tx);
       });
