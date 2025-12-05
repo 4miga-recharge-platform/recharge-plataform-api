@@ -88,6 +88,9 @@ describe('StoreService', () => {
       storeProductSettings: {
         findMany: jest.fn(),
       },
+      user: {
+        count: jest.fn(),
+      },
     };
 
     mockStorageService = {
@@ -750,6 +753,7 @@ describe('StoreService', () => {
       ]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId);
 
@@ -798,6 +802,7 @@ describe('StoreService', () => {
       );
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId, '2024-01');
 
@@ -839,6 +844,7 @@ describe('StoreService', () => {
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId, 'last_7_days');
 
@@ -870,6 +876,7 @@ describe('StoreService', () => {
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId, 'last_30_days');
 
@@ -889,6 +896,7 @@ describe('StoreService', () => {
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue(mockDailySales);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId);
 
@@ -915,6 +923,7 @@ describe('StoreService', () => {
       );
       prismaService.storeDailySales.findMany.mockResolvedValue([]);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId, '2024-01');
 
@@ -942,6 +951,7 @@ describe('StoreService', () => {
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue([]);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId, '2024-01');
 
@@ -968,6 +978,7 @@ describe('StoreService', () => {
       prismaService.storeMonthlySalesByProduct.findMany.mockResolvedValue([]);
       prismaService.storeDailySales.findMany.mockResolvedValue([]);
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       const result = await service.getDashboardData(storeId, '2024-01');
 
@@ -1028,6 +1039,7 @@ describe('StoreService', () => {
         },
       ]);
       prismaService.storeDailySales.findMany.mockResolvedValue([]);
+      prismaService.user.count.mockResolvedValue(100);
 
       // Mock store custom image
       prismaService.storeProductSettings.findMany.mockResolvedValue([

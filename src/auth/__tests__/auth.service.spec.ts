@@ -10,6 +10,7 @@ import { AdminLoginDto } from '../dto/admin-login.dto';
 import { VerifyCodeDto } from '../dto/verify-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { SseConfirmEmailService } from '../../sse/sse.confirm-email.service';
+import { OrderService } from '../../order/order.service';
 
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
@@ -169,6 +170,10 @@ describe('AuthService', () => {
       sendEmail: jest.fn(),
     };
 
+    const mockOrderService = {
+      updateNewCustomerMetric: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -187,6 +192,10 @@ describe('AuthService', () => {
         {
           provide: SseConfirmEmailService,
           useValue: { notifyEmailVerified: jest.fn() },
+        },
+        {
+          provide: OrderService,
+          useValue: mockOrderService,
         },
       ],
     }).compile();

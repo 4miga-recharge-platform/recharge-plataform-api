@@ -16,6 +16,7 @@ import { getEmailConfirmationTemplate } from '../email/templates/email-confirmat
 import { getEmailChangeConfirmationTemplate } from '../email/templates/email-change-confirmation.template';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SseConfirmEmailService } from '../sse/sse.confirm-email.service';
+import { OrderService } from '../order/order.service';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly sseService: SseConfirmEmailService,
+    private readonly orderService: OrderService,
   ) {}
 
   private authUser = {
@@ -462,6 +464,7 @@ export class AuthService {
       },
       select: {
         emailConfirmationExpires: true,
+        createdAt: true,
       },
     });
 
@@ -484,6 +487,19 @@ export class AuthService {
         emailConfirmationExpires: null,
       },
     });
+
+    // Update newCustomers metric (only if this is the first time email is verified)
+    if (userWithExpiration?.createdAt) {
+      try {
+        await this.orderService.updateNewCustomerMetric(
+          storeId,
+          userWithExpiration.createdAt,
+        );
+      } catch (error) {
+        // Log error but don't throw - email verification should succeed even if metric update fails
+        console.error('Failed to update new customer metric:', error);
+      }
+    }
 
     // Generate tokens (same as login)
     const userData = {

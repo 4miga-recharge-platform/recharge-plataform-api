@@ -637,6 +637,7 @@ export class StoreService {
         salesByProduct,
         dailySales,
         firstAvailablePeriodData,
+        totalCustomersCount,
       ] = await Promise.all([
         // Get monthly sales (summary)
         this.prisma.storeMonthlySales.findFirst({
@@ -702,6 +703,16 @@ export class StoreService {
           },
           orderBy: [{ year: 'asc' }, { month: 'asc' }],
         }),
+
+        // Calculate totalCustomers dynamically (total users registered up to end of period)
+        this.prisma.user.count({
+          where: {
+            storeId,
+            createdAt: {
+              lte: endDate,
+            },
+          },
+        }),
       ]);
 
       // Prepare summary
@@ -717,7 +728,7 @@ export class StoreService {
                 ? Number(monthlySales.totalSales) /
                   monthlySales.totalCompletedOrders
                 : 0,
-            totalCustomers: monthlySales.totalCustomers,
+            totalCustomers: totalCustomersCount,
             newCustomers: monthlySales.newCustomers,
             ordersWithCoupon: monthlySales.ordersWithCoupon,
             ordersWithoutCoupon: monthlySales.ordersWithoutCoupon,
