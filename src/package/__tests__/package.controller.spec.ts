@@ -403,17 +403,25 @@ describe('PackageController', () => {
 
       const result = await controller.cleanupImages(productId, user);
 
-      expect(packageService.cleanupPackageImages).toHaveBeenCalledWith(productId, user.storeId);
+      expect(packageService.cleanupPackageImages).toHaveBeenCalledWith(
+        productId,
+        user.storeId,
+      );
       expect(result).toEqual(mockResponse);
     });
 
     it('should cleanup images for all products when productId is omitted', async () => {
-      const mockResponse = { perProduct: { 'product-1': { deleted: [], skipped: [], errors: [] } } };
+      const mockResponse = {
+        perProduct: { 'product-1': { deleted: [], skipped: [], errors: [] } },
+      };
       packageService.cleanupPackageImages.mockResolvedValue(mockResponse);
 
       const result = await controller.cleanupImages(undefined as any, user);
 
-      expect(packageService.cleanupPackageImages).toHaveBeenCalledWith(undefined, user.storeId);
+      expect(packageService.cleanupPackageImages).toHaveBeenCalledWith(
+        undefined,
+        user.storeId,
+      );
       expect(result).toEqual(mockResponse);
     });
   });

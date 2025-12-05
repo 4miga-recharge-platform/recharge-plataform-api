@@ -3,7 +3,8 @@ import { IsString, IsNotEmpty, Length, Matches } from 'class-validator';
 
 export class DisableRechargeDto {
   @ApiProperty({
-    description: 'Request serial number, should be unique, easier to track request. Only contain numbers and lowercase letters. The length must be between 13 and 32',
+    description:
+      'Request serial number, should be unique, easier to track request. Only contain numbers and lowercase letters. The length must be between 13 and 32',
     example: '83jyhm2784089j',
   })
   @IsString()

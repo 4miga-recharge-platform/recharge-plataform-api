@@ -12,9 +12,7 @@ export class SseController {
   private readonly EMAIL_CONNECTION_TIMEOUT = 60 * 60 * 1000; // 1 hour
   private readonly HEARTBEAT_INTERVAL = 45000; // 45 seconds
 
-  constructor(
-    private readonly sseService: SseConfirmEmailService,
-  ) {}
+  constructor(private readonly sseService: SseConfirmEmailService) {}
 
   @Get('email-verified/:email')
   @ApiOperation({ summary: 'Subscribe to email verification events' })
@@ -28,7 +26,10 @@ export class SseController {
     this.logger.log(`SSE email connection established for: ${decodedEmail}`);
 
     this.setupSseHeaders(res);
-    this.sendInitialMessage(res, { type: 'connected', message: 'SSE connection established' });
+    this.sendInitialMessage(res, {
+      type: 'connected',
+      message: 'SSE connection established',
+    });
 
     const subscription = this.sseService.getEmailVerifiedEvents().subscribe({
       next: (event) => {
@@ -39,7 +40,9 @@ export class SseController {
         });
 
         if (event.email === decodedEmail) {
-          this.logger.log(`Sending SSE notification for email: ${decodedEmail}`);
+          this.logger.log(
+            `Sending SSE notification for email: ${decodedEmail}`,
+          );
           this.sendSseMessage(res, {
             type: 'emailVerified',
             success: true,
@@ -51,11 +54,19 @@ export class SseController {
       },
       error: (error) => {
         this.logger.error('SSE Email Error:', error);
-        this.sendSseMessage(res, { type: 'error', message: 'Internal server error' });
+        this.sendSseMessage(res, {
+          type: 'error',
+          message: 'Internal server error',
+        });
       },
     });
 
-    this.setupConnectionManagement(res, subscription, decodedEmail, this.EMAIL_CONNECTION_TIMEOUT);
+    this.setupConnectionManagement(
+      res,
+      subscription,
+      decodedEmail,
+      this.EMAIL_CONNECTION_TIMEOUT,
+    );
   }
 
   // Private helper methods

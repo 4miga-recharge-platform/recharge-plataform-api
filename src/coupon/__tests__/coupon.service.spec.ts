@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { CouponService } from '../coupon.service';
+import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CouponService } from '../coupon.service';
 import { CreateCouponDto } from '../dto/create-coupon.dto';
 import { UpdateCouponDto } from '../dto/update-coupon.dto';
 
@@ -33,32 +33,6 @@ describe('CouponService', () => {
       name: 'João Silva',
       email: 'joao@exemplo.com',
     },
-  };
-
-  const mockInactiveCoupon = {
-    ...mockCoupon,
-    isActive: false,
-  };
-
-  const mockExpiredCoupon = {
-    ...mockCoupon,
-    expiresAt: new Date('2020-12-31'),
-  };
-
-  const mockValidCoupon = {
-    ...mockCoupon,
-    expiresAt: new Date('2025-12-31'), // Future date for valid tests
-  };
-
-  const mockMaxUsesCoupon = {
-    ...mockCoupon,
-    maxUses: 5,
-    timesUsed: 5,
-  };
-
-  const mockMinOrderCoupon = {
-    ...mockCoupon,
-    minOrderAmount: 30,
   };
 
   const mockStore = {
@@ -148,11 +122,11 @@ describe('CouponService', () => {
     });
 
     it('should throw BadRequestException when prisma fails', async () => {
-      prismaService.coupon.findMany.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.findAll()).rejects.toThrow(
-        BadRequestException,
+      prismaService.coupon.findMany.mockRejectedValue(
+        new Error('Database error'),
       );
+
+      await expect(service.findAll()).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -206,8 +180,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -244,8 +218,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -278,8 +252,12 @@ describe('CouponService', () => {
           storeId: 'store-123',
           OR: [
             { title: { contains: 'desconto', mode: 'insensitive' } },
-            { influencer: { name: { contains: 'desconto', mode: 'insensitive' } } }
-          ]
+            {
+              influencer: {
+                name: { contains: 'desconto', mode: 'insensitive' },
+              },
+            },
+          ],
         },
         select: {
           ...mockCouponSelect,
@@ -288,8 +266,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -302,9 +280,13 @@ describe('CouponService', () => {
           storeId: 'store-123',
           OR: [
             { title: { contains: 'desconto', mode: 'insensitive' } },
-            { influencer: { name: { contains: 'desconto', mode: 'insensitive' } } }
-          ]
-        }
+            {
+              influencer: {
+                name: { contains: 'desconto', mode: 'insensitive' },
+              },
+            },
+          ],
+        },
       });
       expect(result).toEqual({
         data: coupons,
@@ -328,8 +310,8 @@ describe('CouponService', () => {
           storeId: 'store-123',
           OR: [
             { title: { contains: 'joão', mode: 'insensitive' } },
-            { influencer: { name: { contains: 'joão', mode: 'insensitive' } } }
-          ]
+            { influencer: { name: { contains: 'joão', mode: 'insensitive' } } },
+          ],
         },
         select: {
           ...mockCouponSelect,
@@ -338,8 +320,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -362,7 +344,13 @@ describe('CouponService', () => {
       prismaService.coupon.findMany.mockResolvedValue(coupons);
       prismaService.coupon.count.mockResolvedValue(totalCoupons);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, 'percentage');
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'percentage',
+      );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
@@ -377,8 +365,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -401,7 +389,13 @@ describe('CouponService', () => {
       prismaService.coupon.findMany.mockResolvedValue(coupons);
       prismaService.coupon.count.mockResolvedValue(totalCoupons);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, 'fixed');
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'fixed',
+      );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
@@ -416,8 +410,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -440,7 +434,13 @@ describe('CouponService', () => {
       prismaService.coupon.findMany.mockResolvedValue(coupons);
       prismaService.coupon.count.mockResolvedValue(totalCoupons);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, 'first-purchase');
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'first-purchase',
+      );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
@@ -454,8 +454,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -478,7 +478,13 @@ describe('CouponService', () => {
       prismaService.coupon.findMany.mockResolvedValue(coupons);
       prismaService.coupon.count.mockResolvedValue(totalCoupons);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, 'all');
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'all',
+      );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: { storeId: 'store-123' },
@@ -489,8 +495,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -513,12 +519,19 @@ describe('CouponService', () => {
       prismaService.coupon.findMany.mockResolvedValue(coupons);
       prismaService.coupon.count.mockResolvedValue(totalCoupons);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, undefined, true);
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        true,
+      );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: true
+          isActive: true,
         },
         select: {
           ...mockCouponSelect,
@@ -527,8 +540,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -539,8 +552,8 @@ describe('CouponService', () => {
       expect(prismaService.coupon.count).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: true
-        }
+          isActive: true,
+        },
       });
       expect(result).toEqual({
         data: coupons,
@@ -557,12 +570,19 @@ describe('CouponService', () => {
       prismaService.coupon.findMany.mockResolvedValue(coupons);
       prismaService.coupon.count.mockResolvedValue(totalCoupons);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, undefined, false);
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        false,
+      );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: false
+          isActive: false,
         },
         select: {
           ...mockCouponSelect,
@@ -571,8 +591,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -583,8 +603,8 @@ describe('CouponService', () => {
       expect(prismaService.coupon.count).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: false
-        }
+          isActive: false,
+        },
       });
       expect(result).toEqual({
         data: coupons,
@@ -601,7 +621,14 @@ describe('CouponService', () => {
       prismaService.coupon.findMany.mockResolvedValue(coupons);
       prismaService.coupon.count.mockResolvedValue(totalCoupons);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, undefined, undefined);
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        undefined,
+      );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: { storeId: 'store-123' },
@@ -612,8 +639,8 @@ describe('CouponService', () => {
               id: true,
               name: true,
               email: true,
-            }
-          }
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -630,9 +657,13 @@ describe('CouponService', () => {
     });
 
     it('should handle errors', async () => {
-      prismaService.coupon.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.coupon.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.findByStore('store-123')).rejects.toThrow(BadRequestException);
+      await expect(service.findByStore('store-123')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -663,10 +694,7 @@ describe('CouponService', () => {
         where: {
           storeId: 'store-123',
           isActive: true,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: expect.any(Date) } }
-          ]
+          OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }],
         },
         select: expect.any(Object),
       });
@@ -686,10 +714,7 @@ describe('CouponService', () => {
           storeId: 'store-123',
           isFirstPurchase: true,
           isActive: true,
-          OR: [
-            { expiresAt: null },
-            { expiresAt: { gt: expect.any(Date) } }
-          ]
+          OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }],
         },
         select: expect.any(Object),
       });
@@ -700,11 +725,11 @@ describe('CouponService', () => {
     const createCouponDto: CreateCouponDto = {
       title: 'WELCOME10',
       influencerId: 'influencer-123',
-      discountPercentage: 10.00,
+      discountPercentage: 10.0,
       discountAmount: null,
       expiresAt: '2025-12-31T23:59:59.000Z',
       maxUses: 100,
-      minOrderAmount: 20.00,
+      minOrderAmount: 20.0,
       isActive: true,
       isFirstPurchase: true,
     };
@@ -725,10 +750,10 @@ describe('CouponService', () => {
           storeId: 'store-123',
           isActive: true,
           isFirstPurchase: true,
-          discountPercentage: 10.00,
+          discountPercentage: 10.0,
           expiresAt: new Date('2025-12-31T23:59:59.000Z'),
           maxUses: 100,
-          minOrderAmount: 20.00,
+          minOrderAmount: 20.0,
         },
         select: expect.any(Object),
       });
@@ -737,18 +762,18 @@ describe('CouponService', () => {
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create(createCouponDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when influencer not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create(createCouponDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when coupon title already exists', async () => {
@@ -756,13 +781,13 @@ describe('CouponService', () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
 
-      await expect(service.create(createCouponDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create(createCouponDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when both discount percentage and amount are provided', async () => {
-      const invalidDto = { ...createCouponDto, discountAmount: 5.00 };
+      const invalidDto = { ...createCouponDto, discountAmount: 5.0 };
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(null);
@@ -773,7 +798,11 @@ describe('CouponService', () => {
     });
 
     it('should throw BadRequestException when neither discount percentage nor amount is provided', async () => {
-      const invalidDto = { ...createCouponDto, discountPercentage: null, discountAmount: null };
+      const invalidDto = {
+        ...createCouponDto,
+        discountPercentage: null,
+        discountAmount: null,
+      };
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findFirst.mockResolvedValue(null);
@@ -788,7 +817,7 @@ describe('CouponService', () => {
         ...createCouponDto,
         discountAmount: 50.0,
         minOrderAmount: 30.0,
-        discountPercentage: null
+        discountPercentage: null,
       };
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
@@ -803,12 +832,15 @@ describe('CouponService', () => {
   describe('update', () => {
     const updateCouponDto: UpdateCouponDto = {
       title: 'UPDATED10',
-      discountPercentage: 15.00,
+      discountPercentage: 15.0,
     };
 
     it('should update a coupon successfully', async () => {
       prismaService.coupon.findUnique.mockResolvedValue(mockCoupon);
-      prismaService.coupon.update.mockResolvedValue({ ...mockCoupon, ...updateCouponDto });
+      prismaService.coupon.update.mockResolvedValue({
+        ...mockCoupon,
+        ...updateCouponDto,
+      });
 
       const result = await service.update('coupon-123', updateCouponDto);
 
@@ -823,15 +855,23 @@ describe('CouponService', () => {
     it('should throw BadRequestException when coupon not found', async () => {
       prismaService.coupon.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('invalid-id', updateCouponDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.update('invalid-id', updateCouponDto),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should switch from percentage to amount discount', async () => {
-      const currentCoupon = { ...mockCoupon, discountPercentage: 15.0, discountAmount: null };
+      const currentCoupon = {
+        ...mockCoupon,
+        discountPercentage: 15.0,
+        discountAmount: null,
+      };
       const updateDto = { discountAmount: 10.0 };
-      const expectedResult = { ...currentCoupon, discountAmount: 10.0, discountPercentage: null };
+      const expectedResult = {
+        ...currentCoupon,
+        discountAmount: 10.0,
+        discountPercentage: null,
+      };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
       prismaService.coupon.update.mockResolvedValue(expectedResult);
@@ -847,9 +887,17 @@ describe('CouponService', () => {
     });
 
     it('should switch from amount to percentage discount', async () => {
-      const currentCoupon = { ...mockCoupon, discountAmount: 10.0, discountPercentage: null };
+      const currentCoupon = {
+        ...mockCoupon,
+        discountAmount: 10.0,
+        discountPercentage: null,
+      };
       const updateDto = { discountPercentage: 15.0 };
-      const expectedResult = { ...currentCoupon, discountPercentage: 15.0, discountAmount: null };
+      const expectedResult = {
+        ...currentCoupon,
+        discountPercentage: 15.0,
+        discountAmount: null,
+      };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
       prismaService.coupon.update.mockResolvedValue(expectedResult);
@@ -865,7 +913,11 @@ describe('CouponService', () => {
     });
 
     it('should throw error when both discount types are provided with values', async () => {
-      const currentCoupon = { ...mockCoupon, discountPercentage: 15.0, discountAmount: null };
+      const currentCoupon = {
+        ...mockCoupon,
+        discountPercentage: 15.0,
+        discountAmount: null,
+      };
       const updateDto = { discountPercentage: 20.0, discountAmount: 10.0 };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
@@ -876,9 +928,17 @@ describe('CouponService', () => {
     });
 
     it('should not throw validation error when switching discount types', async () => {
-      const currentCoupon = { ...mockCoupon, discountPercentage: 15.0, discountAmount: null };
+      const currentCoupon = {
+        ...mockCoupon,
+        discountPercentage: 15.0,
+        discountAmount: null,
+      };
       const updateDto = { discountAmount: 10.0 };
-      const expectedResult = { ...currentCoupon, discountAmount: 10.0, discountPercentage: null };
+      const expectedResult = {
+        ...currentCoupon,
+        discountAmount: 10.0,
+        discountPercentage: null,
+      };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
       prismaService.coupon.update.mockResolvedValue(expectedResult);
@@ -900,7 +960,7 @@ describe('CouponService', () => {
         ...mockCoupon,
         discountPercentage: 20.0,
         discountAmount: null,
-        storeId: 'store-123'
+        storeId: 'store-123',
       };
 
       // User wants to change to fixed amount (only sends discountAmount)
@@ -908,7 +968,7 @@ describe('CouponService', () => {
       const expectedResult = {
         ...currentCoupon,
         discountAmount: 15.0,
-        discountPercentage: null
+        discountPercentage: null,
       };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
@@ -930,14 +990,17 @@ describe('CouponService', () => {
         ...mockCoupon,
         discountPercentage: 20.0,
         discountAmount: null,
-        storeId: 'store-123'
+        storeId: 'store-123',
       };
 
       // Only send discountAmount, discountPercentage should not be in the DTO
       const updateDto = { discountAmount: 15.0 };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
-      prismaService.coupon.update.mockResolvedValue({ ...currentCoupon, ...updateDto });
+      prismaService.coupon.update.mockResolvedValue({
+        ...currentCoupon,
+        ...updateDto,
+      });
 
       // This should not throw any errors
       expect(async () => {
@@ -950,12 +1013,12 @@ describe('CouponService', () => {
         ...mockCoupon,
         discountPercentage: 20.0,
         discountAmount: null,
-        storeId: 'store-123'
+        storeId: 'store-123',
       };
 
       const updateDto = {
         discountAmount: 50.0,
-        minOrderAmount: 30.0
+        minOrderAmount: 30.0,
       };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);
@@ -970,19 +1033,19 @@ describe('CouponService', () => {
         ...mockCoupon,
         discountPercentage: 20.0,
         discountAmount: null,
-        storeId: 'store-123'
+        storeId: 'store-123',
       };
 
       const updateDto = {
         discountAmount: 30.0,
-        minOrderAmount: 30.0
+        minOrderAmount: 30.0,
       };
 
       const expectedResult = {
         ...currentCoupon,
         discountAmount: 30.0,
         minOrderAmount: 30.0,
-        discountPercentage: null
+        discountPercentage: null,
       };
 
       prismaService.coupon.findUnique.mockResolvedValue(currentCoupon);

@@ -137,27 +137,27 @@ describe('AuthController', () => {
         refreshToken: 'admin-refresh-token-123',
         expiresIn: 600,
       },
-              user: {
-          id: 'admin-123',
-          email: 'admin@example.com',
-          name: 'Admin User',
-          phone: '5511988887777',
-          documentType: 'cpf',
-          documentValue: '123.456.789-00',
-          store: {
-            id: 'store-123',
-            name: 'Admin Store',
-            email: 'store@example.com',
-            domain: 'adminstore.com',
-            logoUrl: 'logo.png',
-            miniLogoUrl: 'minilogo.png',
-            bannersUrl: ['banner1.jpg', 'banner2.jpg'],
-            facebookUrl: 'https://facebook.com/adminstore',
-            instagramUrl: 'https://instagram.com/adminstore',
-            tiktokUrl: 'https://tiktok.com/adminstore',
-            wppNumber: '5511988887777',
-          },
+      user: {
+        id: 'admin-123',
+        email: 'admin@example.com',
+        name: 'Admin User',
+        phone: '5511988887777',
+        documentType: 'cpf',
+        documentValue: '123.456.789-00',
+        store: {
+          id: 'store-123',
+          name: 'Admin Store',
+          email: 'store@example.com',
+          domain: 'adminstore.com',
+          logoUrl: 'logo.png',
+          miniLogoUrl: 'minilogo.png',
+          bannersUrl: ['banner1.jpg', 'banner2.jpg'],
+          facebookUrl: 'https://facebook.com/adminstore',
+          instagramUrl: 'https://instagram.com/adminstore',
+          tiktokUrl: 'https://tiktok.com/adminstore',
+          wppNumber: '5511988887777',
         },
+      },
     };
 
     it('should login admin successfully', async () => {
@@ -173,7 +173,9 @@ describe('AuthController', () => {
       const error = new Error('Admin login failed');
       authService.adminLogin.mockRejectedValue(error);
 
-      await expect(controller.adminLogin(adminLoginDto)).rejects.toThrow('Admin login failed');
+      await expect(controller.adminLogin(adminLoginDto)).rejects.toThrow(
+        'Admin login failed',
+      );
       expect(authService.adminLogin).toHaveBeenCalledWith(adminLoginDto);
     });
   });
@@ -197,7 +199,9 @@ describe('AuthController', () => {
 
       const result = await controller.refresh(refreshTokenDto);
 
-      expect(authService.refreshAccessToken).toHaveBeenCalledWith(refreshTokenDto.refreshToken);
+      expect(authService.refreshAccessToken).toHaveBeenCalledWith(
+        refreshTokenDto.refreshToken,
+      );
       expect(result).toEqual(refreshResponse);
     });
 
@@ -205,8 +209,12 @@ describe('AuthController', () => {
       const error = new Error('Invalid refresh token');
       authService.refreshAccessToken.mockRejectedValue(error);
 
-      await expect(controller.refresh(refreshTokenDto)).rejects.toThrow('Invalid refresh token');
-      expect(authService.refreshAccessToken).toHaveBeenCalledWith(refreshTokenDto.refreshToken);
+      await expect(controller.refresh(refreshTokenDto)).rejects.toThrow(
+        'Invalid refresh token',
+      );
+      expect(authService.refreshAccessToken).toHaveBeenCalledWith(
+        refreshTokenDto.refreshToken,
+      );
     });
   });
 
@@ -236,7 +244,9 @@ describe('AuthController', () => {
       const error = new Error('User not found');
       authService.forgotPassword.mockRejectedValue(error);
 
-      await expect(controller.forgotPassword(forgotPasswordDto)).rejects.toThrow('User not found');
+      await expect(
+        controller.forgotPassword(forgotPasswordDto),
+      ).rejects.toThrow('User not found');
       expect(authService.forgotPassword).toHaveBeenCalledWith(
         forgotPasswordDto.email,
         forgotPasswordDto.storeId,
@@ -269,7 +279,9 @@ describe('AuthController', () => {
       const error = new Error('Invalid code');
       authService.verifyCode.mockRejectedValue(error);
 
-      await expect(controller.verifyCode(verifyCodeDto)).rejects.toThrow('Invalid code');
+      await expect(controller.verifyCode(verifyCodeDto)).rejects.toThrow(
+        'Invalid code',
+      );
       expect(authService.verifyCode).toHaveBeenCalledWith(verifyCodeDto);
     });
   });
@@ -305,7 +317,9 @@ describe('AuthController', () => {
       const error = new Error('Passwords do not match');
       authService.resetPassword.mockRejectedValue(error);
 
-      await expect(controller.resetPassword(resetPasswordDto)).rejects.toThrow('Passwords do not match');
+      await expect(controller.resetPassword(resetPasswordDto)).rejects.toThrow(
+        'Passwords do not match',
+      );
       expect(authService.resetPassword).toHaveBeenCalledWith(resetPasswordDto);
     });
   });
@@ -343,7 +357,9 @@ describe('AuthController', () => {
       const error = new Error('Invalid verification code');
       authService.verifyEmail.mockRejectedValue(error);
 
-      await expect(controller.verifyEmail(verifyEmailDto)).rejects.toThrow('Invalid verification code');
+      await expect(controller.verifyEmail(verifyEmailDto)).rejects.toThrow(
+        'Invalid verification code',
+      );
       expect(authService.verifyEmail).toHaveBeenCalledWith(
         verifyEmailDto.email,
         verifyEmailDto.code,
@@ -363,9 +379,13 @@ describe('AuthController', () => {
         message: 'New confirmation code sent successfully',
       };
 
-      authService.resendEmailConfirmation.mockResolvedValue(resendEmailConfirmationResponse);
+      authService.resendEmailConfirmation.mockResolvedValue(
+        resendEmailConfirmationResponse,
+      );
 
-      const result = await controller.resendEmailConfirmation(resendEmailConfirmationDto);
+      const result = await controller.resendEmailConfirmation(
+        resendEmailConfirmationDto,
+      );
 
       expect(authService.resendEmailConfirmation).toHaveBeenCalledWith(
         resendEmailConfirmationDto.email,
@@ -378,7 +398,9 @@ describe('AuthController', () => {
       const error = new Error('User not found');
       authService.resendEmailConfirmation.mockRejectedValue(error);
 
-      await expect(controller.resendEmailConfirmation(resendEmailConfirmationDto)).rejects.toThrow('User not found');
+      await expect(
+        controller.resendEmailConfirmation(resendEmailConfirmationDto),
+      ).rejects.toThrow('User not found');
       expect(authService.resendEmailConfirmation).toHaveBeenCalledWith(
         resendEmailConfirmationDto.email,
         resendEmailConfirmationDto.storeId,
@@ -409,9 +431,9 @@ describe('AuthController', () => {
       const error = new Error('New email is already in use');
       authService.requestEmailChange.mockRejectedValue(error);
 
-      await expect(controller.requestEmailChange(mockUser as any, dto)).rejects.toThrow(
-        'New email is already in use',
-      );
+      await expect(
+        controller.requestEmailChange(mockUser as any, dto),
+      ).rejects.toThrow('New email is already in use');
       expect(authService.requestEmailChange).toHaveBeenCalledWith(
         mockUser.email,
         dto.newEmail,
@@ -445,9 +467,9 @@ describe('AuthController', () => {
       const error = new Error('Invalid confirmation code');
       authService.confirmEmailChange.mockRejectedValue(error);
 
-      await expect(controller.confirmEmailChange(mockUser as any, dto)).rejects.toThrow(
-        'Invalid confirmation code',
-      );
+      await expect(
+        controller.confirmEmailChange(mockUser as any, dto),
+      ).rejects.toThrow('Invalid confirmation code');
       expect(authService.confirmEmailChange).toHaveBeenCalledWith(
         mockUser.email,
         dto.newEmail,
@@ -478,9 +500,9 @@ describe('AuthController', () => {
       const error = new Error('Current password is invalid');
       authService.changePassword.mockRejectedValue(error);
 
-      await expect(controller.changePassword(mockUser as any, dto)).rejects.toThrow(
-        'Current password is invalid',
-      );
+      await expect(
+        controller.changePassword(mockUser as any, dto),
+      ).rejects.toThrow('Current password is invalid');
       expect(authService.changePassword).toHaveBeenCalledWith(mockUser.id, dto);
     });
   });

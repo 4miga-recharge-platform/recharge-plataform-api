@@ -94,7 +94,9 @@ export class InfluencerController {
 
   @Get('name-id-list')
   @Roles('RESELLER_ADMIN_4MIGA_USER')
-  @ApiOperation({ summary: 'Get all influencers list (id and name only, not paginated)' })
+  @ApiOperation({
+    summary: 'Get all influencers list (id and name only, not paginated)',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of all influencers returned successfully.',
@@ -119,7 +121,9 @@ export class InfluencerController {
 
   @Get(':id/sales-history')
   @Roles('RESELLER_ADMIN_4MIGA_USER')
-  @ApiOperation({ summary: 'Get sales history for an influencer with pagination and filters' })
+  @ApiOperation({
+    summary: 'Get sales history for an influencer with pagination and filters',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiQuery({
@@ -145,10 +149,10 @@ export class InfluencerController {
             influencerId: 'influencer-123',
             month: 12,
             year: 2024,
-            totalSales: 1500.50,
+            totalSales: 1500.5,
             createdAt: '2024-12-01T00:00:00.000Z',
-            updatedAt: '2024-12-01T00:00:00.000Z'
-          }
+            updatedAt: '2024-12-01T00:00:00.000Z',
+          },
         ],
         totalSales: 25,
         page: 1,
@@ -177,7 +181,9 @@ export class InfluencerController {
 
   @Get(':id/coupons')
   @Roles('RESELLER_ADMIN_4MIGA_USER')
-  @ApiOperation({ summary: 'Get all coupons for an influencer with pagination and filters' })
+  @ApiOperation({
+    summary: 'Get all coupons for an influencer with pagination and filters',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiQuery({
@@ -195,7 +201,8 @@ export class InfluencerController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Paginated list of coupons for the influencer returned successfully.',
+    description:
+      'Paginated list of coupons for the influencer returned successfully.',
     schema: {
       example: {
         data: [
@@ -207,13 +214,13 @@ export class InfluencerController {
             discountAmount: null,
             expiresAt: '2024-12-31T23:59:59.000Z',
             timesUsed: 5,
-            totalSalesAmount: 500.00,
+            totalSalesAmount: 500.0,
             maxUses: 100,
-            minOrderAmount: 50.00,
+            minOrderAmount: 50.0,
             isActive: true,
             isFirstPurchase: false,
             storeId: 'store-123',
-          }
+          },
         ],
         totalCoupons: 15,
         page: 1,

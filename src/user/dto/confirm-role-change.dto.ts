@@ -10,12 +10,3 @@ export class ConfirmRoleChangeDto {
   @IsNotEmpty()
   password: string;
 }
-
-
-
-
-
-
-
-
-

@@ -8,6 +8,10 @@ npm run lint
 echo "🧪 Running unit tests..."
 npm run test
 
+# Run integration tests
+echo "🧪 Running integration tests..."
+npm run test:integration
+
 # Run type checking
 echo "🔧 Checking TypeScript types..."
 npx tsc --noEmit --skipLibCheck --incremental false

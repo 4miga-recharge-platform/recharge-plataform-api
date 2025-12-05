@@ -17,7 +17,7 @@ describe('ProductService', () => {
   let prismaService: any;
   let storageService: any;
 
-  const dec = (n: number) => ({ toNumber: () => n } as any);
+  const dec = (n: number) => ({ toNumber: () => n }) as any;
 
   const mockProduct = {
     id: 'product-123',
@@ -194,7 +194,7 @@ describe('ProductService', () => {
             {
               ...mockPackage,
               basePrice: 10,
-              paymentMethods: mockPackage.paymentMethods.map(pm => ({
+              paymentMethods: mockPackage.paymentMethods.map((pm) => ({
                 ...pm,
                 price: 10,
               })),
@@ -295,7 +295,7 @@ describe('ProductService', () => {
           {
             ...mockPackage,
             basePrice: 10,
-            paymentMethods: mockPackage.paymentMethods.map(pm => ({
+            paymentMethods: mockPackage.paymentMethods.map((pm) => ({
               ...pm,
               price: 10,
             })),
@@ -391,7 +391,7 @@ describe('ProductService', () => {
           {
             ...mockPackage,
             basePrice: 10,
-            paymentMethods: mockPackage.paymentMethods.map(pm => ({
+            paymentMethods: mockPackage.paymentMethods.map((pm) => ({
               ...pm,
               price: 10,
             })),
@@ -718,9 +718,9 @@ describe('ProductService', () => {
       });
 
       it('should throw BadRequestException when storeId is null', async () => {
-        await expect(service.findAllStoreProductSettings(null as any)).rejects.toThrow(
-          new BadRequestException('Store ID is required'),
-        );
+        await expect(
+          service.findAllStoreProductSettings(null as any),
+        ).rejects.toThrow(new BadRequestException('Store ID is required'));
       });
     });
 
@@ -730,15 +730,17 @@ describe('ProductService', () => {
           mockStoreProductSettings,
         );
 
-        const result =
-          await service.findOneStoreProductSettings('customization-123', 'store-123');
+        const result = await service.findOneStoreProductSettings(
+          'customization-123',
+          'store-123',
+        );
 
         expect(
           prismaService.storeProductSettings.findFirst,
         ).toHaveBeenCalledWith({
           where: {
             id: 'customization-123',
-            storeId: 'store-123'
+            storeId: 'store-123',
           },
         });
         expect(result).toEqual(mockStoreProductSettings);
@@ -791,7 +793,9 @@ describe('ProductService', () => {
         expect(prismaService.product.findUnique).toHaveBeenCalledWith({
           where: { id: productId },
         });
-        expect(prismaService.storeProductSettings.findFirst).toHaveBeenCalledWith({
+        expect(
+          prismaService.storeProductSettings.findFirst,
+        ).toHaveBeenCalledWith({
           where: { storeId, productId },
         });
         expect(prismaService.storeProductSettings.update).toHaveBeenCalledWith({
@@ -921,16 +925,30 @@ describe('ProductService', () => {
     it('should upload banner image successfully', async () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
-      prismaService.storeProductSettings.findFirst.mockResolvedValue(mockSettings);
-      const uploadedUrl = 'https://storage.googleapis.com/bucket/store/store-123/product/product-123/banner/banner.jpg';
+      prismaService.storeProductSettings.findFirst.mockResolvedValue(
+        mockSettings,
+      );
+      const uploadedUrl =
+        'https://storage.googleapis.com/bucket/store/store-123/product/product-123/banner/banner.jpg';
       storageService.uploadFile.mockResolvedValue(uploadedUrl);
       const updatedSettings = { ...mockSettings, imgBannerUrl: uploadedUrl };
-      prismaService.storeProductSettings.update.mockResolvedValue(updatedSettings);
+      prismaService.storeProductSettings.update.mockResolvedValue(
+        updatedSettings,
+      );
 
-      const result = await service.updateStoreProductImage(storeId, productId, file, 'banner');
+      const result = await service.updateStoreProductImage(
+        storeId,
+        productId,
+        file,
+        'banner',
+      );
 
-      expect(prismaService.store.findUnique).toHaveBeenCalledWith({ where: { id: storeId } });
-      expect(prismaService.product.findUnique).toHaveBeenCalledWith({ where: { id: productId } });
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+      });
+      expect(prismaService.product.findUnique).toHaveBeenCalledWith({
+        where: { id: productId },
+      });
       expect(storageService.uploadFile).toHaveBeenCalledWith(
         file,
         `store/${storeId}/product/${productId}/banner`,
@@ -947,13 +965,23 @@ describe('ProductService', () => {
     it('should upload card image successfully', async () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
-      prismaService.storeProductSettings.findFirst.mockResolvedValue(mockSettings);
-      const uploadedUrl = 'https://storage.googleapis.com/bucket/store/store-123/product/product-123/card/card.png';
+      prismaService.storeProductSettings.findFirst.mockResolvedValue(
+        mockSettings,
+      );
+      const uploadedUrl =
+        'https://storage.googleapis.com/bucket/store/store-123/product/product-123/card/card.png';
       storageService.uploadFile.mockResolvedValue(uploadedUrl);
       const updatedSettings = { ...mockSettings, imgCardUrl: uploadedUrl };
-      prismaService.storeProductSettings.update.mockResolvedValue(updatedSettings);
+      prismaService.storeProductSettings.update.mockResolvedValue(
+        updatedSettings,
+      );
 
-      const result = await service.updateStoreProductImage(storeId, productId, file, 'card');
+      const result = await service.updateStoreProductImage(
+        storeId,
+        productId,
+        file,
+        'card',
+      );
 
       expect(storageService.uploadFile).toHaveBeenCalledWith(
         file,
@@ -972,7 +1000,9 @@ describe('ProductService', () => {
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
       prismaService.storeProductSettings.findFirst.mockResolvedValue(null);
       prismaService.storeProductSettings.create.mockResolvedValue(mockSettings);
-      storageService.uploadFile.mockResolvedValue('https://example.com/banner.jpg');
+      storageService.uploadFile.mockResolvedValue(
+        'https://example.com/banner.jpg',
+      );
       prismaService.storeProductSettings.update.mockResolvedValue(mockSettings);
 
       await service.updateStoreProductImage(storeId, productId, file, 'banner');
@@ -983,35 +1013,55 @@ describe('ProductService', () => {
     });
 
     it('should throw BadRequestException when file is missing', async () => {
-      await expect(service.updateStoreProductImage(storeId, productId, null as any, 'banner'))
-        .rejects.toThrow('File is required');
+      await expect(
+        service.updateStoreProductImage(
+          storeId,
+          productId,
+          null as any,
+          'banner',
+        ),
+      ).rejects.toThrow('File is required');
     });
 
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.updateStoreProductImage(storeId, productId, file, 'banner'))
-        .rejects.toThrow('Store not found');
+      await expect(
+        service.updateStoreProductImage(storeId, productId, file, 'banner'),
+      ).rejects.toThrow('Store not found');
     });
 
     it('should throw BadRequestException when product not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.updateStoreProductImage(storeId, productId, file, 'banner'))
-        .rejects.toThrow('Product not found');
+      await expect(
+        service.updateStoreProductImage(storeId, productId, file, 'banner'),
+      ).rejects.toThrow('Product not found');
     });
 
     it('should continue when deleting previous image fails', async () => {
-      const settingsWithImage = { ...mockSettings, imgBannerUrl: 'https://old-image.jpg' };
+      const settingsWithImage = {
+        ...mockSettings,
+        imgBannerUrl: 'https://old-image.jpg',
+      };
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.product.findUnique.mockResolvedValue(mockProduct);
-      prismaService.storeProductSettings.findFirst.mockResolvedValue(settingsWithImage);
+      prismaService.storeProductSettings.findFirst.mockResolvedValue(
+        settingsWithImage,
+      );
       storageService.deleteFile.mockRejectedValue(new Error('Cannot delete'));
       storageService.uploadFile.mockResolvedValue('https://new-image.jpg');
-      prismaService.storeProductSettings.update.mockResolvedValue(settingsWithImage);
+      prismaService.storeProductSettings.update.mockResolvedValue(
+        settingsWithImage,
+      );
 
-      const result = await service.updateStoreProductImage(storeId, productId, file, 'banner');
+      const result = await service.updateStoreProductImage(
+        storeId,
+        productId,
+        file,
+        'banner',
+      );
 
       expect(storageService.uploadFile).toHaveBeenCalled();
       expect(result.success).toBe(true);

@@ -82,13 +82,13 @@ export class ProductService {
           });
 
           // Convert Decimal to number for consistency
-          const convertedPackages = packages.map(pkg => ({
+          const convertedPackages = packages.map((pkg) => ({
             ...pkg,
             basePrice: pkg.basePrice.toNumber(),
-            paymentMethods: pkg.paymentMethods?.map(pm => ({
+            paymentMethods: pkg.paymentMethods?.map((pm) => ({
               ...pm,
-              price: pm.price.toNumber()
-            }))
+              price: pm.price.toNumber(),
+            })),
           }));
 
           // Fetch store customizations for this product
@@ -121,14 +121,16 @@ export class ProductService {
       );
 
       // Sort products: "Bigo Live" always first, then others by name
-      const sortedProducts = productsWithPackagesAndCustomizations.sort((a, b) => {
-        const aIsBigo = a.name.toLowerCase().includes('bigo');
-        const bIsBigo = b.name.toLowerCase().includes('bigo');
+      const sortedProducts = productsWithPackagesAndCustomizations.sort(
+        (a, b) => {
+          const aIsBigo = a.name.toLowerCase().includes('bigo');
+          const bIsBigo = b.name.toLowerCase().includes('bigo');
 
-        if (aIsBigo && !bIsBigo) return -1;
-        if (!aIsBigo && bIsBigo) return 1;
-        return a.name.localeCompare(b.name);
-      });
+          if (aIsBigo && !bIsBigo) return -1;
+          if (!aIsBigo && bIsBigo) return 1;
+          return a.name.localeCompare(b.name);
+        },
+      );
 
       return sortedProducts;
     } catch {
@@ -138,7 +140,9 @@ export class ProductService {
 
   async findAllForAdmin(): Promise<Product[]> {
     try {
-      const products = await this.prisma.product.findMany({ select: this.productSelect });
+      const products = await this.prisma.product.findMany({
+        select: this.productSelect,
+      });
 
       // Sort products: "Bigo Live" always first, then others by name
       const sortedProducts = products.sort((a, b) => {
@@ -188,19 +192,24 @@ export class ProductService {
       }
 
       // Delete previous image if exists
-      const currentImageUrl = imageType === 'banner' ? settings.imgBannerUrl : settings.imgCardUrl;
+      const currentImageUrl =
+        imageType === 'banner' ? settings.imgBannerUrl : settings.imgCardUrl;
       if (currentImageUrl) {
         try {
           await this.storageService.deleteFile(currentImageUrl);
           this.logger.log(`Previous ${imageType} image deleted`);
         } catch (err) {
-          this.logger.warn(`Could not delete previous ${imageType}: ${err.message}`);
+          this.logger.warn(
+            `Could not delete previous ${imageType}: ${err.message}`,
+          );
         }
       }
 
       // Decide deterministic filename and path
       const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
-      const originalExt = (file.originalname.split('.').pop() || '').toLowerCase();
+      const originalExt = (
+        file.originalname.split('.').pop() || ''
+      ).toLowerCase();
       const mimeToExt: Record<string, string> = {
         'image/png': 'png',
         'image/jpeg': 'jpg',
@@ -221,9 +230,10 @@ export class ProductService {
       );
 
       // Update the correct field based on image type
-      const updateData = imageType === 'banner'
-        ? { imgBannerUrl: fileUrl }
-        : { imgCardUrl: fileUrl };
+      const updateData =
+        imageType === 'banner'
+          ? { imgBannerUrl: fileUrl }
+          : { imgCardUrl: fileUrl };
 
       const updated = await this.prisma.storeProductSettings.update({
         where: { id: settings.id },
@@ -236,7 +246,7 @@ export class ProductService {
         success: true,
         settings: updated,
         fileUrl,
-        message: `${imageType.charAt(0).toUpperCase() + imageType.slice(1)} image updated successfully`
+        message: `${imageType.charAt(0).toUpperCase() + imageType.slice(1)} image updated successfully`,
       };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
@@ -274,13 +284,13 @@ export class ProductService {
       });
 
       // Convert Decimal to number for consistency
-      const convertedPackages = packages.map(pkg => ({
+      const convertedPackages = packages.map((pkg) => ({
         ...pkg,
         basePrice: pkg.basePrice.toNumber(),
-        paymentMethods: pkg.paymentMethods?.map(pm => ({
+        paymentMethods: pkg.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       }));
 
       // Fetch store customizations for this product
@@ -349,13 +359,13 @@ export class ProductService {
       });
 
       // Convert Decimal to number for consistency
-      const convertedPackages = packages.map(pkg => ({
+      const convertedPackages = packages.map((pkg) => ({
         ...pkg,
         basePrice: pkg.basePrice.toNumber(),
-        paymentMethods: pkg.paymentMethods?.map(pm => ({
+        paymentMethods: pkg.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       }));
 
       // Fetch store customizations for this product
@@ -402,7 +412,6 @@ export class ProductService {
         data: dto,
       });
 
-
       return product;
     } catch {
       throw new BadRequestException('Failed to create product');
@@ -447,7 +456,6 @@ export class ProductService {
       await this.prisma.product.delete({
         where: { id },
       });
-
 
       return { message: 'Product deleted successfully' };
     } catch {
@@ -495,7 +503,6 @@ export class ProductService {
       const customization = await this.prisma.storeProductSettings.create({
         data: dto,
       });
-
 
       return customization;
     } catch (error) {
@@ -609,7 +616,6 @@ export class ProductService {
         });
       }
 
-
       return existingCustomization;
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -632,7 +638,6 @@ export class ProductService {
         where: { id },
       });
 
-
       return { message: 'Product customization deleted successfully' };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -641,5 +646,4 @@ export class ProductService {
       throw new BadRequestException('Failed to remove product customization');
     }
   }
-
 }

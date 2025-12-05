@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsEmail, IsOptional, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEmail,
+  IsOptional,
+  IsEnum,
+} from 'class-validator';
 
 export enum PaymentMethod {
   PIX = 'PIX',
@@ -76,4 +82,3 @@ export class CreatePaymentDto {
   @IsOptional()
   webhook_url?: string;
 }
-

@@ -14,7 +14,7 @@ export class ValidateCouponDto {
   @Min(0)
   @ApiProperty({
     description: 'Order amount to validate against coupon',
-    example: 50.00,
+    example: 50.0,
     minimum: 0,
   })
   orderAmount: number;

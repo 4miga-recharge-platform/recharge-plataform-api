@@ -14,10 +14,23 @@ class PaymentMethodDto {
   @IsString()
   @ApiProperty({
     description: 'Payment method name',
-    enum: ['pix', 'mercado_pago', 'picpay', 'paypal', 'boleto', 'transferencia'],
+    enum: [
+      'pix',
+      'mercado_pago',
+      'picpay',
+      'paypal',
+      'boleto',
+      'transferencia',
+    ],
     example: 'pix',
   })
-  name: 'pix' | 'mercado_pago' | 'picpay' | 'paypal' | 'boleto' | 'transferencia';
+  name:
+    | 'pix'
+    | 'mercado_pago'
+    | 'picpay'
+    | 'paypal'
+    | 'boleto'
+    | 'transferencia';
 
   @IsNumber()
   @ApiProperty({
@@ -80,7 +93,6 @@ export class CreatePackageDto {
     example: 'b3e1c2d4-5f6a-7b8c-9d0e-1f2a3b4c5d6e',
   })
   productId: string;
-
 
   @IsOptional()
   @IsArray()

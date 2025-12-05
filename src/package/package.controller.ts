@@ -14,7 +14,14 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PackageService } from './package.service';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
@@ -32,7 +39,6 @@ interface FileUpload {
   buffer: Buffer;
   size: number;
 }
-
 
 @ApiTags('package')
 @Controller('package')
@@ -82,7 +88,8 @@ export class PackageController {
     name: 'updateAllPackages',
     required: false,
     type: Boolean,
-    description: 'If true, updates all packages from the same product. If false, updates only the specified package.',
+    description:
+      'If true, updates all packages from the same product. If false, updates only the specified package.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -112,14 +119,22 @@ export class PackageController {
     // Convert string query parameter to boolean
     const shouldUpdateAll = updateAllPackages === 'true';
 
-    return this.packageService.uploadCardImage(packageId, file, user.storeId, shouldUpdateAll);
+    return this.packageService.uploadCardImage(
+      packageId,
+      file,
+      user.storeId,
+      shouldUpdateAll,
+    );
   }
 
   @Post('images/cleanup')
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cleanup unreferenced package images for a product in the current store' })
+  @ApiOperation({
+    summary:
+      'Cleanup unreferenced package images for a product in the current store',
+  })
   @ApiQuery({ name: 'productId', required: false, type: String })
   cleanupImages(
     @Query('productId') productId: string | undefined,

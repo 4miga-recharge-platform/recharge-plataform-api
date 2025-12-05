@@ -234,33 +234,42 @@ describe('OrderService', () => {
     const limit = 6;
 
     it('should return paginated orders successfully', async () => {
-      const orders = [{
-        ...mockOrder,
-        user: {
-          id: 'user-123',
-          name: 'John Doe',
-          email: 'user@example.com',
-          phone: '123456789',
-        },
-        orderItem: {
-          ...mockOrder.orderItem,
-          package: {
-            ...mockOrder.orderItem.package,
-            imgCardUrl: 'snapshot-img',
+      const orders = [
+        {
+          ...mockOrder,
+          user: {
+            id: 'user-123',
+            name: 'John Doe',
+            email: 'user@example.com',
+            phone: '123456789',
           },
+          orderItem: {
+            ...mockOrder.orderItem,
+            package: {
+              ...mockOrder.orderItem.package,
+              imgCardUrl: 'snapshot-img',
+            },
+          },
+          couponUsages: [],
         },
-        couponUsages: [],
-      }];
+      ];
       const totalOrders = 1;
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.order.findMany.mockResolvedValue(orders);
       prismaService.order.count.mockResolvedValue(totalOrders);
       prismaService.storeProductSettings.findMany.mockResolvedValue([
-        { storeId, productId: mockOrder.orderItem.productId, imgCardUrl: 'store-custom-img' },
+        {
+          storeId,
+          productId: mockOrder.orderItem.productId,
+          imgCardUrl: 'store-custom-img',
+        },
       ]);
       prismaService.product.findMany.mockResolvedValue([
-        { id: mockOrder.orderItem.productId, imgCardUrl: 'default-product-img' },
+        {
+          id: mockOrder.orderItem.productId,
+          imgCardUrl: 'default-product-img',
+        },
       ]);
       prismaService.package.findMany.mockResolvedValue([
         {
@@ -331,7 +340,9 @@ describe('OrderService', () => {
       expect(result.page).toBe(page);
       expect(result.totalPages).toBe(1);
       expect(result.data).toHaveLength(1);
-      expect(result.data[0].orderItem.package.imgCardUrl).toBe('store-custom-img');
+      expect(result.data[0].orderItem.package.imgCardUrl).toBe(
+        'store-custom-img',
+      );
       expect(result.products).toEqual([
         {
           id: mockOrder.orderItem.productId,
@@ -464,32 +475,41 @@ describe('OrderService', () => {
     const limit = 10;
 
     it('should return paginated store orders successfully', async () => {
-      const orders = [{
-        ...mockOrder,
-        orderItem: {
-          ...mockOrder.orderItem,
-          package: {
-            ...mockOrder.orderItem.package,
-            imgCardUrl: 'snapshot-img',
+      const orders = [
+        {
+          ...mockOrder,
+          orderItem: {
+            ...mockOrder.orderItem,
+            package: {
+              ...mockOrder.orderItem.package,
+              imgCardUrl: 'snapshot-img',
+            },
+          },
+          couponUsages: [],
+          user: {
+            id: 'user-123',
+            name: 'John Doe',
+            email: 'user@example.com',
+            phone: '123456789',
           },
         },
-        couponUsages: [],
-        user: {
-          id: 'user-123',
-          name: 'John Doe',
-          email: 'user@example.com',
-          phone: '123456789',
-        },
-      }];
+      ];
       const totalOrders = 5;
 
       prismaService.order.findMany.mockResolvedValue(orders);
       prismaService.order.count.mockResolvedValue(totalOrders);
       prismaService.storeProductSettings.findMany.mockResolvedValue([
-        { storeId, productId: mockOrder.orderItem.productId, imgCardUrl: 'store-custom-img' },
+        {
+          storeId,
+          productId: mockOrder.orderItem.productId,
+          imgCardUrl: 'store-custom-img',
+        },
       ]);
       prismaService.product.findMany.mockResolvedValue([
-        { id: mockOrder.orderItem.productId, imgCardUrl: 'default-product-img' },
+        {
+          id: mockOrder.orderItem.productId,
+          imgCardUrl: 'default-product-img',
+        },
       ]);
       prismaService.package.findMany.mockResolvedValue([
         {
@@ -502,7 +522,8 @@ describe('OrderService', () => {
 
       const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
       const countArgs = prismaService.order.count.mock.calls[0][0];
-      const packageFindManyArgs = prismaService.package.findMany.mock.calls[0][0];
+      const packageFindManyArgs =
+        prismaService.package.findMany.mock.calls[0][0];
 
       expect(findManyArgs).toEqual(
         expect.objectContaining({
@@ -552,7 +573,9 @@ describe('OrderService', () => {
       expect(result.page).toBe(page);
       expect(result.totalPages).toBe(Math.ceil(totalOrders / limit));
       expect(result.data).toHaveLength(1);
-      expect(result.data[0].orderItem.package.imgCardUrl).toBe('store-custom-img');
+      expect(result.data[0].orderItem.package.imgCardUrl).toBe(
+        'store-custom-img',
+      );
       expect(result.products).toEqual([
         {
           id: mockOrder.orderItem.productId,
@@ -611,7 +634,13 @@ describe('OrderService', () => {
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
       prismaService.product.findMany.mockResolvedValue([]);
 
-      await service.findAllByStore(storeId, page, limit, undefined, 'completed');
+      await service.findAllByStore(
+        storeId,
+        page,
+        limit,
+        undefined,
+        'completed',
+      );
 
       const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
       expect(findManyArgs.where).toEqual({
@@ -624,7 +653,14 @@ describe('OrderService', () => {
       prismaService.order.findMany.mockResolvedValue([]);
       prismaService.order.count.mockResolvedValue(0);
 
-      await service.findAllByStore(storeId, page, limit, undefined, undefined, 'product-123');
+      await service.findAllByStore(
+        storeId,
+        page,
+        limit,
+        undefined,
+        undefined,
+        'product-123',
+      );
 
       const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
       expect(findManyArgs.where).toEqual({
@@ -651,7 +687,13 @@ describe('OrderService', () => {
       prismaService.order.findMany.mockResolvedValue([]);
       prismaService.order.count.mockResolvedValue(0);
 
-      await service.findAllByStore(storeId, page, limit, undefined, '   processing   ');
+      await service.findAllByStore(
+        storeId,
+        page,
+        limit,
+        undefined,
+        '   processing   ',
+      );
 
       const findManyArgs = prismaService.order.findMany.mock.calls[0][0];
       expect(findManyArgs.where).toEqual({
@@ -676,7 +718,13 @@ describe('OrderService', () => {
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
       prismaService.product.findMany.mockResolvedValue([]);
       await expect(
-        service.findAllByStore(storeId, page, limit, undefined, 'invalid-status'),
+        service.findAllByStore(
+          storeId,
+          page,
+          limit,
+          undefined,
+          'invalid-status',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -686,7 +734,9 @@ describe('OrderService', () => {
       prismaService.storeProductSettings.findMany.mockResolvedValue([]);
       prismaService.product.findMany.mockResolvedValue([]);
 
-      await expect(service.findAllByStore(storeId, page, limit)).rejects.toThrow('Failed to fetch store orders');
+      await expect(
+        service.findAllByStore(storeId, page, limit),
+      ).rejects.toThrow('Failed to fetch store orders');
       expect(prismaService.order.findMany).toHaveBeenCalledWith({
         where: {
           storeId,
@@ -997,7 +1047,7 @@ describe('OrderService', () => {
         ...createOrderDto,
         couponTitle: 'WELCOME10',
       };
-       // Mock the validateCoupon method
+      // Mock the validateCoupon method
       jest.spyOn(service, 'validateCoupon').mockResolvedValue({
         valid: true,
         discountAmount: 2.0,
@@ -1147,7 +1197,9 @@ describe('OrderService', () => {
       storeService.getBraviveToken.mockResolvedValue(null);
 
       await expect(service.create(createOrderDto, userId)).rejects.toThrow(
-        new BadRequestException('Payment processing failed: Bravive token not configured'),
+        new BadRequestException(
+          'Payment processing failed: Bravive token not configured',
+        ),
       );
       expect(prismaService.$transaction).not.toHaveBeenCalled();
     });
@@ -1357,61 +1409,6 @@ describe('OrderService', () => {
     });
   });
 
-  describe('applyCoupon', () => {
-    const couponTitle = 'WELCOME10';
-    const orderAmount = 50.0;
-    const storeId = 'store-123';
-    const userId = 'user-123';
-
-    it('should apply a valid coupon successfully', async () => {
-      const mockValidation = {
-        valid: true,
-        discountAmount: 5.0,
-        finalAmount: 45.0,
-        coupon: mockCoupon,
-      };
-
-      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
-
-      const result = await service.applyCoupon(
-        couponTitle,
-        orderAmount,
-        storeId,
-        userId,
-      );
-
-      expect(service.validateCoupon).toHaveBeenCalledWith(
-        { couponTitle, orderAmount },
-        storeId,
-        userId,
-      );
-      expect(result).toEqual(mockValidation);
-    });
-
-    it('should throw BadRequestException when coupon validation fails', async () => {
-      const mockValidation = {
-        valid: false,
-        message: 'Coupon has expired',
-      };
-
-      jest.spyOn(service, 'validateCoupon').mockResolvedValue(mockValidation);
-
-      await expect(
-        service.applyCoupon(couponTitle, orderAmount, storeId, userId),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should handle validation errors', async () => {
-      jest
-        .spyOn(service, 'validateCoupon')
-        .mockRejectedValue(new Error('Validation error'));
-
-      await expect(
-        service.applyCoupon(couponTitle, orderAmount, storeId, userId),
-      ).rejects.toThrow(BadRequestException);
-    });
-  });
-
   describe('confirmCouponUsage', () => {
     it('should confirm coupon usage and update influencer monthly sales', async () => {
       const orderWithCoupon = {
@@ -1442,6 +1439,34 @@ describe('OrderService', () => {
               year: new Date().getFullYear(),
               totalSales: 17.99,
             }),
+          },
+          order: {
+            findUnique: jest.fn().mockResolvedValue({
+              id: 'order-123',
+              orderStatus: 'COMPLETED',
+              storeId: 'store-123',
+              userId: 'user-123',
+              price: 17.99,
+              createdAt: new Date(),
+              orderItem: { productId: 'product-123' },
+              couponUsages: [],
+            }),
+            count: jest.fn().mockResolvedValue(0),
+          },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            update: jest.fn().mockResolvedValue({}),
+            create: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            update: jest.fn().mockResolvedValue({}),
+            create: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            update: jest.fn().mockResolvedValue({}),
+            create: jest.fn().mockResolvedValue({}),
           },
         };
         return await callback(tx);
@@ -1502,10 +1527,143 @@ describe('OrderService', () => {
     });
 
     it('should handle errors gracefully without breaking payment flow', async () => {
-      prismaService.order.findUnique.mockRejectedValue(new Error('Database error'));
+      prismaService.order.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       // Should not throw error
-      await expect(service.confirmCouponUsage('order-123')).resolves.toBeUndefined();
+      await expect(
+        service.confirmCouponUsage('order-123'),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('revertCouponUsage', () => {
+    it('should revert coupon usage and influencer metrics when order has coupon', async () => {
+      const orderWithCoupon = {
+        id: 'order-123',
+        price: 17.99,
+        createdAt: new Date('2024-12-15'),
+        couponUsages: [
+          {
+            coupon: {
+              id: 'coupon-123',
+              influencerId: 'influencer-123',
+            },
+          },
+        ],
+      };
+
+      prismaService.$transaction.mockImplementation(async (callback) => {
+        const mockTx = {
+          order: {
+            findUnique: jest.fn().mockResolvedValue(orderWithCoupon),
+          },
+          coupon: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+          influencerMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'monthly-sales-123',
+              influencerId: 'influencer-123',
+              month: 12,
+              year: 2024,
+              totalSales: 100.0,
+            }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return await callback(mockTx);
+      });
+
+      await service.revertCouponUsage('order-123');
+
+      expect(prismaService.$transaction).toHaveBeenCalled();
+
+      const transactionCall = prismaService.$transaction.mock.calls[0][0];
+      const mockTx = {
+        order: {
+          findUnique: jest.fn().mockResolvedValue(orderWithCoupon),
+        },
+        coupon: {
+          update: jest.fn().mockResolvedValue({}),
+        },
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'monthly-sales-123',
+            influencerId: 'influencer-123',
+            month: 12,
+            year: 2024,
+            totalSales: 100.0,
+          }),
+          update: jest.fn().mockResolvedValue({}),
+        },
+      };
+      await transactionCall(mockTx);
+
+      expect(mockTx.order.findUnique).toHaveBeenCalledWith({
+        where: { id: 'order-123' },
+        include: {
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  influencerId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      expect(mockTx.coupon.update).toHaveBeenCalledWith({
+        where: { id: 'coupon-123' },
+        data: {
+          timesUsed: { decrement: 1 },
+          totalSalesAmount: { decrement: orderWithCoupon.price },
+        },
+      });
+    });
+
+    it('should do nothing when order has no coupon', async () => {
+      const orderWithoutCoupon = {
+        id: 'order-123',
+        price: 19.99,
+        createdAt: new Date('2024-12-15'),
+        couponUsages: [],
+      };
+
+      prismaService.$transaction.mockImplementation(async (callback) => {
+        const mockTx = {
+          order: {
+            findUnique: jest.fn().mockResolvedValue(orderWithoutCoupon),
+          },
+        };
+        return await callback(mockTx);
+      });
+
+      await service.revertCouponUsage('order-123');
+
+      expect(prismaService.$transaction).toHaveBeenCalled();
+
+      const transactionCall = prismaService.$transaction.mock.calls[0][0];
+      const mockTx = {
+        order: {
+          findUnique: jest.fn().mockResolvedValue(orderWithoutCoupon),
+        },
+      };
+      await transactionCall(mockTx);
+
+      expect(mockTx.order.findUnique).toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully', async () => {
+      prismaService.order.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.revertCouponUsage('order-123')).resolves.toBeUndefined();
     });
   });
 
@@ -1602,6 +1760,73 @@ describe('OrderService', () => {
           updatedAt: expect.any(Date),
         },
       });
+    });
+
+    it('should decrement sales when saleAmount is negative', async () => {
+      const existingRecord = {
+        id: 'monthly-sales-123',
+        influencerId: 'influencer-123',
+        month: 12,
+        year: 2024,
+        totalSales: 100.0,
+      };
+
+      const mockTx = {
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue(existingRecord),
+          update: jest.fn().mockResolvedValue({}),
+        },
+      };
+
+      const saleDate = new Date('2024-12-15');
+      const influencerId = 'influencer-123';
+      const saleAmount = -50.0;
+
+      await service['updateInfluencerMonthlySales'](
+        mockTx,
+        influencerId,
+        saleAmount,
+        saleDate,
+      );
+
+      expect(mockTx.influencerMonthlySales.findFirst).toHaveBeenCalledWith({
+        where: {
+          influencerId,
+          month: 12,
+          year: 2024,
+        },
+      });
+
+      expect(mockTx.influencerMonthlySales.update).toHaveBeenCalledWith({
+        where: {
+          id: existingRecord.id,
+        },
+        data: {
+          totalSales: { decrement: 50.0 },
+          updatedAt: expect.any(Date),
+        },
+      });
+    });
+
+    it('should throw error when trying to create new record with negative amount', async () => {
+      const mockTx = {
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      };
+
+      const saleDate = new Date('2024-12-15');
+      const influencerId = 'influencer-123';
+      const saleAmount = -50.0;
+
+      await expect(
+        service['updateInfluencerMonthlySales'](
+          mockTx,
+          influencerId,
+          saleAmount,
+          saleDate,
+        ),
+      ).rejects.toThrow('Cannot create new record with negative sale amount');
     });
   });
 

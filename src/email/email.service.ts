@@ -37,7 +37,7 @@ export class EmailService {
       this.logger.error('Resend email error:', {
         message: error.message,
         status: error.statusCode,
-        details: error.details
+        details: error.details,
       });
 
       if (error.statusCode === 401) {
@@ -53,6 +53,4 @@ export class EmailService {
       throw new Error(`Failed to send email: ${error.message}`);
     }
   }
-
-
 }

@@ -12,7 +12,7 @@ import { catchError } from 'rxjs/operators';
 export class ValidationInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
-      catchError(error => {
+      catchError((error) => {
         if (error instanceof BadRequestException) {
           const response = error.getResponse() as any;
 
@@ -33,7 +33,7 @@ export class ValidationInterceptor implements NestInterceptor {
               new BadRequestException({
                 message: 'Invalid data',
                 errors: validationErrors,
-              })
+              }),
             );
           }
         }

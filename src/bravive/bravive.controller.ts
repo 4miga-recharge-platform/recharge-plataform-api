@@ -71,7 +71,9 @@ export class BraviveController {
 
     const token = await this.storeService.getBraviveToken(user.storeId);
     if (!token) {
-      throw new BadRequestException('Bravive token not configured for this store');
+      throw new BadRequestException(
+        'Bravive token not configured for this store',
+      );
     }
 
     return this.braviveService.createPayment(createPaymentDto, token);
@@ -91,17 +93,16 @@ export class BraviveController {
     status: 400,
     description: 'Bravive token not configured for this store',
   })
-  async getPayment(
-    @Param('id') id: string,
-    @LoggedUser() user: User,
-  ) {
+  async getPayment(@Param('id') id: string, @LoggedUser() user: User) {
     if (!user.storeId) {
       throw new BadRequestException('Store ID not found in user data');
     }
 
     const token = await this.storeService.getBraviveToken(user.storeId);
     if (!token) {
-      throw new BadRequestException('Bravive token not configured for this store');
+      throw new BadRequestException(
+        'Bravive token not configured for this store',
+      );
     }
 
     return this.braviveService.getPayment(id, token);
@@ -133,7 +134,9 @@ export class BraviveController {
 
     const token = await this.storeService.getBraviveToken(user.storeId);
     if (!token) {
-      throw new BadRequestException('Bravive token not configured for this store');
+      throw new BadRequestException(
+        'Bravive token not configured for this store',
+      );
     }
 
     return this.braviveService.listPayments(token, {

@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
 import { EmailModule } from '../email/email.module';
 import { SseModule } from '../sse/sse.module';
+import { OrderModule } from '../order/order.module';
 import { env } from '../env';
 
 @Module({
@@ -21,6 +22,7 @@ import { env } from '../env';
     }),
     EmailModule,
     SseModule,
+    OrderModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

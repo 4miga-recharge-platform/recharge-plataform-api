@@ -55,13 +55,13 @@ export class PackageService {
       });
 
       // Convert Decimal to number for consistency
-      return packages.map(pkg => ({
+      return packages.map((pkg) => ({
         ...pkg,
         basePrice: pkg.basePrice.toNumber(),
-        paymentMethods: pkg.paymentMethods?.map(pm => ({
+        paymentMethods: pkg.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       }));
     } catch {
       throw new BadRequestException('Failed to fetch packages');
@@ -82,10 +82,10 @@ export class PackageService {
       return {
         ...data,
         basePrice: data.basePrice.toNumber(),
-        paymentMethods: data.paymentMethods?.map(pm => ({
+        paymentMethods: data.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       };
     } catch {
       throw new BadRequestException('Failed to fetch package');
@@ -129,10 +129,10 @@ export class PackageService {
       const convertedPackage = {
         ...package_,
         basePrice: package_.basePrice.toNumber(),
-        paymentMethods: package_.paymentMethods?.map(pm => ({
+        paymentMethods: package_.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       };
 
       return convertedPackage;
@@ -187,10 +187,10 @@ export class PackageService {
       const convertedPackage = {
         ...package_,
         basePrice: package_.basePrice.toNumber(),
-        paymentMethods: package_.paymentMethods?.map(pm => ({
+        paymentMethods: package_.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       };
 
       return convertedPackage;
@@ -225,7 +225,12 @@ export class PackageService {
           select: { id: true, imgCardUrl: true },
         }),
         this.prisma.storeProductSettings.findUnique({
-          where: { storeId_productId: { storeId: pkg.storeId, productId: pkg.productId } },
+          where: {
+            storeId_productId: {
+              storeId: pkg.storeId,
+              productId: pkg.productId,
+            },
+          },
           select: { id: true, imgCardUrl: true },
         }),
       ]);
@@ -236,13 +241,22 @@ export class PackageService {
         `[remove] Defaults: product.imgCardUrl=${defaultProductImg} | storeSettings.imgCardUrl=${storeCustomizationImg}`,
       );
 
-      const stripQuery = (u?: string | null) => (u ? new URL(u).origin + new URL(u).pathname : u);
+      const stripQuery = (u?: string | null) =>
+        u ? new URL(u).origin + new URL(u).pathname : u;
       const pkgUrlNoQuery = stripQuery(pkg.imgCardUrl);
       const defaultProductNoQuery = stripQuery(defaultProductImg);
       const storeCustomizationNoQuery = stripQuery(storeCustomizationImg);
 
-      const isDefaultProductImage = !!(pkgUrlNoQuery && defaultProductNoQuery && pkgUrlNoQuery === defaultProductNoQuery);
-      const isStoreCustomizationDefault = !!(pkgUrlNoQuery && storeCustomizationNoQuery && pkgUrlNoQuery === storeCustomizationNoQuery);
+      const isDefaultProductImage = !!(
+        pkgUrlNoQuery &&
+        defaultProductNoQuery &&
+        pkgUrlNoQuery === defaultProductNoQuery
+      );
+      const isStoreCustomizationDefault = !!(
+        pkgUrlNoQuery &&
+        storeCustomizationNoQuery &&
+        pkgUrlNoQuery === storeCustomizationNoQuery
+      );
 
       this.logger.log(
         `[remove] Image classification: isDefaultProductImage=${isDefaultProductImage}, isStoreCustomizationDefault=${isStoreCustomizationDefault}`,
@@ -261,7 +275,9 @@ export class PackageService {
           },
         });
       }
-      this.logger.log(`[remove] Other references to this image: count=${otherRefsCount}`);
+      this.logger.log(
+        `[remove] Other references to this image: count=${otherRefsCount}`,
+      );
 
       // Validate path belongs to allowed customization prefixes
       const allowedByPath = (() => {
@@ -271,12 +287,16 @@ export class PackageService {
           const path = url.pathname; // /bucket/path
           // We only consider deleting files living under store/<storeId>/product/<productId>/(package|shared)/...
           // Accept both /<bucket>/store/... and /store/... depending on URL shape; StorageService uses https://storage.googleapis.com/<bucket>/<filePath>
-          const includesStore = path.includes(`/store/${pkg.storeId}/product/${pkg.productId}/`);
+          const includesStore = path.includes(
+            `/store/${pkg.storeId}/product/${pkg.productId}/`,
+          );
           const isPackageScoped = path.includes(`/package/${pkg.id}/`);
           const isSharedScoped = path.includes(`/shared/`);
           return includesStore && (isPackageScoped || isSharedScoped);
         } catch (e) {
-          this.logger.warn(`[remove] Could not parse image URL to validate path: ${e instanceof Error ? e.message : e}`);
+          this.logger.warn(
+            `[remove] Could not parse image URL to validate path: ${e instanceof Error ? e.message : e}`,
+          );
           return false;
         }
       })();
@@ -291,7 +311,9 @@ export class PackageService {
         allowedByPath
       );
 
-      this.logger.log(`[remove] Decision before DB delete: canAttemptDelete=${canAttemptDelete}`);
+      this.logger.log(
+        `[remove] Decision before DB delete: canAttemptDelete=${canAttemptDelete}`,
+      );
 
       // Proceed to delete the package from DB
       const deletedPackage = await this.prisma.package.delete({
@@ -299,12 +321,16 @@ export class PackageService {
         select: this.packageSelect,
       });
 
-      this.logger.log(`[remove] Package deleted from DB: id=${deletedPackage.id}`);
+      this.logger.log(
+        `[remove] Package deleted from DB: id=${deletedPackage.id}`,
+      );
 
       // If eligible, try to delete the file (best-effort)
       if (canAttemptDelete) {
         try {
-          this.logger.log(`[remove] Attempting to delete orphan image: url=${pkg.imgCardUrl}`);
+          this.logger.log(
+            `[remove] Attempting to delete orphan image: url=${pkg.imgCardUrl}`,
+          );
           await this.storageService.deleteFile(pkg.imgCardUrl as string);
           this.logger.log(`[remove] Image deleted: url=${pkg.imgCardUrl}`);
         } catch (err: any) {
@@ -322,10 +348,10 @@ export class PackageService {
       const convertedPackage = {
         ...deletedPackage,
         basePrice: deletedPackage.basePrice.toNumber(),
-        paymentMethods: deletedPackage.paymentMethods?.map(pm => ({
+        paymentMethods: deletedPackage.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       };
 
       return convertedPackage;
@@ -422,22 +448,39 @@ export class PackageService {
       try {
         // Skip deletion if previous is product default or store customization default (compare ignoring query string)
         const [product, storeProductSettings] = await Promise.all([
-          this.prisma.product.findUnique({ where: { id: productId }, select: { imgCardUrl: true } }),
-          this.prisma.storeProductSettings.findUnique({ where: { storeId_productId: { storeId, productId } }, select: { imgCardUrl: true } }),
+          this.prisma.product.findUnique({
+            where: { id: productId },
+            select: { imgCardUrl: true },
+          }),
+          this.prisma.storeProductSettings.findUnique({
+            where: { storeId_productId: { storeId, productId } },
+            select: { imgCardUrl: true },
+          }),
         ]);
         const prevUrl = packageExists.imgCardUrl;
-        const stripQuery = (u?: string | null) => (u ? new URL(u).origin + new URL(u).pathname : u);
+        const stripQuery = (u?: string | null) =>
+          u ? new URL(u).origin + new URL(u).pathname : u;
         const prevNoQuery = stripQuery(prevUrl);
         const productDefaultNoQuery = stripQuery(product?.imgCardUrl || null);
-        const storeCustomizationNoQuery = stripQuery(storeProductSettings?.imgCardUrl || null);
-        const isProductDefault = !!(productDefaultNoQuery && productDefaultNoQuery === prevNoQuery);
-        const isStoreCustomizationDefault = !!(storeCustomizationNoQuery && storeCustomizationNoQuery === prevNoQuery);
-        this.logger.log(`Skipping default check before delete: isProductDefault=${isProductDefault}, isStoreCustomizationDefault=${isStoreCustomizationDefault}`);
+        const storeCustomizationNoQuery = stripQuery(
+          storeProductSettings?.imgCardUrl || null,
+        );
+        const isProductDefault = !!(
+          productDefaultNoQuery && productDefaultNoQuery === prevNoQuery
+        );
+        const isStoreCustomizationDefault = !!(
+          storeCustomizationNoQuery && storeCustomizationNoQuery === prevNoQuery
+        );
+        this.logger.log(
+          `Skipping default check before delete: isProductDefault=${isProductDefault}, isStoreCustomizationDefault=${isStoreCustomizationDefault}`,
+        );
         if (!isProductDefault && !isStoreCustomizationDefault) {
           await this.storageService.deleteFile(prevUrl);
           this.logger.log('Previous card image deleted');
         } else {
-          this.logger.log('Previous image matches a default; skipping deletion');
+          this.logger.log(
+            'Previous image matches a default; skipping deletion',
+          );
         }
       } catch (err) {
         this.logger.warn(`Could not delete previous image: ${err.message}`);
@@ -461,10 +504,10 @@ export class PackageService {
     const convertedPackage = {
       ...updatedPackage,
       basePrice: updatedPackage.basePrice.toNumber(),
-      paymentMethods: updatedPackage.paymentMethods?.map(pm => ({
+      paymentMethods: updatedPackage.paymentMethods?.map((pm) => ({
         ...pm,
-        price: pm.price.toNumber()
-      }))
+        price: pm.price.toNumber(),
+      })),
     };
 
     this.logger.log(`Package updated successfully`);
@@ -525,10 +568,10 @@ export class PackageService {
       return {
         ...updatedPackage,
         basePrice: updatedPackage.basePrice.toNumber(),
-        paymentMethods: updatedPackage.paymentMethods?.map(pm => ({
+        paymentMethods: updatedPackage.paymentMethods?.map((pm) => ({
           ...pm,
-          price: pm.price.toNumber()
-        }))
+          price: pm.price.toNumber(),
+        })),
       };
     });
 
@@ -540,7 +583,8 @@ export class PackageService {
 
     try {
       // List all files in the package folder
-      const packageFiles = await this.storageService.listFiles(packageFolderPrefix);
+      const packageFiles =
+        await this.storageService.listFiles(packageFolderPrefix);
       this.logger.log(`Found ${packageFiles.length} files in package folder`);
 
       // Get bucket base URL to construct full URLs for deletion
@@ -582,7 +626,9 @@ export class PackageService {
 
   async cleanupPackageImages(productId: string | undefined, storeId: string) {
     if (productId) {
-      this.logger.log(`[cleanupPackageImages] storeId=${storeId} productId=${productId}`);
+      this.logger.log(
+        `[cleanupPackageImages] storeId=${storeId} productId=${productId}`,
+      );
       return this.cleanupPackageImagesForProduct(productId, storeId);
     }
 
@@ -594,31 +640,56 @@ export class PackageService {
       distinct: ['productId'],
     });
 
-    const results: Record<string, { deleted: string[]; skipped: { url: string; reason: string }[]; errors: { url: string; message: string }[] }> = {};
+    const results: Record<
+      string,
+      {
+        deleted: string[];
+        skipped: { url: string; reason: string }[];
+        errors: { url: string; message: string }[];
+      }
+    > = {};
     for (const row of productIds) {
       const pid = row.productId;
       try {
         results[pid] = await this.cleanupPackageImagesForProduct(pid, storeId);
       } catch (e: any) {
-        results[pid] = { deleted: [], skipped: [], errors: [{ url: '', message: e?.message || String(e) }] };
+        results[pid] = {
+          deleted: [],
+          skipped: [],
+          errors: [{ url: '', message: e?.message || String(e) }],
+        };
       }
     }
 
     return { perProduct: results };
   }
 
-  private async cleanupPackageImagesForProduct(productId: string, storeId: string) {
-
+  private async cleanupPackageImagesForProduct(
+    productId: string,
+    storeId: string,
+  ) {
     // Load defaults for safety checks
     const [product, storeProductSettings, packages] = await Promise.all([
-      this.prisma.product.findUnique({ where: { id: productId }, select: { imgCardUrl: true } }),
-      this.prisma.storeProductSettings.findUnique({ where: { storeId_productId: { storeId, productId } }, select: { imgCardUrl: true } }),
-      this.prisma.package.findMany({ where: { storeId, productId }, select: { id: true, imgCardUrl: true } }),
+      this.prisma.product.findUnique({
+        where: { id: productId },
+        select: { imgCardUrl: true },
+      }),
+      this.prisma.storeProductSettings.findUnique({
+        where: { storeId_productId: { storeId, productId } },
+        select: { imgCardUrl: true },
+      }),
+      this.prisma.package.findMany({
+        where: { storeId, productId },
+        select: { id: true, imgCardUrl: true },
+      }),
     ]);
 
-    const stripQuery = (u?: string | null) => (u ? new URL(u).origin + new URL(u).pathname : u);
+    const stripQuery = (u?: string | null) =>
+      u ? new URL(u).origin + new URL(u).pathname : u;
     const defaultProductNoQuery = stripQuery(product?.imgCardUrl || null);
-    const storeCustomizationNoQuery = stripQuery(storeProductSettings?.imgCardUrl || null);
+    const storeCustomizationNoQuery = stripQuery(
+      storeProductSettings?.imgCardUrl || null,
+    );
 
     // Build a set of referenced URLs (normalized without query)
     const referenced = new Set<string>();
@@ -631,7 +702,8 @@ export class PackageService {
 
     // List files under package/
     const packagePrefix = `store/${storeId}/product/${productId}/package/`;
-    const filesToCheck: string[] = await this.storageService.listFiles(packagePrefix);
+    const filesToCheck: string[] =
+      await this.storageService.listFiles(packagePrefix);
 
     const bucketBaseUrl = this.storageService.getBucketUrl();
     const skipped: Array<{ url: string; reason: string }> = [];

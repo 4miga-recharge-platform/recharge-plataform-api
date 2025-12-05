@@ -76,13 +76,20 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
       const result = await controller.findAll(mockRequest);
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -91,13 +98,20 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 2,
-        totalPages: 2
+        totalPages: 2,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
       const result = await controller.findAll(mockRequest, 2, 5);
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 2, 5, undefined, undefined, undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        2,
+        5,
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -106,13 +120,20 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
       const result = await controller.findAll(mockRequest, 1, 10, 'desconto');
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, 'desconto', undefined, undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        'desconto',
+        undefined,
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -121,13 +142,26 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'percentage');
+      const result = await controller.findAll(
+        mockRequest,
+        1,
+        10,
+        undefined,
+        'percentage',
+      );
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'percentage', undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'percentage',
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -136,13 +170,26 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'fixed');
+      const result = await controller.findAll(
+        mockRequest,
+        1,
+        10,
+        undefined,
+        'fixed',
+      );
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'fixed', undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'fixed',
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -151,13 +198,26 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'first-purchase');
+      const result = await controller.findAll(
+        mockRequest,
+        1,
+        10,
+        undefined,
+        'first-purchase',
+      );
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'first-purchase', undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'first-purchase',
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -166,13 +226,26 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(mockRequest, 1, 10, undefined, 'all');
+      const result = await controller.findAll(
+        mockRequest,
+        1,
+        10,
+        undefined,
+        'all',
+      );
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, 'all', undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        'all',
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -181,13 +254,27 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(mockRequest, 1, 10, undefined, undefined, 'active');
+      const result = await controller.findAll(
+        mockRequest,
+        1,
+        10,
+        undefined,
+        undefined,
+        'active',
+      );
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, true);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        true,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -196,13 +283,27 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(mockRequest, 1, 10, undefined, undefined, 'inactive');
+      const result = await controller.findAll(
+        mockRequest,
+        1,
+        10,
+        undefined,
+        undefined,
+        'inactive',
+      );
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, false);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        false,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -211,13 +312,27 @@ describe('CouponController', () => {
         data: [mockCoupon],
         totalCoupons: 1,
         page: 1,
-        totalPages: 1
+        totalPages: 1,
       };
       couponService.findByStore.mockResolvedValue(paginatedResponse);
 
-      const result = await controller.findAll(mockRequest, 1, 10, undefined, undefined, 'all');
+      const result = await controller.findAll(
+        mockRequest,
+        1,
+        10,
+        undefined,
+        undefined,
+        'all',
+      );
 
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, undefined);
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual(paginatedResponse);
     });
 
@@ -225,8 +340,17 @@ describe('CouponController', () => {
       const error = new Error('Failed to fetch coupons');
       couponService.findByStore.mockRejectedValue(error);
 
-      await expect(controller.findAll(mockRequest)).rejects.toThrow('Failed to fetch coupons');
-      expect(couponService.findByStore).toHaveBeenCalledWith('store-123', 1, 10, undefined, undefined, undefined);
+      await expect(controller.findAll(mockRequest)).rejects.toThrow(
+        'Failed to fetch coupons',
+      );
+      expect(couponService.findByStore).toHaveBeenCalledWith(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+        undefined,
+      );
     });
   });
 
@@ -245,7 +369,9 @@ describe('CouponController', () => {
       const error = new Error('Failed to fetch active coupons');
       couponService.findActiveByStore.mockRejectedValue(error);
 
-      await expect(controller.findActiveByStore('store-123')).rejects.toThrow('Failed to fetch active coupons');
+      await expect(controller.findActiveByStore('store-123')).rejects.toThrow(
+        'Failed to fetch active coupons',
+      );
       expect(couponService.findActiveByStore).toHaveBeenCalledWith('store-123');
     });
   });
@@ -257,7 +383,9 @@ describe('CouponController', () => {
 
       const result = await controller.findFirstPurchaseByStore('store-123');
 
-      expect(couponService.findFirstPurchaseByStore).toHaveBeenCalledWith('store-123');
+      expect(couponService.findFirstPurchaseByStore).toHaveBeenCalledWith(
+        'store-123',
+      );
       expect(result).toEqual(coupons);
     });
 
@@ -265,8 +393,12 @@ describe('CouponController', () => {
       const error = new Error('Failed to fetch first purchase coupons');
       couponService.findFirstPurchaseByStore.mockRejectedValue(error);
 
-      await expect(controller.findFirstPurchaseByStore('store-123')).rejects.toThrow('Failed to fetch first purchase coupons');
-      expect(couponService.findFirstPurchaseByStore).toHaveBeenCalledWith('store-123');
+      await expect(
+        controller.findFirstPurchaseByStore('store-123'),
+      ).rejects.toThrow('Failed to fetch first purchase coupons');
+      expect(couponService.findFirstPurchaseByStore).toHaveBeenCalledWith(
+        'store-123',
+      );
     });
   });
 
@@ -274,11 +406,11 @@ describe('CouponController', () => {
     const createCouponDto: CreateCouponDto = {
       title: 'WELCOME10',
       influencerId: 'influencer-123',
-      discountPercentage: 10.00,
+      discountPercentage: 10.0,
       discountAmount: null,
       expiresAt: '2025-12-31T23:59:59.000Z',
       maxUses: 100,
-      minOrderAmount: 20.00,
+      minOrderAmount: 20.0,
       isActive: true,
       isFirstPurchase: true,
     };
@@ -288,7 +420,10 @@ describe('CouponController', () => {
 
       const result = await controller.create(createCouponDto, mockRequest);
 
-      expect(couponService.create).toHaveBeenCalledWith(createCouponDto, 'store-123');
+      expect(couponService.create).toHaveBeenCalledWith(
+        createCouponDto,
+        'store-123',
+      );
       expect(result).toEqual(mockCoupon);
     });
 
@@ -296,8 +431,13 @@ describe('CouponController', () => {
       const error = new Error('Failed to create coupon');
       couponService.create.mockRejectedValue(error);
 
-      await expect(controller.create(createCouponDto, mockRequest)).rejects.toThrow('Failed to create coupon');
-      expect(couponService.create).toHaveBeenCalledWith(createCouponDto, 'store-123');
+      await expect(
+        controller.create(createCouponDto, mockRequest),
+      ).rejects.toThrow('Failed to create coupon');
+      expect(couponService.create).toHaveBeenCalledWith(
+        createCouponDto,
+        'store-123',
+      );
     });
   });
 
@@ -315,7 +455,9 @@ describe('CouponController', () => {
       const error = new Error('Failed to fetch coupon');
       couponService.findOne.mockRejectedValue(error);
 
-      await expect(controller.findOne('coupon-123')).rejects.toThrow('Failed to fetch coupon');
+      await expect(controller.findOne('coupon-123')).rejects.toThrow(
+        'Failed to fetch coupon',
+      );
       expect(couponService.findOne).toHaveBeenCalledWith('coupon-123');
     });
   });
@@ -323,7 +465,7 @@ describe('CouponController', () => {
   describe('update', () => {
     const updateCouponDto: UpdateCouponDto = {
       title: 'WELCOME15',
-      discountPercentage: 15.00,
+      discountPercentage: 15.0,
     };
 
     it('should update a coupon successfully', async () => {
@@ -332,7 +474,10 @@ describe('CouponController', () => {
 
       const result = await controller.update('coupon-123', updateCouponDto);
 
-      expect(couponService.update).toHaveBeenCalledWith('coupon-123', updateCouponDto);
+      expect(couponService.update).toHaveBeenCalledWith(
+        'coupon-123',
+        updateCouponDto,
+      );
       expect(result).toEqual(updatedCoupon);
     });
 
@@ -340,8 +485,13 @@ describe('CouponController', () => {
       const error = new Error('Failed to update coupon');
       couponService.update.mockRejectedValue(error);
 
-      await expect(controller.update('coupon-123', updateCouponDto)).rejects.toThrow('Failed to update coupon');
-      expect(couponService.update).toHaveBeenCalledWith('coupon-123', updateCouponDto);
+      await expect(
+        controller.update('coupon-123', updateCouponDto),
+      ).rejects.toThrow('Failed to update coupon');
+      expect(couponService.update).toHaveBeenCalledWith(
+        'coupon-123',
+        updateCouponDto,
+      );
     });
   });
 
@@ -359,7 +509,9 @@ describe('CouponController', () => {
       const error = new Error('Failed to remove coupon');
       couponService.remove.mockRejectedValue(error);
 
-      await expect(controller.remove('coupon-123')).rejects.toThrow('Failed to remove coupon');
+      await expect(controller.remove('coupon-123')).rejects.toThrow(
+        'Failed to remove coupon',
+      );
       expect(couponService.remove).toHaveBeenCalledWith('coupon-123');
     });
   });

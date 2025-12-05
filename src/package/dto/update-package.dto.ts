@@ -4,7 +4,13 @@ import { IsOptional, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class PaymentMethodDto {
-  name: 'pix' | 'mercado_pago' | 'picpay' | 'paypal' | 'boleto' | 'transferencia';
+  name:
+    | 'pix'
+    | 'mercado_pago'
+    | 'picpay'
+    | 'paypal'
+    | 'boleto'
+    | 'transferencia';
   price: number;
 }
 

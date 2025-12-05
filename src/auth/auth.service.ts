@@ -16,6 +16,7 @@ import { getEmailConfirmationTemplate } from '../email/templates/email-confirmat
 import { getEmailChangeConfirmationTemplate } from '../email/templates/email-change-confirmation.template';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SseConfirmEmailService } from '../sse/sse.confirm-email.service';
+import { OrderService } from '../order/order.service';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly sseService: SseConfirmEmailService,
+    private readonly orderService: OrderService,
   ) {}
 
   private authUser = {
@@ -67,8 +69,8 @@ export class AuthService {
         tiktokUrl: true,
         wppNumber: true,
         secondaryBannerUrl: true,
-      }
-    }
+      },
+    },
   };
 
   async login(loginDto: LoginDto) {
@@ -196,7 +198,10 @@ export class AuthService {
       const { iat, exp, ...userData } = payload;
 
       // Check if user is admin to include store data
-      if (userData.role === 'RESELLER_ADMIN_4MIGA_USER' || userData.role === 'MASTER_ADMIN_4MIGA_USER') {
+      if (
+        userData.role === 'RESELLER_ADMIN_4MIGA_USER' ||
+        userData.role === 'MASTER_ADMIN_4MIGA_USER'
+      ) {
         // Fetch user with store data for admin
         const adminUser = await this.prisma.user.findFirst({
           where: { email: userData.email },
@@ -459,6 +464,7 @@ export class AuthService {
       },
       select: {
         emailConfirmationExpires: true,
+        createdAt: true,
       },
     });
 
@@ -481,6 +487,19 @@ export class AuthService {
         emailConfirmationExpires: null,
       },
     });
+
+    // Update newCustomers metric (only if this is the first time email is verified)
+    if (userWithExpiration?.createdAt) {
+      try {
+        await this.orderService.updateNewCustomerMetric(
+          storeId,
+          userWithExpiration.createdAt,
+        );
+      } catch (error) {
+        // Log error but don't throw - email verification should succeed even if metric update fails
+        console.error('Failed to update new customer metric:', error);
+      }
+    }
 
     // Generate tokens (same as login)
     const userData = {
@@ -581,7 +600,13 @@ export class AuthService {
     }
 
     // Send new confirmation email
-    const html = getEmailConfirmationTemplate(code, user.name, store.domain, email, storeId);
+    const html = getEmailConfirmationTemplate(
+      code,
+      user.name,
+      store.domain,
+      email,
+      storeId,
+    );
     await this.emailService.sendEmail(
       email,
       'Confirme seu cadastro - Novo código',
@@ -593,7 +618,11 @@ export class AuthService {
     };
   }
 
-  async requestEmailChange(currentEmail: string, newEmail: string, storeId: string) {
+  async requestEmailChange(
+    currentEmail: string,
+    newEmail: string,
+    storeId: string,
+  ) {
     // Check if current user exists and is verified
     const user = await this.prisma.user.findFirst({
       where: { email: currentEmail, storeId },
@@ -665,7 +694,9 @@ export class AuthService {
 
     // Validate code
     if (!user.emailConfirmationCode || !user.emailConfirmationExpires) {
-      throw new BadRequestException('No confirmation code found or code has expired');
+      throw new BadRequestException(
+        'No confirmation code found or code has expired',
+      );
     }
     if (user.emailConfirmationCode !== code) {
       throw new BadRequestException('Invalid confirmation code');

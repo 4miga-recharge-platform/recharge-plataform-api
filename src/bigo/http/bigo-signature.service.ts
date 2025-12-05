@@ -25,7 +25,11 @@ export class BigoSignatureService {
     };
   }
 
-  private async generateSignature(data: any, endpoint: string, timestamp: string): Promise<string> {
+  private async generateSignature(
+    data: any,
+    endpoint: string,
+    timestamp: string,
+  ): Promise<string> {
     try {
       // Step 1: Create the message to sign
       const messageToSign = this.createMessageToSign(data, endpoint, timestamp);
@@ -40,7 +44,11 @@ export class BigoSignatureService {
     }
   }
 
-  private createMessageToSign(data: any, endpoint: string, timestamp: string): string {
+  private createMessageToSign(
+    data: any,
+    endpoint: string,
+    timestamp: string,
+  ): string {
     // Format: JSON string + endpoint + timestamp (as per Bigo example code)
     const request = JSON.stringify(data);
     return `${request}${endpoint}${timestamp}`;
@@ -96,12 +104,20 @@ export class BigoSignatureService {
   /**
    * Test signature generation with demo data (as per Bigo documentation)
    */
-  testSignatureGeneration(): { message: string; signature: string; timestamp: string } {
+  testSignatureGeneration(): {
+    message: string;
+    signature: string;
+    timestamp: string;
+  } {
     const testData = { msg: 'hello' };
     const endpoint = '/oauth2/test_sign';
     const timestamp = '1688701573'; // Using the example timestamp from documentation
 
-    const messageToSign = this.createMessageToSign(testData, endpoint, timestamp);
+    const messageToSign = this.createMessageToSign(
+      testData,
+      endpoint,
+      timestamp,
+    );
 
     // Note: This will only work if BIGO_PRIVATE_KEY is set
     const signature = this.signWithPrivateKeySync(messageToSign);

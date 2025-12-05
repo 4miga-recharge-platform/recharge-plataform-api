@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsEnum, IsObject, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsObject,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum WebhookStatus {
@@ -110,4 +116,3 @@ export class WebhookPaymentDto {
   @Type(() => PaymentMethodDto)
   payment_method: PaymentMethodDto;
 }
-

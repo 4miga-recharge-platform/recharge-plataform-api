@@ -30,8 +30,7 @@ export class DiamondRechargeDto {
   @IsNotEmpty()
   @Length(13, 32)
   @Matches(/^[a-z0-9]+$/, {
-    message:
-      'seqid must contain only lowercase letters and numbers',
+    message: 'seqid must contain only lowercase letters and numbers',
   })
   seqid: string;
 

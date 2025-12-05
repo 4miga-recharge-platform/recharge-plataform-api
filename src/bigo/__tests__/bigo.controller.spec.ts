@@ -113,7 +113,9 @@ describe('BigoController', () => {
 
       const result = await controller.rechargePrecheck(mockRechargePrecheckDto);
 
-      expect(bigoService.rechargePrecheck).toHaveBeenCalledWith(mockRechargePrecheckDto);
+      expect(bigoService.rechargePrecheck).toHaveBeenCalledWith(
+        mockRechargePrecheckDto,
+      );
       expect(result).toEqual(mockPrecheckResponse);
     });
 
@@ -121,11 +123,13 @@ describe('BigoController', () => {
       const error = new Error('Service error');
       bigoService.rechargePrecheck.mockRejectedValue(error);
 
-      await expect(controller.rechargePrecheck(mockRechargePrecheckDto))
-        .rejects
-        .toThrow(error);
+      await expect(
+        controller.rechargePrecheck(mockRechargePrecheckDto),
+      ).rejects.toThrow(error);
 
-      expect(bigoService.rechargePrecheck).toHaveBeenCalledWith(mockRechargePrecheckDto);
+      expect(bigoService.rechargePrecheck).toHaveBeenCalledWith(
+        mockRechargePrecheckDto,
+      );
     });
   });
 
@@ -135,7 +139,9 @@ describe('BigoController', () => {
 
       const result = await controller.diamondRecharge(mockDiamondRechargeDto);
 
-      expect(bigoService.diamondRecharge).toHaveBeenCalledWith(mockDiamondRechargeDto);
+      expect(bigoService.diamondRecharge).toHaveBeenCalledWith(
+        mockDiamondRechargeDto,
+      );
       expect(result).toEqual(mockRechargeResponse);
     });
 
@@ -143,11 +149,13 @@ describe('BigoController', () => {
       const error = new Error('Service error');
       bigoService.diamondRecharge.mockRejectedValue(error);
 
-      await expect(controller.diamondRecharge(mockDiamondRechargeDto))
-        .rejects
-        .toThrow(error);
+      await expect(
+        controller.diamondRecharge(mockDiamondRechargeDto),
+      ).rejects.toThrow(error);
 
-      expect(bigoService.diamondRecharge).toHaveBeenCalledWith(mockDiamondRechargeDto);
+      expect(bigoService.diamondRecharge).toHaveBeenCalledWith(
+        mockDiamondRechargeDto,
+      );
     });
   });
 
@@ -157,7 +165,9 @@ describe('BigoController', () => {
 
       const result = await controller.disableRecharge(mockDisableRechargeDto);
 
-      expect(bigoService.disableRecharge).toHaveBeenCalledWith(mockDisableRechargeDto);
+      expect(bigoService.disableRecharge).toHaveBeenCalledWith(
+        mockDisableRechargeDto,
+      );
       expect(result).toEqual(mockDisableResponse);
     });
 
@@ -165,11 +175,13 @@ describe('BigoController', () => {
       const error = new Error('Service error');
       bigoService.disableRecharge.mockRejectedValue(error);
 
-      await expect(controller.disableRecharge(mockDisableRechargeDto))
-        .rejects
-        .toThrow(error);
+      await expect(
+        controller.disableRecharge(mockDisableRechargeDto),
+      ).rejects.toThrow(error);
 
-      expect(bigoService.disableRecharge).toHaveBeenCalledWith(mockDisableRechargeDto);
+      expect(bigoService.disableRecharge).toHaveBeenCalledWith(
+        mockDisableRechargeDto,
+      );
     });
   });
 
@@ -196,9 +208,7 @@ describe('BigoController', () => {
       const error = new Error('Service error');
       bigoService.getRechargeLogs.mockRejectedValue(error);
 
-      await expect(controller.getLogs(10))
-        .rejects
-        .toThrow(error);
+      await expect(controller.getLogs(10)).rejects.toThrow(error);
 
       expect(bigoService.getRechargeLogs).toHaveBeenCalledWith(10);
     });
@@ -218,9 +228,7 @@ describe('BigoController', () => {
       const error = new Error('Service error');
       bigoService.getRetryStats.mockRejectedValue(error);
 
-      await expect(controller.getRetryStats())
-        .rejects
-        .toThrow(error);
+      await expect(controller.getRetryStats()).rejects.toThrow(error);
 
       expect(bigoService.getRetryStats).toHaveBeenCalled();
     });

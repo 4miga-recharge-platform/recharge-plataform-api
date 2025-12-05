@@ -10,4 +10,3 @@ export class UpdateBraviveTokenDto {
   })
   braviveApiToken: string;
 }
-

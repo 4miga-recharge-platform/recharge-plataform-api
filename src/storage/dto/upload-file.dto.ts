@@ -20,7 +20,8 @@ export class UploadFileResponseDto {
 
   @ApiProperty({
     description: 'Public URL of the uploaded file with cache busting timestamp',
-    example: 'https://storage.googleapis.com/bucket/stores/store-123/logo/image.jpg?v=1703123456',
+    example:
+      'https://storage.googleapis.com/bucket/stores/store-123/logo/image.jpg?v=1703123456',
   })
   fileUrl: string;
 
@@ -76,7 +77,8 @@ export class GetFileUrlWithTimestampResponseDto {
 
   @ApiProperty({
     description: 'File URL with timestamp for cache busting',
-    example: 'https://storage.googleapis.com/bucket/stores/store-123/logo/image.jpg?v=1703123456',
+    example:
+      'https://storage.googleapis.com/bucket/stores/store-123/logo/image.jpg?v=1703123456',
   })
   fileUrl: string;
 

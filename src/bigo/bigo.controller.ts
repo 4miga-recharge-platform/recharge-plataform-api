@@ -1,5 +1,19 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Get,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { BigoService } from './bigo.service';
 import { RechargePrecheckDto } from './dto/recharge-precheck.dto';
 import { DiamondRechargeDto } from './dto/diamond-recharge.dto';
@@ -11,11 +25,13 @@ import { AuthGuard } from '@nestjs/passport';
 export class BigoController {
   constructor(private readonly bigoService: BigoService) {}
 
-    @Post('recharge-precheck')
+  @Post('recharge-precheck')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Check if bigoid can be recharged and reseller balance' })
+  @ApiOperation({
+    summary: 'Check if bigoid can be recharged and reseller balance',
+  })
   @ApiResponse({ status: 200, description: 'Precheck completed successfully' })
   @ApiResponse({ status: 400, description: 'Invalid parameters' })
   async rechargePrecheck(@Body() dto: RechargePrecheckDto) {
@@ -59,7 +75,10 @@ export class BigoController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Recharge user with diamonds using dealer quota' })
   @ApiResponse({ status: 200, description: 'Recharge completed successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid parameters or insufficient balance' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid parameters or insufficient balance',
+  })
   async diamondRecharge(@Body() dto: DiamondRechargeDto) {
     return this.bigoService.diamondRecharge(dto);
   }
@@ -79,7 +98,10 @@ export class BigoController {
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get recharge logs' })
-  @ApiResponse({ status: 200, description: 'Recharge logs retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Recharge logs retrieved successfully',
+  })
   async getLogs(@Query('limit') limit = 10) {
     return this.bigoService.getRechargeLogs(Number(limit));
   }
@@ -99,11 +121,13 @@ export class BigoController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Test signature generation with Bigo test endpoint',
-    description: 'This endpoint validates if the RSA signature is correctly generated. Use this to debug authentication issues before testing other endpoints.'
+    description:
+      'This endpoint validates if the RSA signature is correctly generated. Use this to debug authentication issues before testing other endpoints.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Signature test completed. If success=true, the signature is valid.',
+    description:
+      'Signature test completed. If success=true, the signature is valid.',
     schema: {
       type: 'object',
       properties: {
@@ -112,12 +136,15 @@ export class BigoController {
         response: { type: 'object' },
         timestamp: { type: 'string' },
         endpoint: { type: 'string' },
-      }
-    }
+      },
+    },
   })
-  @ApiResponse({ status: 400, description: 'Signature test failed - check BIGO_PRIVATE_KEY and BIGO_CLIENT_ID' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Signature test failed - check BIGO_PRIVATE_KEY and BIGO_CLIENT_ID',
+  })
   async testSignature() {
     return this.bigoService.testSignature();
   }
-
 }

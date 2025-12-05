@@ -86,6 +86,8 @@ describe('BraviveService', () => {
 
     const mockOrderService = {
       confirmCouponUsage: jest.fn(),
+      updateStoreSalesMetrics: jest.fn(),
+      revertCouponUsage: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -127,7 +129,10 @@ describe('BraviveService', () => {
     it('should create a payment successfully', async () => {
       httpService.post.mockResolvedValue(mockPaymentResponse);
 
-      const result = await service.createPayment(mockCreatePaymentDto, mockToken);
+      const result = await service.createPayment(
+        mockCreatePaymentDto,
+        mockToken,
+      );
 
       expect(httpService.post).toHaveBeenCalledWith(
         '/payments',
@@ -170,9 +175,9 @@ describe('BraviveService', () => {
       const error = new Error('Payment not found');
       httpService.get.mockRejectedValue(error);
 
-      await expect(
-        service.getPayment('invalid-id', mockToken),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.getPayment('invalid-id', mockToken)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -191,11 +196,10 @@ describe('BraviveService', () => {
         page: 1,
       });
 
-      expect(httpService.get).toHaveBeenCalledWith(
-        '/payments',
-        mockToken,
-        { limit: 10, page: 1 },
-      );
+      expect(httpService.get).toHaveBeenCalledWith('/payments', mockToken, {
+        limit: 10,
+        page: 1,
+      });
       expect(result).toEqual(mockPayments);
     });
 
@@ -208,7 +212,11 @@ describe('BraviveService', () => {
 
       const result = await service.listPayments(mockToken);
 
-      expect(httpService.get).toHaveBeenCalledWith('/payments', mockToken, undefined);
+      expect(httpService.get).toHaveBeenCalledWith(
+        '/payments',
+        mockToken,
+        undefined,
+      );
       expect(result).toEqual(mockPayments);
     });
   });
@@ -261,6 +269,7 @@ describe('BraviveService', () => {
       });
       bigoService.diamondRecharge.mockResolvedValue({ rescode: 0 });
       prismaService.recharge.update.mockResolvedValue({});
+      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
       orderService.confirmCouponUsage.mockResolvedValue(undefined);
 
       await service.handleWebhook(mockWebhookDto);
@@ -273,6 +282,7 @@ describe('BraviveService', () => {
         include: expect.any(Object),
       });
       expect(bigoService.diamondRecharge).toHaveBeenCalled();
+      expect(orderService.updateStoreSalesMetrics).toHaveBeenCalledWith('order-123');
       expect(orderService.confirmCouponUsage).toHaveBeenCalledWith('order-123');
     });
 
@@ -324,6 +334,7 @@ describe('BraviveService', () => {
           },
         });
       });
+      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
 
       await service.handleWebhook(rejectedWebhook);
 
@@ -354,6 +365,7 @@ describe('BraviveService', () => {
           },
         });
       });
+      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
 
       await service.handleWebhook(canceledWebhook);
 
@@ -373,10 +385,14 @@ describe('BraviveService', () => {
           },
         });
       });
+      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
+      orderService.revertCouponUsage.mockResolvedValue(undefined);
 
       await service.handleWebhook(refundedWebhook);
 
       expect(prismaService.payment.findFirst).toHaveBeenCalled();
+      expect(orderService.updateStoreSalesMetrics).toHaveBeenCalledWith('order-123', expect.any(Object));
+      expect(orderService.revertCouponUsage).toHaveBeenCalledWith('order-123', expect.any(Object));
     });
 
     it('should return early if payment not found', async () => {
@@ -403,7 +419,9 @@ describe('BraviveService', () => {
           },
         });
       });
-      bigoService.diamondRecharge.mockRejectedValue(new Error('Bigo API error'));
+      bigoService.diamondRecharge.mockRejectedValue(
+        new Error('Bigo API error'),
+      );
 
       // Should not throw
       await service.handleWebhook(mockWebhookDto);
@@ -434,10 +452,14 @@ describe('BraviveService', () => {
           },
         });
       });
+      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
+      orderService.revertCouponUsage.mockResolvedValue(undefined);
 
       await service.handleWebhook(chargebackWebhook);
 
       expect(prismaService.payment.findFirst).toHaveBeenCalled();
+      expect(orderService.updateStoreSalesMetrics).toHaveBeenCalledWith('order-123', expect.any(Object));
+      expect(orderService.revertCouponUsage).toHaveBeenCalledWith('order-123', expect.any(Object));
       expect(bigoService.diamondRecharge).not.toHaveBeenCalled();
     });
 
@@ -486,4 +508,3 @@ describe('BraviveService', () => {
     });
   });
 });
-

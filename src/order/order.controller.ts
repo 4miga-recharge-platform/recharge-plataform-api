@@ -17,7 +17,6 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { ValidateCouponByPackageDto } from './dto/validate-coupon-by-package.dto';
 import { CouponValidationResponseDto } from './dto/coupon-validation-response.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -27,7 +26,6 @@ import { RoleGuard } from '../auth/guards/role.guard';
 import { LoggedUser } from '../auth/logged-user.decorator';
 import { User } from '../user/entities/user.entity';
 import { OrderService } from './order.service';
-
 
 @ApiTags('orders')
 @Controller('orders')
@@ -45,15 +43,22 @@ export class OrderController {
     description: 'Paginated list of orders returned successfully.',
     schema: {
       example: {
-        data: [/* orders */],
+        data: [
+          /* orders */
+        ],
         totalOrders: 42,
         page: 1,
-        totalPages: 7
-      }
-    }
+        totalPages: 7,
+      },
+    },
   })
   findAll(@Request() req, @Query('page') page = 1, @Query('limit') limit = 6) {
-    return this.orderService.findAll(req.user.storeId, req.user.id, Number(page), Number(limit));
+    return this.orderService.findAll(
+      req.user.storeId,
+      req.user.id,
+      Number(page),
+      Number(limit),
+    );
   }
 
   @Get('admin')
@@ -83,10 +88,13 @@ export class OrderController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Paginated list of store orders returned successfully for admin users.',
+    description:
+      'Paginated list of store orders returned successfully for admin users.',
     schema: {
       example: {
-        data: [/* orders */],
+        data: [
+          /* orders */
+        ],
         totalOrders: 42,
         page: 1,
         totalPages: 7,
@@ -96,8 +104,8 @@ export class OrderController {
             name: 'Sample Product',
           },
         ],
-      }
-    }
+      },
+    },
   })
   findAllForStore(
     @LoggedUser() user: User,
@@ -143,41 +151,6 @@ export class OrderController {
   })
   create(@Body() createOrderDto: CreateOrderDto, @Request() req) {
     return this.orderService.create(createOrderDto, req.user.id);
-  }
-
-  @Post('validate-coupon')
-  @ApiOperation({ summary: 'Validate a coupon for an order' })
-  @ApiResponse({
-    status: 200,
-    description: 'Coupon validation result',
-    type: CouponValidationResponseDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid coupon or validation failed',
-  })
-  validateCoupon(@Body() validateCouponDto: ValidateCouponDto, @Request() req) {
-    return this.orderService.validateCoupon(validateCouponDto, req.user.storeId, req.user.id);
-  }
-
-  @Post('apply-coupon')
-  @ApiOperation({ summary: 'Apply a coupon to calculate final price' })
-  @ApiResponse({
-    status: 200,
-    description: 'Coupon applied successfully with final price',
-    type: CouponValidationResponseDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid coupon or application failed',
-  })
-  applyCoupon(@Body() validateCouponDto: ValidateCouponDto, @Request() req) {
-    return this.orderService.applyCoupon(
-      validateCouponDto.couponTitle,
-      validateCouponDto.orderAmount,
-      req.user.storeId,
-      req.user.id
-    );
   }
 
   @Post('validate-coupon-by-package')

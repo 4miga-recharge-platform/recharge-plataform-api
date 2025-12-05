@@ -5,7 +5,8 @@ import { BigoSignatureService } from '../http/bigo-signature.service';
 jest.mock('../../env', () => ({
   env: {
     BIGO_CLIENT_ID: 'test-client-id',
-    BIGO_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----',
+    BIGO_PRIVATE_KEY:
+      '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----',
   },
 }));
 
@@ -20,8 +21,10 @@ jest.mock('crypto', () => ({
     sign: jest.fn().mockReturnValue('test-signature'),
   })),
   generateKeyPairSync: jest.fn(() => ({
-    privateKey: '-----BEGIN PRIVATE KEY-----\ntest-private-key\n-----END PRIVATE KEY-----',
-    publicKey: '-----BEGIN PUBLIC KEY-----\ntest-public-key\n-----END PUBLIC KEY-----',
+    privateKey:
+      '-----BEGIN PRIVATE KEY-----\ntest-private-key\n-----END PRIVATE KEY-----',
+    publicKey:
+      '-----BEGIN PUBLIC KEY-----\ntest-public-key\n-----END PUBLIC KEY-----',
   })),
 }));
 
@@ -70,7 +73,11 @@ describe('BigoSignatureService', () => {
       const endpoint = '/test/endpoint';
       const timestamp = '1234567890';
 
-      const signature = await (service as any).generateSignature(data, endpoint, timestamp);
+      const signature = await (service as any).generateSignature(
+        data,
+        endpoint,
+        timestamp,
+      );
 
       expect(signature).toBe('test-signature');
     });
@@ -88,7 +95,11 @@ describe('BigoSignatureService', () => {
       const endpoint = '/oauth2/test_sign';
       const timestamp = '1688701573';
 
-      const message = (service as any).createMessageToSign(data, endpoint, timestamp);
+      const message = (service as any).createMessageToSign(
+        data,
+        endpoint,
+        timestamp,
+      );
 
       // As per Bigo example code: JSON.stringify(data) + endpoint + timestamp
       const expectedMessage = '{"msg":"hello"}/oauth2/test_sign1688701573';
@@ -104,10 +115,15 @@ describe('BigoSignatureService', () => {
       const endpoint = '/sign/agent/rs_recharge';
       const timestamp = '1234567890';
 
-      const message = (service as any).createMessageToSign(data, endpoint, timestamp);
+      const message = (service as any).createMessageToSign(
+        data,
+        endpoint,
+        timestamp,
+      );
 
       // Format: JSON.stringify(data) + endpoint + timestamp
-      const expectedMessage = '{"recharge_bigoid":"52900149","seqid":"83jyhm2784_089j","value":712}/sign/agent/rs_recharge1234567890';
+      const expectedMessage =
+        '{"recharge_bigoid":"52900149","seqid":"83jyhm2784_089j","value":712}/sign/agent/rs_recharge1234567890';
       expect(message).toBe(expectedMessage);
     });
   });
@@ -139,8 +155,10 @@ describe('BigoSignatureService', () => {
       const keyPair = service.generateRSAKeyPair();
 
       expect(keyPair).toEqual({
-        privateKey: '-----BEGIN PRIVATE KEY-----\ntest-private-key\n-----END PRIVATE KEY-----',
-        publicKey: '-----BEGIN PUBLIC KEY-----\ntest-public-key\n-----END PUBLIC KEY-----',
+        privateKey:
+          '-----BEGIN PRIVATE KEY-----\ntest-private-key\n-----END PRIVATE KEY-----',
+        publicKey:
+          '-----BEGIN PUBLIC KEY-----\ntest-public-key\n-----END PUBLIC KEY-----',
       });
     });
 
@@ -178,7 +196,9 @@ describe('BigoSignatureService', () => {
       const testData = service.testSignatureGeneration();
 
       // As per Bigo example code: JSON.stringify(data) + endpoint + timestamp
-      expect(testData.message).toBe('{"msg":"hello"}/oauth2/test_sign1688701573');
+      expect(testData.message).toBe(
+        '{"msg":"hello"}/oauth2/test_sign1688701573',
+      );
       expect(testData.timestamp).toBe('1688701573');
     });
   });

@@ -16,14 +16,14 @@ export class CouponValidationResponseDto {
 
   @ApiProperty({
     description: 'Discount amount that would be applied',
-    example: 5.00,
+    example: 5.0,
     required: false,
   })
   discountAmount?: number;
 
   @ApiProperty({
     description: 'Final amount after discount',
-    example: 45.00,
+    example: 45.0,
     required: false,
   })
   finalAmount?: number;
@@ -33,7 +33,7 @@ export class CouponValidationResponseDto {
     example: {
       id: 'coupon-123',
       title: 'WELCOME10',
-      discountPercentage: 10.00,
+      discountPercentage: 10.0,
       discountAmount: null,
       isFirstPurchase: false,
     },

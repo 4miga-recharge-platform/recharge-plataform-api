@@ -4,7 +4,8 @@ import { CryptoService } from '../crypto.service';
 // Mock env
 jest.mock('../../env', () => ({
   env: {
-    ENCRYPTION_KEY: 'test-encryption-key-minimum-32-characters-long-for-testing',
+    ENCRYPTION_KEY:
+      'test-encryption-key-minimum-32-characters-long-for-testing',
   },
 }));
 
@@ -25,7 +26,8 @@ describe('CryptoService', () => {
 
   describe('encrypt', () => {
     it('should encrypt plaintext successfully', () => {
-      const plaintext = 'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+      const plaintext =
+        'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
 
       const ciphertext = service.encrypt(plaintext);
 
@@ -72,7 +74,8 @@ describe('CryptoService', () => {
 
   describe('decrypt', () => {
     it('should decrypt ciphertext successfully', () => {
-      const plaintext = 'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+      const plaintext =
+        'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
 
       const ciphertext = service.encrypt(plaintext);
       const decrypted = service.decrypt(ciphertext);
@@ -121,7 +124,10 @@ describe('CryptoService', () => {
       const plaintext = 'test-token';
       const ciphertext = service.encrypt(plaintext);
       // Corrupt the ciphertext by removing some characters
-      const corruptedCiphertext = ciphertext.substring(0, ciphertext.length - 10);
+      const corruptedCiphertext = ciphertext.substring(
+        0,
+        ciphertext.length - 10,
+      );
 
       expect(() => {
         service.decrypt(corruptedCiphertext);
@@ -130,14 +136,14 @@ describe('CryptoService', () => {
 
     it('should maintain consistency - same plaintext encrypts differently but decrypts correctly', () => {
       const plaintext = 'test-token-consistency';
-      
+
       // Encrypt same text multiple times
       const encrypted1 = service.encrypt(plaintext);
       const encrypted2 = service.encrypt(plaintext);
-      
+
       // Should be different (different IVs)
       expect(encrypted1).not.toBe(encrypted2);
-      
+
       // But both should decrypt to same value
       expect(service.decrypt(encrypted1)).toBe(plaintext);
       expect(service.decrypt(encrypted2)).toBe(plaintext);
@@ -173,4 +179,3 @@ describe('CryptoService', () => {
     });
   });
 });
-

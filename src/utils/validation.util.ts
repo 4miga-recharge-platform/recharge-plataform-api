@@ -5,7 +5,10 @@ import { BadRequestException } from '@nestjs/common';
  * @param data
  * @param requiredFields
  */
-export function validateRequiredFields<T extends object>(data: Partial<T>, requiredFields: string[]) {
+export function validateRequiredFields<T extends object>(
+  data: Partial<T>,
+  requiredFields: string[],
+) {
   for (const field of requiredFields) {
     const value = data[field];
 
@@ -31,7 +34,10 @@ export function validateRequiredFields<T extends object>(data: Partial<T>, requi
  * @param data
  * @param requiredFields
  */
-export function validateUpdateFields<T extends object>(data: Partial<T>, requiredFields: string[]) {
+export function validateUpdateFields<T extends object>(
+  data: Partial<T>,
+  requiredFields: string[],
+) {
   for (const field of requiredFields) {
     const value = data[field];
 
@@ -48,7 +54,10 @@ export function validateUpdateFields<T extends object>(data: Partial<T>, require
       }
 
       // Check numbers (0 is valid, but null/undefined is not)
-      if (typeof value === 'number' && (value === null || value === undefined)) {
+      if (
+        typeof value === 'number' &&
+        (value === null || value === undefined)
+      ) {
         throw new BadRequestException(`Field '${field}' cannot be empty`);
       }
     }

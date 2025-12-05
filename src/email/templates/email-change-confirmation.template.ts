@@ -40,5 +40,3 @@ export function getEmailChangeConfirmationTemplate(code: string): string {
 </html>
 `;
 }
-
-
