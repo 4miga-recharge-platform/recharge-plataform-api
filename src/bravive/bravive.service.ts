@@ -291,9 +291,14 @@ export class BraviveService {
 
         // Confirm coupon usage and update sales metrics (only when order is COMPLETED)
         try {
+          // Always update store sales metrics when order is completed
+          await this.orderService.updateStoreSalesMetrics(orderId);
+
+          // Confirm coupon usage (this also updates influencer metrics if coupon exists)
           await this.orderService.confirmCouponUsage(orderId);
+
           this.logger.log(
-            `Coupon usage confirmed and sales metrics updated for order ${orderNumber}`,
+            `Sales metrics updated for order ${orderNumber}`,
           );
         } catch (metricsError) {
           this.logger.error(
@@ -362,6 +367,9 @@ export class BraviveService {
           },
         });
       }
+
+      // Update store sales metrics for expired orders
+      await this.orderService.updateStoreSalesMetrics(orderId, tx);
     });
   }
 
@@ -382,6 +390,12 @@ export class BraviveService {
           orderStatus: OrderStatus.REFOUNDED,
         },
       });
+
+      // Update store sales metrics for refunded orders
+      await this.orderService.updateStoreSalesMetrics(orderId, tx);
+
+      // Revert coupon and influencer metrics if order had coupon
+      await this.orderService.revertCouponUsage(orderId, tx);
     });
   }
 
@@ -408,6 +422,8 @@ export class BraviveService {
         },
       });
 
+      await this.orderService.updateStoreSalesMetrics(orderId, tx);
+
       if (rechargeId) {
         const order = await tx.order.findUnique({
           where: { id: orderId },
@@ -429,6 +445,8 @@ export class BraviveService {
           });
         }
       }
+
+      await this.orderService.revertCouponUsage(orderId, tx);
     });
 
     this.logger.warn(`Chargeback processed for order ${orderId}`);

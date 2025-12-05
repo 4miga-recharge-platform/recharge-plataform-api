@@ -620,18 +620,7 @@ export class OrderService {
           },
         });
 
-        // 5. Create coupon usage record if coupon was validated
-        let couponUsage: any = null;
-        if (couponValidation) {
-          couponUsage = await tx.couponUsage.create({
-            data: {
-              couponId: couponValidation.coupon.id,
-              orderId: '', // Will be set after order creation
-            },
-          });
-        }
-
-        // 6. Create Order
+        // 5. Create Order
         const order = await tx.order.create({
           data: {
             orderNumber,
@@ -653,11 +642,13 @@ export class OrderService {
           },
         });
 
-        // 7. Update coupon usage with orderId (but don't confirm usage yet)
-        if (couponUsage) {
-          await tx.couponUsage.update({
-            where: { id: couponUsage.id },
-            data: { orderId: order.id },
+        // 6. Create coupon usage record if coupon was validated (after order creation)
+        if (couponValidation) {
+          await tx.couponUsage.create({
+            data: {
+              couponId: couponValidation.coupon.id,
+              orderId: order.id,
+            },
           });
         }
 
@@ -717,20 +708,26 @@ export class OrderService {
     });
 
     if (existingRecord) {
-      // Update existing record
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+
+      if (saleAmount >= 0) {
+        updateData.totalSales = { increment: saleAmount };
+      } else {
+        updateData.totalSales = { decrement: Math.abs(saleAmount) };
+      }
+
       await tx.influencerMonthlySales.update({
         where: {
           id: existingRecord.id,
         },
-        data: {
-          totalSales: {
-            increment: saleAmount,
-          },
-          updatedAt: new Date(),
-        },
+        data: updateData,
       });
     } else {
-      // Create new record
+      if (saleAmount < 0) {
+        throw new Error('Cannot create new record with negative sale amount');
+      }
       await tx.influencerMonthlySales.create({
         data: {
           influencerId,
@@ -747,6 +744,8 @@ export class OrderService {
     storeId: string,
     saleAmount: number,
     saleDate: Date,
+    orderStatus: OrderStatus,
+    wasAlreadyCounted: boolean = false,
   ): Promise<void> {
     // Get date without time (only year, month, day)
     const dateOnly = new Date(
@@ -763,19 +762,24 @@ export class OrderService {
     });
 
     if (existing) {
+      const updateData: any = {
+        totalSales: {
+          increment: saleAmount,
+        },
+        updatedAt: new Date(),
+      };
+
+      // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
+      // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
+      if (!wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)) {
+        updateData.totalOrders = { increment: 1 };
+      }
+
       await tx.storeDailySales.update({
         where: {
           id: existing.id,
         },
-        data: {
-          totalSales: {
-            increment: saleAmount,
-          },
-          totalOrders: {
-            increment: 1,
-          },
-          updatedAt: new Date(),
-        },
+        data: updateData,
       });
     } else {
       await tx.storeDailySales.create({
@@ -783,7 +787,7 @@ export class OrderService {
           storeId,
           date: dateOnly,
           totalSales: saleAmount,
-          totalOrders: 1,
+          totalOrders: !wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus) ? 1 : 0,
         },
       });
     }
@@ -796,7 +800,7 @@ export class OrderService {
     saleDate: Date,
     orderStatus: OrderStatus,
     hasCoupon: boolean,
-    isNewCustomer: boolean,
+    wasAlreadyCounted: boolean = false,
   ): Promise<void> {
     const month = saleDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
     const year = saleDate.getFullYear();
@@ -811,31 +815,45 @@ export class OrderService {
 
     const updateData: any = {
       totalSales: { increment: saleAmount },
-      totalOrders: { increment: 1 },
       updatedAt: new Date(),
     };
 
-    // Update order status counts
+    // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
+    // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
+    if (!wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)) {
+      updateData.totalOrders = { increment: 1 };
+    }
+
     if (orderStatus === 'COMPLETED') {
       updateData.totalCompletedOrders = { increment: 1 };
     } else if (orderStatus === 'EXPIRED') {
       updateData.totalExpiredOrders = { increment: 1 };
     } else if (orderStatus === 'REFOUNDED') {
-      updateData.totalRefundedOrders = { increment: 1 };
+      if (wasAlreadyCounted) {
+        updateData.totalCompletedOrders = { decrement: 1 };
+        updateData.totalRefundedOrders = { increment: 1 };
+      } else {
+        updateData.totalRefundedOrders = { increment: 1 };
+      }
     }
 
-    // Update coupon metrics
-    if (hasCoupon) {
-      updateData.ordersWithCoupon = { increment: 1 };
-    } else {
-      updateData.ordersWithoutCoupon = { increment: 1 };
+    // Only update ordersWithCoupon/ordersWithoutCoupon for COMPLETED orders
+    if (orderStatus === 'COMPLETED' && !wasAlreadyCounted) {
+      if (hasCoupon) {
+        updateData.ordersWithCoupon = { increment: 1 };
+      } else {
+        updateData.ordersWithoutCoupon = { increment: 1 };
+      }
     }
 
-    // Update customer metrics
-    if (isNewCustomer) {
-      updateData.newCustomers = { increment: 1 };
+    // Decrement ordersWithCoupon/ordersWithoutCoupon when REFOUNDED (was COMPLETED before)
+    if (orderStatus === 'REFOUNDED' && wasAlreadyCounted) {
+      if (hasCoupon) {
+        updateData.ordersWithCoupon = { decrement: 1 };
+      } else {
+        updateData.ordersWithoutCoupon = { decrement: 1 };
+      }
     }
-    updateData.totalCustomers = { increment: 1 };
 
     if (existingRecord) {
       await tx.storeMonthlySales.update({
@@ -845,23 +863,19 @@ export class OrderService {
         data: updateData,
       });
     } else {
-      // Create new record with initial values
-      await tx.storeMonthlySales.create({
-        data: {
-          storeId,
-          month,
-          year,
-          totalSales: saleAmount,
-          totalOrders: 1,
-          totalCompletedOrders: orderStatus === 'COMPLETED' ? 1 : 0,
-          totalExpiredOrders: orderStatus === 'EXPIRED' ? 1 : 0,
-          totalRefundedOrders: orderStatus === 'REFOUNDED' ? 1 : 0,
-          totalCustomers: 1,
-          newCustomers: isNewCustomer ? 1 : 0,
-          ordersWithCoupon: hasCoupon ? 1 : 0,
-          ordersWithoutCoupon: !hasCoupon ? 1 : 0,
-        },
-      });
+      const initialData: any = {
+        storeId,
+        month,
+        year,
+        totalSales: saleAmount,
+        totalOrders: !wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus) ? 1 : 0,
+        totalCompletedOrders: orderStatus === 'COMPLETED' ? 1 : 0,
+        totalExpiredOrders: orderStatus === 'EXPIRED' ? 1 : 0,
+        totalRefundedOrders: orderStatus === 'REFOUNDED' ? 1 : 0,
+        ordersWithCoupon: orderStatus === 'COMPLETED' && !wasAlreadyCounted && hasCoupon ? 1 : 0,
+        ordersWithoutCoupon: orderStatus === 'COMPLETED' && !wasAlreadyCounted && !hasCoupon ? 1 : 0,
+      };
+      await tx.storeMonthlySales.create({ data: initialData });
     }
   }
 
@@ -871,6 +885,8 @@ export class OrderService {
     productId: string,
     saleAmount: number,
     saleDate: Date,
+    orderStatus: OrderStatus,
+    wasAlreadyCounted: boolean = false,
   ): Promise<void> {
     const month = saleDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
     const year = saleDate.getFullYear();
@@ -885,19 +901,24 @@ export class OrderService {
     });
 
     if (existing) {
+      const updateData: any = {
+        totalSales: {
+          increment: saleAmount,
+        },
+        updatedAt: new Date(),
+      };
+
+      // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
+      // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
+      if (!wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)) {
+        updateData.totalOrders = { increment: 1 };
+      }
+
       await tx.storeMonthlySalesByProduct.update({
         where: {
           id: existing.id,
         },
-        data: {
-          totalSales: {
-            increment: saleAmount,
-          },
-          totalOrders: {
-            increment: 1,
-          },
-          updatedAt: new Date(),
-        },
+        data: updateData,
       });
     } else {
       await tx.storeMonthlySalesByProduct.create({
@@ -907,7 +928,7 @@ export class OrderService {
           month,
           year,
           totalSales: saleAmount,
-          totalOrders: 1,
+          totalOrders: !wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus) ? 1 : 0,
         },
       });
     }
@@ -965,27 +986,50 @@ export class OrderService {
           },
         });
 
-        if (!order || order.orderStatus !== 'COMPLETED') {
-          return; // Only update metrics for completed orders
+        // Only update metrics for completed, expired, or refunded orders
+        if (
+          !order ||
+          !['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(order.orderStatus)
+        ) {
+          return;
         }
 
         const storeId = order.storeId;
         const productId = order.orderItem?.productId;
-        const saleAmount = Number(order.price);
         const saleDate = order.createdAt;
         const hasCoupon = order.couponUsages.length > 0;
 
-        // Check if this is a new customer (no previous completed orders)
-        const previousOrderCount = await transaction.order.count({
-          where: {
-            userId: order.userId,
-            storeId: order.storeId,
-            orderStatus: 'COMPLETED',
-            id: { not: orderId }, // Exclude current order
-            createdAt: { lt: order.createdAt }, // Orders before this one
-          },
-        });
-        const isNewCustomer = previousOrderCount === 0;
+        let wasAlreadyCounted = false;
+        if (order.orderStatus === 'REFOUNDED') {
+          const orderWithRecharge = await transaction.order.findUnique({
+            where: { id: orderId },
+            include: {
+              orderItem: {
+                include: {
+                  recharge: {
+                    select: {
+                      status: true,
+                    },
+                  },
+                },
+              },
+            },
+          });
+
+          if (
+            orderWithRecharge?.orderItem?.recharge?.status ===
+            RechargeStatus.RECHARGE_APPROVED
+          ) {
+            wasAlreadyCounted = true;
+          }
+        }
+
+        let saleAmount = 0;
+        if (order.orderStatus === 'COMPLETED') {
+          saleAmount = Number(order.price);
+        } else if (order.orderStatus === 'REFOUNDED' && wasAlreadyCounted) {
+          saleAmount = -Number(order.price);
+        }
 
         // Update daily sales
         await this.updateStoreDailySales(
@@ -993,6 +1037,8 @@ export class OrderService {
           storeId,
           saleAmount,
           saleDate,
+          order.orderStatus,
+          wasAlreadyCounted,
         );
 
         // Update monthly sales (detailed metrics)
@@ -1003,7 +1049,7 @@ export class OrderService {
           saleDate,
           order.orderStatus,
           hasCoupon,
-          isNewCustomer,
+          wasAlreadyCounted,
         );
 
         // Update monthly sales by product (if productId exists)
@@ -1014,6 +1060,8 @@ export class OrderService {
             productId,
             saleAmount,
             saleDate,
+            order.orderStatus,
+            wasAlreadyCounted,
           );
         }
 
@@ -1088,14 +1136,112 @@ export class OrderService {
             new Date(),
           );
         }
-
-        // Update store sales metrics (daily, monthly, by product)
-        // This will only update if order status is COMPLETED
-        await this.updateStoreSalesMetrics(orderId, tx);
+        // Note: Store sales metrics are updated separately in bravive.service.ts
+        // to ensure they're always updated, even when there's no coupon
       });
     } catch (error) {
       // Log error but don't throw to avoid breaking payment flow
       console.error('Error confirming coupon usage:', error);
+    }
+  }
+
+  async revertCouponUsage(orderId: string, tx?: any): Promise<void> {
+    try {
+      const executeRevert = async (transaction: any) => {
+        const order = await transaction.order.findUnique({
+          where: { id: orderId },
+          include: {
+            couponUsages: {
+              include: {
+                coupon: {
+                  select: {
+                    id: true,
+                    influencerId: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!order || order.couponUsages.length === 0) {
+          return;
+        }
+
+        for (const couponUsage of order.couponUsages) {
+          await transaction.coupon.update({
+            where: { id: couponUsage.coupon.id },
+            data: {
+              timesUsed: { decrement: 1 },
+              totalSalesAmount: { decrement: order.price },
+            },
+          });
+
+          await this.updateInfluencerMonthlySales(
+            transaction,
+            couponUsage.coupon.influencerId,
+            -Number(order.price),
+            order.createdAt,
+          );
+        }
+      };
+
+      if (tx) {
+        await executeRevert(tx);
+      } else {
+        await this.prisma.$transaction(executeRevert);
+      }
+    } catch (error) {
+      console.error('Error reverting coupon usage:', error);
+    }
+  }
+
+  /**
+   * Update newCustomers metric when a user confirms their email
+   * This should be called when a user's email is verified for the first time
+   */
+  async updateNewCustomerMetric(storeId: string, userCreatedAt: Date): Promise<void> {
+    try {
+      const month = userCreatedAt.getMonth() + 1;
+      const year = userCreatedAt.getFullYear();
+
+      const existingRecord = await this.prisma.storeMonthlySales.findFirst({
+        where: {
+          storeId,
+          month,
+          year,
+        },
+      });
+
+      if (existingRecord) {
+        await this.prisma.storeMonthlySales.update({
+          where: {
+            id: existingRecord.id,
+          },
+          data: {
+            newCustomers: { increment: 1 },
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        await this.prisma.storeMonthlySales.create({
+          data: {
+            storeId,
+            month,
+            year,
+            totalSales: 0,
+            totalOrders: 0,
+            totalCompletedOrders: 0,
+            totalExpiredOrders: 0,
+            totalRefundedOrders: 0,
+            newCustomers: 1,
+            ordersWithCoupon: 0,
+            ordersWithoutCoupon: 0,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error updating new customer metric:', error);
     }
   }
 

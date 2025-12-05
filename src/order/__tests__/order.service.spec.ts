@@ -1538,6 +1538,135 @@ describe('OrderService', () => {
     });
   });
 
+  describe('revertCouponUsage', () => {
+    it('should revert coupon usage and influencer metrics when order has coupon', async () => {
+      const orderWithCoupon = {
+        id: 'order-123',
+        price: 17.99,
+        createdAt: new Date('2024-12-15'),
+        couponUsages: [
+          {
+            coupon: {
+              id: 'coupon-123',
+              influencerId: 'influencer-123',
+            },
+          },
+        ],
+      };
+
+      prismaService.$transaction.mockImplementation(async (callback) => {
+        const mockTx = {
+          order: {
+            findUnique: jest.fn().mockResolvedValue(orderWithCoupon),
+          },
+          coupon: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+          influencerMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue({
+              id: 'monthly-sales-123',
+              influencerId: 'influencer-123',
+              month: 12,
+              year: 2024,
+              totalSales: 100.0,
+            }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return await callback(mockTx);
+      });
+
+      await service.revertCouponUsage('order-123');
+
+      expect(prismaService.$transaction).toHaveBeenCalled();
+      
+      const transactionCall = prismaService.$transaction.mock.calls[0][0];
+      const mockTx = {
+        order: {
+          findUnique: jest.fn().mockResolvedValue(orderWithCoupon),
+        },
+        coupon: {
+          update: jest.fn().mockResolvedValue({}),
+        },
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'monthly-sales-123',
+            influencerId: 'influencer-123',
+            month: 12,
+            year: 2024,
+            totalSales: 100.0,
+          }),
+          update: jest.fn().mockResolvedValue({}),
+        },
+      };
+      await transactionCall(mockTx);
+
+      expect(mockTx.order.findUnique).toHaveBeenCalledWith({
+        where: { id: 'order-123' },
+        include: {
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  influencerId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      expect(mockTx.coupon.update).toHaveBeenCalledWith({
+        where: { id: 'coupon-123' },
+        data: {
+          timesUsed: { decrement: 1 },
+          totalSalesAmount: { decrement: orderWithCoupon.price },
+        },
+      });
+    });
+
+    it('should do nothing when order has no coupon', async () => {
+      const orderWithoutCoupon = {
+        id: 'order-123',
+        price: 19.99,
+        createdAt: new Date('2024-12-15'),
+        couponUsages: [],
+      };
+
+      prismaService.$transaction.mockImplementation(async (callback) => {
+        const mockTx = {
+          order: {
+            findUnique: jest.fn().mockResolvedValue(orderWithoutCoupon),
+          },
+        };
+        return await callback(mockTx);
+      });
+
+      await service.revertCouponUsage('order-123');
+
+      expect(prismaService.$transaction).toHaveBeenCalled();
+      
+      const transactionCall = prismaService.$transaction.mock.calls[0][0];
+      const mockTx = {
+        order: {
+          findUnique: jest.fn().mockResolvedValue(orderWithoutCoupon),
+        },
+      };
+      await transactionCall(mockTx);
+
+      expect(mockTx.order.findUnique).toHaveBeenCalled();
+    });
+
+    it('should handle errors gracefully', async () => {
+      prismaService.order.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.revertCouponUsage('order-123')).resolves.toBeUndefined();
+    });
+  });
+
   describe('updateInfluencerMonthlySales', () => {
     it('should create new monthly sales record when none exists', async () => {
       const mockTx = {
@@ -1631,6 +1760,73 @@ describe('OrderService', () => {
           updatedAt: expect.any(Date),
         },
       });
+    });
+
+    it('should decrement sales when saleAmount is negative', async () => {
+      const existingRecord = {
+        id: 'monthly-sales-123',
+        influencerId: 'influencer-123',
+        month: 12,
+        year: 2024,
+        totalSales: 100.0,
+      };
+
+      const mockTx = {
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue(existingRecord),
+          update: jest.fn().mockResolvedValue({}),
+        },
+      };
+
+      const saleDate = new Date('2024-12-15');
+      const influencerId = 'influencer-123';
+      const saleAmount = -50.0;
+
+      await service['updateInfluencerMonthlySales'](
+        mockTx,
+        influencerId,
+        saleAmount,
+        saleDate,
+      );
+
+      expect(mockTx.influencerMonthlySales.findFirst).toHaveBeenCalledWith({
+        where: {
+          influencerId,
+          month: 12,
+          year: 2024,
+        },
+      });
+
+      expect(mockTx.influencerMonthlySales.update).toHaveBeenCalledWith({
+        where: {
+          id: existingRecord.id,
+        },
+        data: {
+          totalSales: { decrement: 50.0 },
+          updatedAt: expect.any(Date),
+        },
+      });
+    });
+
+    it('should throw error when trying to create new record with negative amount', async () => {
+      const mockTx = {
+        influencerMonthlySales: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      };
+
+      const saleDate = new Date('2024-12-15');
+      const influencerId = 'influencer-123';
+      const saleAmount = -50.0;
+
+      await expect(
+        service['updateInfluencerMonthlySales'](
+          mockTx,
+          influencerId,
+          saleAmount,
+          saleDate,
+        ),
+      ).rejects.toThrow('Cannot create new record with negative sale amount');
     });
   });
 
