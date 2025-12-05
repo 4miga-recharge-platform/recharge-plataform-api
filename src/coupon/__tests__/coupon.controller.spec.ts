@@ -48,8 +48,6 @@ describe('CouponController', () => {
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
-      validateCoupon: jest.fn(),
-      applyCoupon: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -363,48 +361,6 @@ describe('CouponController', () => {
 
       await expect(controller.remove('coupon-123')).rejects.toThrow('Failed to remove coupon');
       expect(couponService.remove).toHaveBeenCalledWith('coupon-123');
-    });
-  });
-
-  describe('validateCoupon', () => {
-    it('should validate a coupon successfully', async () => {
-      const validationResult = { valid: true };
-      couponService.validateCoupon.mockResolvedValue(validationResult);
-
-      const result = await controller.validateCoupon('coupon-123', '25.00');
-
-      expect(couponService.validateCoupon).toHaveBeenCalledWith('coupon-123', 25.00);
-      expect(result).toEqual(validationResult);
-    });
-
-
-
-    it('should handle errors', async () => {
-      const error = new Error('Failed to validate coupon');
-      couponService.validateCoupon.mockRejectedValue(error);
-
-      await expect(controller.validateCoupon('coupon-123', '25.00')).rejects.toThrow('Failed to validate coupon');
-    });
-  });
-
-  describe('applyCoupon', () => {
-    it('should apply a coupon successfully', async () => {
-      const applyResult = { discountAmount: 10.00, finalAmount: 90.00 };
-      couponService.applyCoupon.mockResolvedValue(applyResult);
-
-      const result = await controller.applyCoupon('coupon-123', '100.00');
-
-      expect(couponService.applyCoupon).toHaveBeenCalledWith('coupon-123', 100.00);
-      expect(result).toEqual(applyResult);
-    });
-
-
-
-    it('should handle errors', async () => {
-      const error = new Error('Failed to apply coupon');
-      couponService.applyCoupon.mockRejectedValue(error);
-
-      await expect(controller.applyCoupon('coupon-123', '100.00')).rejects.toThrow('Failed to apply coupon');
     });
   });
 });

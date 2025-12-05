@@ -501,6 +501,73 @@ export class OrderService {
         seqid: seqid,
       });
 
+      // Calculate final price with coupon if provided
+      let finalPrice = paymentMethod.price;
+      let couponValidation: any = null;
+
+      if (couponTitle) {
+        couponValidation = await this.validateCoupon(
+          { couponTitle, orderAmount: Number(paymentMethod.price) },
+          storeId,
+          userId,
+        );
+
+        if (!couponValidation.valid) {
+          throw new BadRequestException(couponValidation.message);
+        }
+
+        finalPrice = couponValidation.finalAmount;
+      }
+
+      // Generate order number before creating payment
+      let orderNumber: string;
+      let existingOrder: any;
+      let attempts = 0;
+      const maxAttempts = 5;
+
+      do {
+        orderNumber = this.generateOrderNumber(storeId);
+        existingOrder = await this.prisma.order.findUnique({
+          where: { orderNumber },
+        });
+        attempts++;
+
+        if (attempts >= maxAttempts) {
+          throw new BadRequestException('Failed to generate unique order number');
+        }
+      } while (existingOrder);
+
+      // Create Bravive payment BEFORE transaction if payment method is PIX
+      let braviveResponse: any = null;
+      if (paymentMethod.name === 'pix') {
+        const braviveToken = await this.storeService.getBraviveToken(storeId);
+
+        if (!braviveToken) {
+          throw new BadRequestException('Payment processing failed: Bravive token not configured');
+        }
+
+        try {
+          const bravivePaymentDto: CreatePaymentDto = {
+            amount: Math.round(Number(finalPrice) * 100),
+            currency: 'BRL',
+            description: `Pedido ${orderNumber} - ${packageData.name}`,
+            payer_name: user.name,
+            payer_email: user.email,
+            payer_phone: user.phone,
+            payer_document: user.documentValue,
+            method: PaymentMethod.PIX,
+            webhook_url: `${env.BASE_URL}/bravive/webhook`,
+          };
+
+          braviveResponse = await this.braviveService.createPayment(
+            bravivePaymentDto,
+            braviveToken,
+          );
+        } catch {
+          throw new BadRequestException('Payment processing failed');
+        }
+      }
+
       // Execute all operations in a single transaction
       const order = await this.prisma.$transaction(async (tx) => {
         // 1. Create PackageInfo (package snapshot)
@@ -539,49 +606,17 @@ export class OrderService {
             name: paymentMethod.name,
             status: PaymentStatus.PAYMENT_PENDING,
             statusUpdatedAt: new Date(),
-            qrCode: null,
-            qrCodetextCopyPaste: null,
+            qrCode: braviveResponse?.pix_qr_code || null,
+            qrCodetextCopyPaste: braviveResponse?.pix_code || null,
+            paymentProvider: braviveResponse ? 'bravive' : null,
+            externalId: braviveResponse?.id || null,
           },
         });
 
-        let orderNumber: string;
-        let existingOrder: any;
-        let attempts = 0;
-        const maxAttempts = 5; // Safety limit
 
-        do {
-          // Generate order number with Base36 encoding
-          orderNumber = this.generateOrderNumber(storeId);
-          // Check if it already exists (very rare with Base36 + random)
-          existingOrder = await tx.order.findUnique({
-            where: { orderNumber },
-          });
-          attempts++;
-
-          if (attempts >= maxAttempts) {
-            throw new BadRequestException('Failed to generate unique order number');
-          }
-        } while (existingOrder);
-
-        // 5. Apply coupon discount if provided
-        let finalPrice = paymentMethod.price;
+        // 5. Create coupon usage record if coupon was validated
         let couponUsage: any = null;
-        let couponValidation: any = null;
-
-        if (couponTitle) {
-          couponValidation = await this.validateCoupon(
-            { couponTitle, orderAmount: Number(paymentMethod.price) },
-            storeId,
-            userId,
-          );
-
-          if (!couponValidation.valid) {
-            throw new BadRequestException(couponValidation.message);
-          }
-
-          finalPrice = couponValidation.finalAmount;
-
-          // Create coupon usage record
+        if (couponValidation) {
           couponUsage = await tx.couponUsage.create({
             data: {
               couponId: couponValidation.coupon.id,
@@ -623,7 +658,7 @@ export class OrderService {
         return order;
       });
 
-      // After transaction: Integrate with Bravive if token is configured
+      // Fetch order with all relations
       const createdOrder = await this.prisma.order.findUnique({
         where: { id: order.id },
         include: {
@@ -634,79 +669,11 @@ export class OrderService {
               package: true,
             },
           },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phone: true,
-              documentValue: true,
-              documentType: true,
-            },
-          },
         },
       });
 
       if (!createdOrder) {
         throw new NotFoundException('Order not found after creation');
-      }
-
-      // Only integrate with Bravive if payment method is PIX
-      if (paymentMethod.name === 'pix') {
-        try {
-          // Get Bravive token from store
-          const braviveToken = await this.storeService.getBraviveToken(storeId);
-
-          if (braviveToken) {
-            // Prepare payment data for Bravive
-            const bravivePaymentDto: CreatePaymentDto = {
-              amount: Math.round(Number(createdOrder.price) * 100), // Convert to cents
-              currency: 'BRL',
-              description: `Pedido ${createdOrder.orderNumber} - ${packageData.name}`,
-              payer_name: createdOrder.user.name,
-              payer_email: createdOrder.user.email,
-              payer_phone: createdOrder.user.phone,
-              payer_document: createdOrder.user.documentValue,
-              method: PaymentMethod.PIX,
-              webhook_url: `${env.BASE_URL}/bravive/webhook`,
-            };
-
-            // Create payment in Bravive
-            const braviveResponse = await this.braviveService.createPayment(
-              bravivePaymentDto,
-              braviveToken,
-            );
-
-            // Update Payment with Bravive data
-            await this.prisma.payment.update({
-              where: { id: createdOrder.payment.id },
-              data: {
-                paymentProvider: 'bravive',
-                externalId: braviveResponse.id,
-                qrCode: braviveResponse.pix_qr_code || null,
-                qrCodetextCopyPaste: braviveResponse.pix_code || null,
-              },
-            });
-
-            // Fetch updated order with payment data
-            return await this.prisma.order.findUnique({
-              where: { id: createdOrder.id },
-              include: {
-                payment: true,
-                orderItem: {
-                  include: {
-                    recharge: true,
-                    package: true,
-                  },
-                },
-              },
-            });
-          }
-        } catch (braviveError) {
-          // Log error but don't fail the order creation
-          // Payment will remain with null QR code, can be retried later
-          console.error('Failed to create payment in Bravive:', braviveError);
-        }
       }
 
       return createdOrder;
@@ -1291,5 +1258,50 @@ export class OrderService {
       }
       throw new BadRequestException('Failed to apply coupon');
     }
+  }
+
+  async validateCouponByPackage(
+    packageId: string,
+    paymentMethodId: string,
+    couponTitle: string,
+    storeId: string,
+    userId: string,
+  ): Promise<any> {
+    // Fetch package and payment method
+    const packageData = await this.prisma.package.findUnique({
+      where: { id: packageId },
+      include: {
+        paymentMethods: {
+          where: {
+            id: paymentMethodId,
+          },
+        },
+      },
+    });
+
+    if (!packageData) {
+      throw new NotFoundException('Package not found');
+    }
+
+    // Check if package belongs to the store
+    if (packageData.storeId !== storeId) {
+      throw new BadRequestException('Package does not belong to this store');
+    }
+
+    if (packageData.paymentMethods.length === 0) {
+      throw new NotFoundException(
+        'Payment method not available for this package',
+      );
+    }
+
+    const paymentMethod = packageData.paymentMethods[0];
+    const orderAmount = Number(paymentMethod.price);
+
+    // Validate coupon with the calculated order amount
+    return await this.validateCoupon(
+      { couponTitle, orderAmount },
+      storeId,
+      userId,
+    );
   }
 }

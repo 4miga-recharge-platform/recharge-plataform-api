@@ -837,8 +837,26 @@ export class StoreService {
 
       this.logger.log(`Bravive token saved (encrypted) for store: ${storeId}`);
     } catch (error) {
-      this.logger.error(`Failed to save Bravive token: ${error.message}`);
-      throw new BadRequestException('Failed to save Bravive token');
+      // Log detailed error information for debugging
+      this.logger.error(`Failed to save Bravive token:`, {
+        error: error.message,
+        errorName: error?.constructor?.name,
+        stack: error.stack,
+        storeId,
+        hasToken: !!token,
+        tokenLength: token?.length,
+        tokenPrefix: token?.substring(0, 10),
+      });
+
+      // Re-throw BadRequestException as-is (already has proper message)
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      // For other errors, throw with detailed message
+      throw new BadRequestException(
+        `Failed to save Bravive token: ${error.message || 'Unknown error'}`,
+      );
     }
   }
 

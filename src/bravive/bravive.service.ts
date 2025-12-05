@@ -179,6 +179,18 @@ export class BraviveService {
           await this.handleRefundedPayment(payment.id, order.id);
           break;
 
+        case WebhookStatus.CHARGEBACK:
+          await this.handleChargebackPayment(
+            payment.id,
+            order.id,
+            recharge?.id,
+          );
+          break;
+
+        case WebhookStatus.IN_DISPUTE:
+          await this.handleDisputedPayment(payment.id, order.id);
+          break;
+
         default:
           this.logger.warn(
             `Unhandled webhook status: ${webhookDto.status} for payment ${webhookDto.id}`,
@@ -371,6 +383,79 @@ export class BraviveService {
         },
       });
     });
+  }
+
+  private async handleChargebackPayment(
+    paymentId: string,
+    orderId: string,
+    rechargeId: string | undefined,
+  ): Promise<void> {
+    this.logger.log(`Processing chargeback payment for order ${orderId}`);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: PaymentStatus.PAYMENT_REJECTED,
+          statusUpdatedAt: new Date(),
+        },
+      });
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          orderStatus: OrderStatus.REFOUNDED,
+        },
+      });
+
+      if (rechargeId) {
+        const order = await tx.order.findUnique({
+          where: { id: orderId },
+          include: {
+            orderItem: {
+              include: {
+                recharge: true,
+              },
+            },
+          },
+        });
+
+        if (order?.orderItem?.recharge) {
+          await tx.recharge.update({
+            where: { id: order.orderItem.recharge.id },
+            data: {
+              status: RechargeStatus.RECHARGE_REJECTED,
+            },
+          });
+        }
+      }
+    });
+
+    this.logger.warn(`Chargeback processed for order ${orderId}`);
+  }
+
+  private async handleDisputedPayment(
+    paymentId: string,
+    orderId: string,
+  ): Promise<void> {
+    this.logger.log(`Processing disputed payment for order ${orderId}`);
+
+    await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findUnique({
+        where: { id: paymentId },
+      });
+
+      if (payment?.status === PaymentStatus.PAYMENT_APPROVED) {
+        await tx.payment.update({
+          where: { id: paymentId },
+          data: {
+            statusUpdatedAt: new Date(),
+          },
+        });
+      }
+    });
+
+    this.logger.warn(`Payment dispute registered for order ${orderId} - Awaiting resolution`);
   }
 
   /**
