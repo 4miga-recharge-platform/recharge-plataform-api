@@ -1579,7 +1579,7 @@ describe('OrderService', () => {
       await service.revertCouponUsage('order-123');
 
       expect(prismaService.$transaction).toHaveBeenCalled();
-      
+
       const transactionCall = prismaService.$transaction.mock.calls[0][0];
       const mockTx = {
         order: {
@@ -1646,7 +1646,7 @@ describe('OrderService', () => {
       await service.revertCouponUsage('order-123');
 
       expect(prismaService.$transaction).toHaveBeenCalled();
-      
+
       const transactionCall = prismaService.$transaction.mock.calls[0][0];
       const mockTx = {
         order: {
