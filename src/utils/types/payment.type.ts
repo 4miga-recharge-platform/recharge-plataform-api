@@ -1,6 +1,12 @@
 export type PaymentMethodsType = {
   id: string;
-  name: 'pix' | 'mercado_pago' | 'picpay' | 'paypal' | 'boleto' | 'transferencia';
+  name:
+    | 'pix'
+    | 'mercado_pago'
+    | 'picpay'
+    | 'paypal'
+    | 'boleto'
+    | 'transferencia';
   price: number;
   packageId: string;
   createdAt: string;

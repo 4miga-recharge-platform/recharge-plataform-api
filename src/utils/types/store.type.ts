@@ -1,6 +1,6 @@
-import { OrderType } from "./order.type";
-import { PackageType } from "./package.type";
-import { UserType } from "./user.type";
+import { OrderType } from './order.type';
+import { PackageType } from './package.type';
+import { UserType } from './user.type';
 
 export type StoreType = {
   id: string;

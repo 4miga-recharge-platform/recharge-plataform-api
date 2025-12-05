@@ -350,7 +350,11 @@ export class CouponService {
       }
 
       // Validate that fixed discount amount is not greater than minimum order amount
-      if (dto.discountAmount && dto.minOrderAmount && dto.discountAmount > dto.minOrderAmount) {
+      if (
+        dto.discountAmount &&
+        dto.minOrderAmount &&
+        dto.discountAmount > dto.minOrderAmount
+      ) {
         throw new BadRequestException(
           'Fixed discount amount cannot be greater than minimum order amount',
         );
@@ -406,17 +410,27 @@ export class CouponService {
       await this.findOne(id);
 
       // Handle discount logic - allow switching between percentage and amount
-      if (dto.discountPercentage !== undefined || dto.discountAmount !== undefined) {
+      if (
+        dto.discountPercentage !== undefined ||
+        dto.discountAmount !== undefined
+      ) {
         // If both are provided and both are not null, throw error
-        if (dto.discountPercentage !== undefined && dto.discountAmount !== undefined &&
-            dto.discountPercentage !== null && dto.discountAmount !== null) {
+        if (
+          dto.discountPercentage !== undefined &&
+          dto.discountAmount !== undefined &&
+          dto.discountPercentage !== null &&
+          dto.discountAmount !== null
+        ) {
           throw new BadRequestException(
             'Cannot have both discount percentage and amount',
           );
         }
 
         // If switching to percentage, clear amount
-        if (dto.discountPercentage !== undefined && dto.discountPercentage !== null) {
+        if (
+          dto.discountPercentage !== undefined &&
+          dto.discountPercentage !== null
+        ) {
           dto.discountAmount = null;
         }
 
@@ -427,7 +441,11 @@ export class CouponService {
       }
 
       // Validate that fixed discount amount is not greater than minimum order amount
-      if (dto.discountAmount && dto.minOrderAmount && dto.discountAmount > dto.minOrderAmount) {
+      if (
+        dto.discountAmount &&
+        dto.minOrderAmount &&
+        dto.discountAmount > dto.minOrderAmount
+      ) {
         throw new BadRequestException(
           'Fixed discount amount cannot be greater than minimum order amount',
         );

@@ -1,4 +1,3 @@
-
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -24,7 +23,7 @@ export class BigoService {
     this.baseUrl = env.BIGO_HOST_DOMAIN || 'https://oauth.bigolive.tv';
   }
 
-    async rechargePrecheck(dto: RechargePrecheckDto) {
+  async rechargePrecheck(dto: RechargePrecheckDto) {
     this.logger.log(`Recharge precheck for bigoid: ${dto.recharge_bigoid}`);
 
     // Business validation: check if seqid is already used
@@ -33,7 +32,9 @@ export class BigoService {
     });
 
     if (existingRecharge) {
-      throw new BadRequestException(`seqid '${dto.seqid}' has already been used`);
+      throw new BadRequestException(
+        `seqid '${dto.seqid}' has already been used`,
+      );
     }
 
     try {
@@ -67,8 +68,10 @@ export class BigoService {
     }
   }
 
-      async diamondRecharge(dto: DiamondRechargeDto) {
-    this.logger.log(`Diamond recharge for bigoid: ${dto.recharge_bigoid}, value: ${dto.value}`);
+  async diamondRecharge(dto: DiamondRechargeDto) {
+    this.logger.log(
+      `Diamond recharge for bigoid: ${dto.recharge_bigoid}, value: ${dto.value}`,
+    );
 
     // Business validation: check if seqid is already used
     const existingRecharge = await this.prisma.bigoRecharge.findFirst({
@@ -76,7 +79,9 @@ export class BigoService {
     });
 
     if (existingRecharge) {
-      throw new BadRequestException(`seqid '${dto.seqid}' has already been used`);
+      throw new BadRequestException(
+        `seqid '${dto.seqid}' has already been used`,
+      );
     }
 
     // Business validation: check if bu_orderid is already used
@@ -85,7 +90,9 @@ export class BigoService {
     });
 
     if (existingOrder) {
-      throw new BadRequestException(`bu_orderid '${dto.bu_orderid}' has already been used`);
+      throw new BadRequestException(
+        `bu_orderid '${dto.bu_orderid}' has already been used`,
+      );
     }
 
     // Create log entry
@@ -122,17 +129,23 @@ export class BigoService {
 
       // Add to retry queue with error code and message
       const rescode = this.extractRescodeFromError(error);
-      await this.retryService.addToRetryQueue(logEntry.id, rescode, error.message);
+      await this.retryService.addToRetryQueue(
+        logEntry.id,
+        rescode,
+        error.message,
+      );
 
       // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(`Diamond recharge failed: ${error.message}`);
+      throw new BadRequestException(
+        `Diamond recharge failed: ${error.message}`,
+      );
     }
   }
 
-    async disableRecharge(dto: DisableRechargeDto) {
+  async disableRecharge(dto: DisableRechargeDto) {
     this.logger.log('Disabling recharge APIs');
 
     // Create log entry
@@ -146,10 +159,7 @@ export class BigoService {
     });
 
     try {
-      const response = await this.makeSignedRequest(
-        '/sign/agent/disable',
-        dto,
-      );
+      const response = await this.makeSignedRequest('/sign/agent/disable', dto);
 
       // Update log with success
       await this.prisma.bigoRecharge.update({
@@ -168,19 +178,29 @@ export class BigoService {
 
       // Add to retry queue with error code and message
       const rescode = this.extractRescodeFromError(error);
-      await this.retryService.addToRetryQueue(logEntry.id, rescode, error.message);
+      await this.retryService.addToRetryQueue(
+        logEntry.id,
+        rescode,
+        error.message,
+      );
 
       // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(`Disable recharge failed: ${error.message}`);
+      throw new BadRequestException(
+        `Disable recharge failed: ${error.message}`,
+      );
     }
   }
 
   private async makeSignedRequest(endpoint: string, data: any) {
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const headers = await this.signatureService.generateHeaders(data, endpoint, timestamp);
+    const headers = await this.signatureService.generateHeaders(
+      data,
+      endpoint,
+      timestamp,
+    );
 
     // Try primary domain first
     const primaryUrl = `${this.baseUrl}${endpoint}`;
@@ -188,12 +208,15 @@ export class BigoService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post(primaryUrl, data, { headers })
+        this.httpService.post(primaryUrl, data, { headers }),
       );
 
       // Validate Bigo API response
       if (response.data.rescode !== 0) {
-        const errorMessage = this.getBigoErrorMessage(response.data.rescode, response.data.message);
+        const errorMessage = this.getBigoErrorMessage(
+          response.data.rescode,
+          response.data.message,
+        );
         throw new BadRequestException(errorMessage);
       }
 
@@ -209,28 +232,33 @@ export class BigoService {
 
         try {
           const backupResponse = await firstValueFrom(
-            this.httpService.post(backupUrl, data, { headers })
+            this.httpService.post(backupUrl, data, { headers }),
           );
 
           // Validate backup response
           if (backupResponse.data.rescode !== 0) {
-            const errorMessage = this.getBigoErrorMessage(backupResponse.data.rescode, backupResponse.data.message);
+            const errorMessage = this.getBigoErrorMessage(
+              backupResponse.data.rescode,
+              backupResponse.data.message,
+            );
             throw new BadRequestException(errorMessage);
           }
 
           this.logger.log(`Backup domain request successful`);
           return backupResponse.data;
         } catch (backupError) {
-          this.logger.error(`Backup domain also failed: ${backupError.message}`);
-          throw new BadRequestException(`Network error: ${backupError.message}`);
+          this.logger.error(
+            `Backup domain also failed: ${backupError.message}`,
+          );
+          throw new BadRequestException(
+            `Network error: ${backupError.message}`,
+          );
         }
       } else {
         throw new BadRequestException(`Network error: ${error.message}`);
       }
     }
   }
-
-
 
   async getRechargeLogs(limit = 10) {
     this.logger.log(`Fetching last ${limit} recharge logs`);
@@ -283,7 +311,11 @@ export class BigoService {
     const testData = { msg: 'hello' };
     const endpoint = '/oauth2/test_sign';
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const headers = await this.signatureService.generateHeaders(testData, endpoint, timestamp);
+    const headers = await this.signatureService.generateHeaders(
+      testData,
+      endpoint,
+      timestamp,
+    );
 
     // Debug: Log what we're sending
     this.logger.debug(`Bigo test signature debug info:`, {
@@ -300,7 +332,7 @@ export class BigoService {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post(primaryUrl, testData, { headers })
+        this.httpService.post(primaryUrl, testData, { headers }),
       );
 
       // Test endpoint returns 200 if signature is valid, with the same message
@@ -319,11 +351,13 @@ export class BigoService {
       const backupDomain = env.BIGO_HOST_BACKUP_DOMAIN;
       if (backupDomain) {
         const backupUrl = `${backupDomain}${endpoint}`;
-        this.logger.debug(`Retrying signature test with backup domain: ${backupUrl}`);
+        this.logger.debug(
+          `Retrying signature test with backup domain: ${backupUrl}`,
+        );
 
         try {
           const backupResponse = await firstValueFrom(
-            this.httpService.post(backupUrl, testData, { headers })
+            this.httpService.post(backupUrl, testData, { headers }),
           );
 
           this.logger.log('Signature test successful with backup domain');
@@ -335,7 +369,9 @@ export class BigoService {
             endpoint,
           };
         } catch (backupError: any) {
-          this.logger.error(`Backup domain signature test also failed: ${backupError.message}`);
+          this.logger.error(
+            `Backup domain signature test also failed: ${backupError.message}`,
+          );
           throw new BadRequestException(
             `Signature test failed: ${backupError.message || 'Unknown error'}`,
           );
@@ -348,7 +384,7 @@ export class BigoService {
     }
   }
 
-    /**
+  /**
    * Extrai o rescode de uma mensagem de erro
    */
   private extractRescodeFromError(error: any): number {
@@ -364,7 +400,10 @@ export class BigoService {
   /**
    * Maps Bigo error codes to user-friendly messages
    */
-  private getBigoErrorMessage(rescode: number, originalMessage: string): string {
+  private getBigoErrorMessage(
+    rescode: number,
+    originalMessage: string,
+  ): string {
     const errorMap: Record<number, string> = {
       // Invalid parameters
       400001: 'Invalid request parameters',

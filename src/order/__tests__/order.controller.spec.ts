@@ -139,7 +139,9 @@ describe('OrderController', () => {
       const error = new Error('Failed to fetch store orders');
       orderService.findAllByStore.mockRejectedValue(error);
 
-      await expect(controller.findAllForStore(mockUser)).rejects.toThrow('Failed to fetch store orders');
+      await expect(controller.findAllForStore(mockUser)).rejects.toThrow(
+        'Failed to fetch store orders',
+      );
       expect(orderService.findAllByStore).toHaveBeenCalledWith(
         mockUser.storeId,
         1,
@@ -171,7 +173,14 @@ describe('OrderController', () => {
       const productId = 'product-123';
       orderService.findAllByStore.mockResolvedValue(mockPaginatedOrders);
 
-      await controller.findAllForStore(mockUser, 1, 6, undefined, undefined, productId);
+      await controller.findAllForStore(
+        mockUser,
+        1,
+        6,
+        undefined,
+        undefined,
+        productId,
+      );
 
       expect(orderService.findAllByStore).toHaveBeenCalledWith(
         mockUser.storeId,
@@ -228,7 +237,9 @@ describe('OrderController', () => {
       const error = new Error('Failed to fetch orders');
       orderService.findAll.mockRejectedValue(error);
 
-      await expect(controller.findAll(mockRequest)).rejects.toThrow('Failed to fetch orders');
+      await expect(controller.findAll(mockRequest)).rejects.toThrow(
+        'Failed to fetch orders',
+      );
       expect(orderService.findAll).toHaveBeenCalledWith(
         mockUser.storeId,
         mockUser.id,
@@ -257,7 +268,9 @@ describe('OrderController', () => {
       const error = new Error('Order not found');
       orderService.findOne.mockRejectedValue(error);
 
-      await expect(controller.findOne(orderId, mockRequest)).rejects.toThrow('Order not found');
+      await expect(controller.findOne(orderId, mockRequest)).rejects.toThrow(
+        'Order not found',
+      );
       expect(orderService.findOne).toHaveBeenCalledWith(orderId, mockUser.id);
     });
   });
@@ -278,7 +291,10 @@ describe('OrderController', () => {
 
       const result = await controller.create(createOrderDto, mockRequest);
 
-      expect(orderService.create).toHaveBeenCalledWith(createOrderDto, mockUser.id);
+      expect(orderService.create).toHaveBeenCalledWith(
+        createOrderDto,
+        mockUser.id,
+      );
       expect(result).toEqual(mockOrder);
     });
 
@@ -286,8 +302,13 @@ describe('OrderController', () => {
       const error = new Error('Failed to create order');
       orderService.create.mockRejectedValue(error);
 
-      await expect(controller.create(createOrderDto, mockRequest)).rejects.toThrow('Failed to create order');
-      expect(orderService.create).toHaveBeenCalledWith(createOrderDto, mockUser.id);
+      await expect(
+        controller.create(createOrderDto, mockRequest),
+      ).rejects.toThrow('Failed to create order');
+      expect(orderService.create).toHaveBeenCalledWith(
+        createOrderDto,
+        mockUser.id,
+      );
     });
   });
 
@@ -311,7 +332,9 @@ describe('OrderController', () => {
     };
 
     it('should validate coupon by package successfully', async () => {
-      orderService.validateCouponByPackage.mockResolvedValue(mockValidationResult);
+      orderService.validateCouponByPackage.mockResolvedValue(
+        mockValidationResult,
+      );
 
       const result = await controller.validateCouponByPackage(
         validateCouponByPackageDto,
@@ -333,7 +356,10 @@ describe('OrderController', () => {
       orderService.validateCouponByPackage.mockRejectedValue(error);
 
       await expect(
-        controller.validateCouponByPackage(validateCouponByPackageDto, mockRequest),
+        controller.validateCouponByPackage(
+          validateCouponByPackageDto,
+          mockRequest,
+        ),
       ).rejects.toThrow('Package not found');
       expect(orderService.validateCouponByPackage).toHaveBeenCalledWith(
         validateCouponByPackageDto.packageId,
@@ -349,7 +375,10 @@ describe('OrderController', () => {
       orderService.validateCouponByPackage.mockRejectedValue(error);
 
       await expect(
-        controller.validateCouponByPackage(validateCouponByPackageDto, mockRequest),
+        controller.validateCouponByPackage(
+          validateCouponByPackageDto,
+          mockRequest,
+        ),
       ).rejects.toThrow('Coupon not found');
       expect(orderService.validateCouponByPackage).toHaveBeenCalledWith(
         validateCouponByPackageDto.packageId,

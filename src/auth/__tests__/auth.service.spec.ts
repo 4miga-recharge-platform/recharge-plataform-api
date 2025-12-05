@@ -19,15 +19,21 @@ jest.mock('bcrypt', () => ({
 
 // Mock email templates
 jest.mock('../../email/templates/password-reset.template', () => ({
-  getPasswordResetTemplate: jest.fn().mockReturnValue('<html>Password reset template</html>'),
+  getPasswordResetTemplate: jest
+    .fn()
+    .mockReturnValue('<html>Password reset template</html>'),
 }));
 
 jest.mock('../../email/templates/email-confirmation.template', () => ({
-  getEmailConfirmationTemplate: jest.fn().mockReturnValue('<html>Email confirmation template</html>'),
+  getEmailConfirmationTemplate: jest
+    .fn()
+    .mockReturnValue('<html>Email confirmation template</html>'),
 }));
 
 jest.mock('../../email/templates/email-change-confirmation.template', () => ({
-  getEmailChangeConfirmationTemplate: jest.fn().mockReturnValue('<html>Email change confirmation template</html>'),
+  getEmailChangeConfirmationTemplate: jest
+    .fn()
+    .mockReturnValue('<html>Email change confirmation template</html>'),
 }));
 
 describe('AuthService', () => {
@@ -137,8 +143,8 @@ describe('AuthService', () => {
         tiktokUrl: true,
         wppNumber: true,
         secondaryBannerUrl: true,
-      }
-    }
+      },
+    },
   };
 
   beforeEach(async () => {
@@ -224,7 +230,10 @@ describe('AuthService', () => {
         select: mockAuthUser,
       });
 
-      expect(bcrypt.compare).toHaveBeenCalledWith(loginDto.password, mockUser.password);
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        loginDto.password,
+        mockUser.password,
+      );
 
       expect(jwtService.signAsync).toHaveBeenCalledWith(mockUserData, {
         expiresIn: '10m',
@@ -298,7 +307,10 @@ describe('AuthService', () => {
         select: mockAdminAuthUser,
       });
 
-      expect(bcrypt.compare).toHaveBeenCalledWith(adminLoginDto.password, mockAdminUser.password);
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        adminLoginDto.password,
+        mockAdminUser.password,
+      );
 
       // Verify JWT data (should include storeId for token)
       const expectedJwtData = {
@@ -374,7 +386,12 @@ describe('AuthService', () => {
   describe('refreshAccessToken', () => {
     it('should refresh access token successfully for regular user', async () => {
       const refreshToken = 'valid-refresh-token';
-      const payload = { ...mockUserData, role: 'USER', iat: 1234567890, exp: 1234567890 };
+      const payload = {
+        ...mockUserData,
+        role: 'USER',
+        iat: 1234567890,
+        exp: 1234567890,
+      };
 
       jwtService.verifyAsync.mockResolvedValue(payload);
       jwtService.signAsync.mockResolvedValue('new-access-token');
@@ -384,7 +401,9 @@ describe('AuthService', () => {
       expect(jwtService.verifyAsync).toHaveBeenCalledWith(refreshToken);
       // Remove iat and exp from payload before calling signAsync
       const { iat, exp, ...userData } = payload;
-      expect(jwtService.signAsync).toHaveBeenCalledWith(userData, { expiresIn: '10m' });
+      expect(jwtService.signAsync).toHaveBeenCalledWith(userData, {
+        expiresIn: '10m',
+      });
 
       expect(result).toEqual({
         access: {
@@ -403,7 +422,7 @@ describe('AuthService', () => {
         email: mockAdminUser.email,
         role: 'RESELLER_ADMIN_4MIGA_USER',
         iat: 1234567890,
-        exp: 1234567890
+        exp: 1234567890,
       };
 
       jwtService.verifyAsync.mockResolvedValue(payload);
@@ -419,7 +438,9 @@ describe('AuthService', () => {
       });
       // Remove iat and exp from payload before calling signAsync
       const { iat, exp, ...userData } = payload;
-      expect(jwtService.signAsync).toHaveBeenCalledWith(userData, { expiresIn: '10m' });
+      expect(jwtService.signAsync).toHaveBeenCalledWith(userData, {
+        expiresIn: '10m',
+      });
 
       expect(result).toEqual({
         access: {
@@ -439,7 +460,9 @@ describe('AuthService', () => {
 
       jwtService.verifyAsync.mockRejectedValue(new Error('Invalid token'));
 
-      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow('Invalid or expired refresh token');
+      await expect(service.refreshAccessToken(refreshToken)).rejects.toThrow(
+        'Invalid or expired refresh token',
+      );
     });
   });
 
@@ -609,9 +632,9 @@ describe('AuthService', () => {
         confirmPassword: 'differentPassword',
       };
 
-      await expect(service.resetPassword(resetPasswordDtoWithMismatch)).rejects.toThrow(
-        new BadRequestException('Passwords do not match'),
-      );
+      await expect(
+        service.resetPassword(resetPasswordDtoWithMismatch),
+      ).rejects.toThrow(new BadRequestException('Passwords do not match'));
     });
   });
 
@@ -761,7 +784,9 @@ describe('AuthService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(unverifiedUser);
       prismaService.user.updateMany.mockResolvedValue({ count: 1 });
-      prismaService.store.findUnique.mockResolvedValue({ domain: 'https://www.example.com' });
+      prismaService.store.findUnique.mockResolvedValue({
+        domain: 'https://www.example.com',
+      });
       emailService.sendEmail.mockResolvedValue({} as any);
 
       const result = await service.resendEmailConfirmation(email, storeId);
@@ -798,7 +823,9 @@ describe('AuthService', () => {
     it('should throw BadRequestException when user not found', async () => {
       prismaService.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.resendEmailConfirmation(email, storeId)).rejects.toThrow(
+      await expect(
+        service.resendEmailConfirmation(email, storeId),
+      ).rejects.toThrow(
         new BadRequestException('User with this email does not exist'),
       );
     });
@@ -813,9 +840,9 @@ describe('AuthService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(verifiedUser);
 
-      await expect(service.resendEmailConfirmation(email, storeId)).rejects.toThrow(
-        new BadRequestException('Email is already verified'),
-      );
+      await expect(
+        service.resendEmailConfirmation(email, storeId),
+      ).rejects.toThrow(new BadRequestException('Email is already verified'));
     });
   });
 
@@ -825,7 +852,10 @@ describe('AuthService', () => {
       bcrypt.compare.mockResolvedValue(true);
       bcrypt.hash.mockResolvedValue('hashedNew');
 
-      prismaService.user.findUnique.mockResolvedValue({ id: 'user-123', password: 'oldHashed' });
+      prismaService.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        password: 'oldHashed',
+      });
       prismaService.user.update.mockResolvedValue({});
 
       const result = await service.changePassword('user-123', {
@@ -871,7 +901,10 @@ describe('AuthService', () => {
     it('should throw when current password is invalid', async () => {
       const bcrypt = require('bcrypt');
       bcrypt.compare.mockResolvedValue(false);
-      prismaService.user.findUnique.mockResolvedValue({ id: 'user-123', password: 'oldHashed' });
+      prismaService.user.findUnique.mockResolvedValue({
+        id: 'user-123',
+        password: 'oldHashed',
+      });
 
       await expect(
         service.changePassword('user-123', {
@@ -890,12 +923,20 @@ describe('AuthService', () => {
 
     it('should request email change and send code to new email', async () => {
       prismaService.user.findFirst
-        .mockResolvedValueOnce({ id: 'user-123', name: 'John Doe', emailVerified: true }) // current user
+        .mockResolvedValueOnce({
+          id: 'user-123',
+          name: 'John Doe',
+          emailVerified: true,
+        }) // current user
         .mockResolvedValueOnce(null); // no existing new email
       prismaService.user.update.mockResolvedValue({});
       emailService.sendEmail.mockResolvedValue({} as any);
 
-      const result = await service.requestEmailChange(currentEmail, newEmail, storeId);
+      const result = await service.requestEmailChange(
+        currentEmail,
+        newEmail,
+        storeId,
+      );
 
       expect(prismaService.user.findFirst).toHaveBeenNthCalledWith(1, {
         where: { email: currentEmail, storeId },
@@ -917,33 +958,45 @@ describe('AuthService', () => {
         'Confirme a alteração de e-mail',
         '<html>Email change confirmation template</html>',
       );
-      expect(result).toEqual({ message: 'Email change code sent to new email' });
+      expect(result).toEqual({
+        message: 'Email change code sent to new email',
+      });
     });
 
     it('should throw when user not found', async () => {
       prismaService.user.findFirst.mockResolvedValueOnce(null);
 
-      await expect(service.requestEmailChange(currentEmail, newEmail, storeId)).rejects.toThrow(
+      await expect(
+        service.requestEmailChange(currentEmail, newEmail, storeId),
+      ).rejects.toThrow(
         new BadRequestException('User with this email does not exist'),
       );
     });
 
     it('should throw when user email not verified', async () => {
-      prismaService.user.findFirst.mockResolvedValueOnce({ id: 'user-123', name: 'John Doe', emailVerified: false });
+      prismaService.user.findFirst.mockResolvedValueOnce({
+        id: 'user-123',
+        name: 'John Doe',
+        emailVerified: false,
+      });
 
-      await expect(service.requestEmailChange(currentEmail, newEmail, storeId)).rejects.toThrow(
-        new BadRequestException('Email not verified'),
-      );
+      await expect(
+        service.requestEmailChange(currentEmail, newEmail, storeId),
+      ).rejects.toThrow(new BadRequestException('Email not verified'));
     });
 
     it('should throw when new email already in use', async () => {
       prismaService.user.findFirst
-        .mockResolvedValueOnce({ id: 'user-123', name: 'John Doe', emailVerified: true })
+        .mockResolvedValueOnce({
+          id: 'user-123',
+          name: 'John Doe',
+          emailVerified: true,
+        })
         .mockResolvedValueOnce({ id: 'other-user' });
 
-      await expect(service.requestEmailChange(currentEmail, newEmail, storeId)).rejects.toThrow(
-        new BadRequestException('New email is already in use'),
-      );
+      await expect(
+        service.requestEmailChange(currentEmail, newEmail, storeId),
+      ).rejects.toThrow(new BadRequestException('New email is already in use'));
     });
   });
 
@@ -965,7 +1018,12 @@ describe('AuthService', () => {
         .mockResolvedValueOnce(null); // new email not in use
       prismaService.user.update.mockResolvedValue({});
 
-      const result = await service.confirmEmailChange(currentEmail, newEmail, code, storeId);
+      const result = await service.confirmEmailChange(
+        currentEmail,
+        newEmail,
+        code,
+        storeId,
+      );
 
       expect(prismaService.user.findFirst).toHaveBeenNthCalledWith(1, {
         where: { email: currentEmail, storeId },
@@ -995,7 +1053,9 @@ describe('AuthService', () => {
     it('should throw when user not found', async () => {
       prismaService.user.findFirst.mockResolvedValueOnce(null);
 
-      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+      await expect(
+        service.confirmEmailChange(currentEmail, newEmail, code, storeId),
+      ).rejects.toThrow(
         new BadRequestException('User with this email does not exist'),
       );
     });
@@ -1009,18 +1069,26 @@ describe('AuthService', () => {
         emailVerified: false,
       });
 
-      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
-        new BadRequestException('Email not verified'),
-      );
+      await expect(
+        service.confirmEmailChange(currentEmail, newEmail, code, storeId),
+      ).rejects.toThrow(new BadRequestException('Email not verified'));
     });
 
     it('should throw when no code or expiration', async () => {
       prismaService.user.findFirst.mockResolvedValueOnce({
-        id: 'user-123', email: currentEmail, emailConfirmationCode: null, emailConfirmationExpires: null, emailVerified: true,
+        id: 'user-123',
+        email: currentEmail,
+        emailConfirmationCode: null,
+        emailConfirmationExpires: null,
+        emailVerified: true,
       });
 
-      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
-        new BadRequestException('No confirmation code found or code has expired'),
+      await expect(
+        service.confirmEmailChange(currentEmail, newEmail, code, storeId),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'No confirmation code found or code has expired',
+        ),
       );
     });
 
@@ -1033,9 +1101,9 @@ describe('AuthService', () => {
         emailVerified: true,
       });
 
-      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
-        new BadRequestException('Invalid confirmation code'),
-      );
+      await expect(
+        service.confirmEmailChange(currentEmail, newEmail, code, storeId),
+      ).rejects.toThrow(new BadRequestException('Invalid confirmation code'));
     });
 
     it('should throw when code expired', async () => {
@@ -1047,7 +1115,9 @@ describe('AuthService', () => {
         emailVerified: true,
       });
 
-      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
+      await expect(
+        service.confirmEmailChange(currentEmail, newEmail, code, storeId),
+      ).rejects.toThrow(
         new BadRequestException('Confirmation code has expired'),
       );
     });
@@ -1063,9 +1133,9 @@ describe('AuthService', () => {
         })
         .mockResolvedValueOnce({ id: 'other-user' });
 
-      await expect(service.confirmEmailChange(currentEmail, newEmail, code, storeId)).rejects.toThrow(
-        new BadRequestException('New email is already in use'),
-      );
+      await expect(
+        service.confirmEmailChange(currentEmail, newEmail, code, storeId),
+      ).rejects.toThrow(new BadRequestException('New email is already in use'));
     });
   });
 });

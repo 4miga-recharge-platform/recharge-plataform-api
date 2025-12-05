@@ -450,12 +450,17 @@ describe('ProductController', () => {
       const mockResponse = {
         success: true,
         settings: { id: 'settings-123' },
-        fileUrl: 'https://storage.googleapis.com/bucket/store/store-123/product/product-123/banner/banner.png',
+        fileUrl:
+          'https://storage.googleapis.com/bucket/store/store-123/product/product-123/banner/banner.png',
         message: 'Banner image updated successfully',
       };
       productService.updateStoreProductImage.mockResolvedValue(mockResponse);
 
-      const result = await controller.uploadStoreProductBanner(productId, file, user);
+      const result = await controller.uploadStoreProductBanner(
+        productId,
+        file,
+        user,
+      );
 
       expect(productService.updateStoreProductImage).toHaveBeenCalledWith(
         user.storeId,
@@ -467,8 +472,9 @@ describe('ProductController', () => {
     });
 
     it('should throw BadRequestException when file is missing', async () => {
-      await expect(controller.uploadStoreProductBanner(productId, undefined as any, user))
-        .rejects.toThrow('No file provided');
+      await expect(
+        controller.uploadStoreProductBanner(productId, undefined as any, user),
+      ).rejects.toThrow('No file provided');
       expect(productService.updateStoreProductImage).not.toHaveBeenCalled();
     });
   });
@@ -489,12 +495,17 @@ describe('ProductController', () => {
       const mockResponse = {
         success: true,
         settings: { id: 'settings-123' },
-        fileUrl: 'https://storage.googleapis.com/bucket/store/store-123/product/product-123/card/card.jpg',
+        fileUrl:
+          'https://storage.googleapis.com/bucket/store/store-123/product/product-123/card/card.jpg',
         message: 'Card image updated successfully',
       };
       productService.updateStoreProductImage.mockResolvedValue(mockResponse);
 
-      const result = await controller.uploadStoreProductCard(productId, file, user);
+      const result = await controller.uploadStoreProductCard(
+        productId,
+        file,
+        user,
+      );
 
       expect(productService.updateStoreProductImage).toHaveBeenCalledWith(
         user.storeId,
@@ -506,8 +517,9 @@ describe('ProductController', () => {
     });
 
     it('should throw BadRequestException when file is missing', async () => {
-      await expect(controller.uploadStoreProductCard(productId, undefined as any, user))
-        .rejects.toThrow('No file provided');
+      await expect(
+        controller.uploadStoreProductCard(productId, undefined as any, user),
+      ).rejects.toThrow('No file provided');
       expect(productService.updateStoreProductImage).not.toHaveBeenCalled();
     });
   });

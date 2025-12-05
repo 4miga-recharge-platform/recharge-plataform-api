@@ -127,7 +127,10 @@ describe('BraviveService', () => {
     it('should create a payment successfully', async () => {
       httpService.post.mockResolvedValue(mockPaymentResponse);
 
-      const result = await service.createPayment(mockCreatePaymentDto, mockToken);
+      const result = await service.createPayment(
+        mockCreatePaymentDto,
+        mockToken,
+      );
 
       expect(httpService.post).toHaveBeenCalledWith(
         '/payments',
@@ -170,9 +173,9 @@ describe('BraviveService', () => {
       const error = new Error('Payment not found');
       httpService.get.mockRejectedValue(error);
 
-      await expect(
-        service.getPayment('invalid-id', mockToken),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.getPayment('invalid-id', mockToken)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -191,11 +194,10 @@ describe('BraviveService', () => {
         page: 1,
       });
 
-      expect(httpService.get).toHaveBeenCalledWith(
-        '/payments',
-        mockToken,
-        { limit: 10, page: 1 },
-      );
+      expect(httpService.get).toHaveBeenCalledWith('/payments', mockToken, {
+        limit: 10,
+        page: 1,
+      });
       expect(result).toEqual(mockPayments);
     });
 
@@ -208,7 +210,11 @@ describe('BraviveService', () => {
 
       const result = await service.listPayments(mockToken);
 
-      expect(httpService.get).toHaveBeenCalledWith('/payments', mockToken, undefined);
+      expect(httpService.get).toHaveBeenCalledWith(
+        '/payments',
+        mockToken,
+        undefined,
+      );
       expect(result).toEqual(mockPayments);
     });
   });
@@ -403,7 +409,9 @@ describe('BraviveService', () => {
           },
         });
       });
-      bigoService.diamondRecharge.mockRejectedValue(new Error('Bigo API error'));
+      bigoService.diamondRecharge.mockRejectedValue(
+        new Error('Bigo API error'),
+      );
 
       // Should not throw
       await service.handleWebhook(mockWebhookDto);
@@ -486,4 +494,3 @@ describe('BraviveService', () => {
     });
   });
 });
-

@@ -171,9 +171,9 @@ describe('StoreController', () => {
       const error = new Error('Failed to update store');
       storeService.update.mockRejectedValue(error);
 
-      await expect(
-        controller.update(mockUser, updateStoreDto),
-      ).rejects.toThrow('Failed to update store');
+      await expect(controller.update(mockUser, updateStoreDto)).rejects.toThrow(
+        'Failed to update store',
+      );
       expect(storeService.update).toHaveBeenCalledWith(storeId, updateStoreDto);
     });
   });

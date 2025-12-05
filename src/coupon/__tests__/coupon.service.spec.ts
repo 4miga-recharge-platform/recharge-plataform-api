@@ -35,32 +35,6 @@ describe('CouponService', () => {
     },
   };
 
-  const mockInactiveCoupon = {
-    ...mockCoupon,
-    isActive: false,
-  };
-
-  const mockExpiredCoupon = {
-    ...mockCoupon,
-    expiresAt: new Date('2020-12-31'),
-  };
-
-  const mockValidCoupon = {
-    ...mockCoupon,
-    expiresAt: new Date('2025-12-31'), // Future date for valid tests
-  };
-
-  const mockMaxUsesCoupon = {
-    ...mockCoupon,
-    maxUses: 5,
-    timesUsed: 5,
-  };
-
-  const mockMinOrderCoupon = {
-    ...mockCoupon,
-    minOrderAmount: 30,
-  };
-
   const mockStore = {
     id: 'store-123',
     name: 'Loja Exemplo',

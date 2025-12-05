@@ -34,7 +34,10 @@ describe('StoreService', () => {
     logoUrl: 'https://example.com/logo.png',
     miniLogoUrl: 'https://example.com/mini-logo.png',
     faviconUrl: 'https://example.com/favicon.ico',
-    bannersUrl: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
+    bannersUrl: [
+      'https://example.com/banner1.png',
+      'https://example.com/banner2.png',
+    ],
     secondaryBannerUrl: 'https://example.com/offer-banner.png',
   };
 
@@ -156,7 +159,9 @@ describe('StoreService', () => {
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      prismaService.store.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.store.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAll()).rejects.toThrow(
         new BadRequestException('Failed to fetch stores'),
@@ -188,7 +193,9 @@ describe('StoreService', () => {
     });
 
     it('should throw BadRequestException when database error occurs', async () => {
-      prismaService.store.findUnique.mockRejectedValue(new Error('Database error'));
+      prismaService.store.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findOne(storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch store'),
@@ -216,10 +223,9 @@ describe('StoreService', () => {
 
       const result = await service.create(createStoreDto);
 
-      expect(validateRequiredFields).toHaveBeenCalledWith(
-        createStoreDto,
-        ['name'],
-      );
+      expect(validateRequiredFields).toHaveBeenCalledWith(createStoreDto, [
+        'name',
+      ]);
 
       expect(prismaService.store.create).toHaveBeenCalledWith({
         data: createStoreDto,
@@ -264,7 +270,10 @@ describe('StoreService', () => {
       validateUpdateFields.mockImplementation(() => {});
 
       prismaService.store.findUnique.mockResolvedValue(mockStore);
-      prismaService.store.update.mockResolvedValue({ ...mockStore, ...updateStoreDto });
+      prismaService.store.update.mockResolvedValue({
+        ...mockStore,
+        ...updateStoreDto,
+      });
 
       const result = await service.update(storeId, updateStoreDto);
 
@@ -273,14 +282,16 @@ describe('StoreService', () => {
         select: mockStoreSelect,
       });
 
-      expect(validateUpdateFields).toHaveBeenCalledWith(updateStoreDto, ['name', 'email']);
+      expect(validateUpdateFields).toHaveBeenCalledWith(updateStoreDto, [
+        'name',
+        'email',
+      ]);
 
       expect(prismaService.store.update).toHaveBeenCalledWith({
         where: { id: storeId },
         data: updateStoreDto,
         select: mockStoreSelect,
       });
-
 
       expect(result).toEqual({ ...mockStore, ...updateStoreDto });
     });
@@ -325,7 +336,6 @@ describe('StoreService', () => {
         select: mockStoreSelect,
       });
 
-
       expect(result).toEqual(mockStore);
     });
 
@@ -359,7 +369,9 @@ describe('StoreService', () => {
     };
 
     it('should add a banner successfully', async () => {
-      mockStorageService.uploadFile.mockResolvedValue('https://storage.com/banner.png');
+      mockStorageService.uploadFile.mockResolvedValue(
+        'https://storage.com/banner.png',
+      );
 
       prismaService.store.findUnique.mockResolvedValue({
         id: storeId,
@@ -368,7 +380,10 @@ describe('StoreService', () => {
 
       const updatedStore = {
         ...mockStore,
-        bannersUrl: ['https://storage.com/existing-banner.png', 'https://storage.com/banner.png'],
+        bannersUrl: [
+          'https://storage.com/existing-banner.png',
+          'https://storage.com/banner.png',
+        ],
       };
 
       prismaService.store.update.mockResolvedValue(updatedStore);
@@ -384,7 +399,10 @@ describe('StoreService', () => {
       expect(prismaService.store.update).toHaveBeenCalledWith({
         where: { id: storeId },
         data: {
-          bannersUrl: ['https://storage.com/existing-banner.png', 'https://storage.com/banner.png'],
+          bannersUrl: [
+            'https://storage.com/existing-banner.png',
+            'https://storage.com/banner.png',
+          ],
         },
         select: mockStoreSelect,
       });
@@ -422,12 +440,19 @@ describe('StoreService', () => {
 
       prismaService.store.findUnique.mockResolvedValue({
         id: storeId,
-        bannersUrl: ['https://storage.com/banner1.png', 'https://storage.com/banner2.png', 'https://storage.com/banner3.png'],
+        bannersUrl: [
+          'https://storage.com/banner1.png',
+          'https://storage.com/banner2.png',
+          'https://storage.com/banner3.png',
+        ],
       });
 
       const updatedStore = {
         ...mockStore,
-        bannersUrl: ['https://storage.com/banner1.png', 'https://storage.com/banner3.png'],
+        bannersUrl: [
+          'https://storage.com/banner1.png',
+          'https://storage.com/banner3.png',
+        ],
       };
 
       prismaService.store.update.mockResolvedValue(updatedStore);
@@ -439,11 +464,16 @@ describe('StoreService', () => {
         select: { id: true, bannersUrl: true },
       });
 
-      expect(mockStorageService.deleteFile).toHaveBeenCalledWith('https://storage.com/banner2.png');
+      expect(mockStorageService.deleteFile).toHaveBeenCalledWith(
+        'https://storage.com/banner2.png',
+      );
       expect(prismaService.store.update).toHaveBeenCalledWith({
         where: { id: storeId },
         data: {
-          bannersUrl: ['https://storage.com/banner1.png', 'https://storage.com/banner3.png'],
+          bannersUrl: [
+            'https://storage.com/banner1.png',
+            'https://storage.com/banner3.png',
+          ],
         },
         select: mockStoreSelect,
       });
@@ -541,9 +571,9 @@ describe('StoreService', () => {
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.addMultipleBanners(storeId, mockFiles)).rejects.toThrow(
-        new BadRequestException('Store not found'),
-      );
+      await expect(
+        service.addMultipleBanners(storeId, mockFiles),
+      ).rejects.toThrow(new BadRequestException('Store not found'));
     });
   });
 
@@ -578,8 +608,12 @@ describe('StoreService', () => {
       });
 
       expect(mockStorageService.deleteFile).toHaveBeenCalledTimes(2);
-      expect(mockStorageService.deleteFile).toHaveBeenCalledWith('https://storage.com/banner1.png');
-      expect(mockStorageService.deleteFile).toHaveBeenCalledWith('https://storage.com/banner3.png');
+      expect(mockStorageService.deleteFile).toHaveBeenCalledWith(
+        'https://storage.com/banner1.png',
+      );
+      expect(mockStorageService.deleteFile).toHaveBeenCalledWith(
+        'https://storage.com/banner3.png',
+      );
 
       expect(prismaService.store.update).toHaveBeenCalledWith({
         where: { id: storeId },
@@ -597,9 +631,9 @@ describe('StoreService', () => {
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.removeMultipleBanners(storeId, indices)).rejects.toThrow(
-        new BadRequestException('Store not found'),
-      );
+      await expect(
+        service.removeMultipleBanners(storeId, indices),
+      ).rejects.toThrow(new BadRequestException('Store not found'));
     });
 
     it('should throw BadRequestException when no valid indices provided', async () => {
@@ -608,9 +642,9 @@ describe('StoreService', () => {
         bannersUrl: ['https://storage.com/banner1.png'],
       });
 
-      await expect(service.removeMultipleBanners(storeId, [5, 10])).rejects.toThrow(
-        new BadRequestException('No valid indices provided'),
-      );
+      await expect(
+        service.removeMultipleBanners(storeId, [5, 10]),
+      ).rejects.toThrow(new BadRequestException('No valid indices provided'));
     });
   });
 
@@ -724,7 +758,9 @@ describe('StoreService', () => {
         select: mockStoreSelect,
       });
 
-      expect(prismaService.storeMonthlySales.findFirst).toHaveBeenCalledTimes(2);
+      expect(prismaService.storeMonthlySales.findFirst).toHaveBeenCalledTimes(
+        2,
+      );
 
       expect(result.period.type).toBe('current_month');
       expect(result.summary.totalSales).toBe(50000.0);
@@ -1017,10 +1053,12 @@ describe('StoreService', () => {
 
   describe('saveBraviveToken', () => {
     const storeId = 'store-123';
-    const token = 'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+    const token =
+      'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
 
     it('should encrypt and save Bravive token successfully', async () => {
-      const encryptedToken = 'encrypted_VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+      const encryptedToken =
+        'encrypted_VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.store.update.mockResolvedValue({
         ...mockStore,
@@ -1038,9 +1076,9 @@ describe('StoreService', () => {
 
     it('should throw BadRequestException when store not found', async () => {
       // Mock findOne to throw error (store not found)
-      jest.spyOn(service, 'findOne').mockRejectedValue(
-        new BadRequestException('Failed to fetch store'),
-      );
+      jest
+        .spyOn(service, 'findOne')
+        .mockRejectedValue(new BadRequestException('Failed to fetch store'));
 
       await expect(service.saveBraviveToken(storeId, token)).rejects.toThrow(
         BadRequestException,
@@ -1050,8 +1088,10 @@ describe('StoreService', () => {
 
   describe('getBraviveToken', () => {
     const storeId = 'store-123';
-    const encryptedToken = 'encrypted_VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
-    const decryptedToken = 'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+    const encryptedToken =
+      'encrypted_VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
+    const decryptedToken =
+      'VA_433676ab1f29f3364ae83cdbb73628f97ffb26c5c6488c826e50e32067f64057';
 
     it('should decrypt and return Bravive token successfully', async () => {
       prismaService.store.findUnique.mockResolvedValue({

@@ -8,5 +8,5 @@ export const LoggedUser = createParamDecorator((_, ctx: ExecutionContext) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, ...data } = user;
 
-    return data;
+  return data;
 });

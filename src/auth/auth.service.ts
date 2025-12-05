@@ -67,8 +67,8 @@ export class AuthService {
         tiktokUrl: true,
         wppNumber: true,
         secondaryBannerUrl: true,
-      }
-    }
+      },
+    },
   };
 
   async login(loginDto: LoginDto) {
@@ -196,7 +196,10 @@ export class AuthService {
       const { iat, exp, ...userData } = payload;
 
       // Check if user is admin to include store data
-      if (userData.role === 'RESELLER_ADMIN_4MIGA_USER' || userData.role === 'MASTER_ADMIN_4MIGA_USER') {
+      if (
+        userData.role === 'RESELLER_ADMIN_4MIGA_USER' ||
+        userData.role === 'MASTER_ADMIN_4MIGA_USER'
+      ) {
         // Fetch user with store data for admin
         const adminUser = await this.prisma.user.findFirst({
           where: { email: userData.email },
@@ -581,7 +584,13 @@ export class AuthService {
     }
 
     // Send new confirmation email
-    const html = getEmailConfirmationTemplate(code, user.name, store.domain, email, storeId);
+    const html = getEmailConfirmationTemplate(
+      code,
+      user.name,
+      store.domain,
+      email,
+      storeId,
+    );
     await this.emailService.sendEmail(
       email,
       'Confirme seu cadastro - Novo código',
@@ -593,7 +602,11 @@ export class AuthService {
     };
   }
 
-  async requestEmailChange(currentEmail: string, newEmail: string, storeId: string) {
+  async requestEmailChange(
+    currentEmail: string,
+    newEmail: string,
+    storeId: string,
+  ) {
     // Check if current user exists and is verified
     const user = await this.prisma.user.findFirst({
       where: { email: currentEmail, storeId },
@@ -665,7 +678,9 @@ export class AuthService {
 
     // Validate code
     if (!user.emailConfirmationCode || !user.emailConfirmationExpires) {
-      throw new BadRequestException('No confirmation code found or code has expired');
+      throw new BadRequestException(
+        'No confirmation code found or code has expired',
+      );
     }
     if (user.emailConfirmationCode !== code) {
       throw new BadRequestException('Invalid confirmation code');

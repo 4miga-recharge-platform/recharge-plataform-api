@@ -67,4 +67,3 @@ export class PaymentResponseDto {
   })
   created_at: string;
 }
-

@@ -168,9 +168,9 @@ describe('BigoService', () => {
         seqid: mockRechargePrecheckDto.seqid,
       });
 
-      await expect(service.rechargePrecheck(mockRechargePrecheckDto))
-        .rejects
-        .toThrow(BadRequestException);
+      await expect(
+        service.rechargePrecheck(mockRechargePrecheckDto),
+      ).rejects.toThrow(BadRequestException);
 
       expect(prismaService.bigoRecharge.findFirst).toHaveBeenCalledWith({
         where: { seqid: mockRechargePrecheckDto.seqid },
@@ -183,12 +183,12 @@ describe('BigoService', () => {
 
       // Mock API failure
       (firstValueFrom as jest.Mock).mockRejectedValue(
-        new BadRequestException('Bigo API Error (7212012): request frequently')
+        new BadRequestException('Bigo API Error (7212012): request frequently'),
       );
 
-      await expect(service.rechargePrecheck(mockRechargePrecheckDto))
-        .rejects
-        .toThrow(BadRequestException);
+      await expect(
+        service.rechargePrecheck(mockRechargePrecheckDto),
+      ).rejects.toThrow(BadRequestException);
 
       // Verify that no log entry was created (since it only creates on success)
       expect(prismaService.bigoRecharge.create).not.toHaveBeenCalled();
@@ -231,23 +231,24 @@ describe('BigoService', () => {
         seqid: mockDiamondRechargeDto.seqid,
       });
 
-      await expect(service.diamondRecharge(mockDiamondRechargeDto))
-        .rejects
-        .toThrow(BadRequestException);
+      await expect(
+        service.diamondRecharge(mockDiamondRechargeDto),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw error if bu_orderid already exists', async () => {
       // Mock no existing seqid but existing bu_orderid
       prismaService.bigoRecharge.findFirst
         .mockResolvedValueOnce(null) // seqid check
-        .mockResolvedValueOnce({     // bu_orderid check
+        .mockResolvedValueOnce({
+          // bu_orderid check
           id: 'existing-123',
           buOrderId: mockDiamondRechargeDto.bu_orderid,
         });
 
-      await expect(service.diamondRecharge(mockDiamondRechargeDto))
-        .rejects
-        .toThrow(BadRequestException);
+      await expect(
+        service.diamondRecharge(mockDiamondRechargeDto),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -319,7 +320,7 @@ describe('BigoService', () => {
 
     it('should handle errors gracefully', async () => {
       prismaService.bigoRecharge.findMany.mockRejectedValue(
-        new Error('Database error')
+        new Error('Database error'),
       );
 
       const result = await service.getRechargeLogs(5);
@@ -355,7 +356,9 @@ describe('BigoService', () => {
 
   describe('extractRescodeFromError', () => {
     it('should extract rescode from Bigo API error message', () => {
-      const error = new BadRequestException('Bigo API Error (7212012): request frequently');
+      const error = new BadRequestException(
+        'Bigo API Error (7212012): request frequently',
+      );
 
       // Access private method for testing
       const result = (service as any).extractRescodeFromError(error);
@@ -374,13 +377,19 @@ describe('BigoService', () => {
 
   describe('getBigoErrorMessage', () => {
     it('should return user-friendly error message for known rescode', () => {
-      const result = (service as any).getBigoErrorMessage(7212004, 'recharge_bigoid is not existed');
+      const result = (service as any).getBigoErrorMessage(
+        7212004,
+        'recharge_bigoid is not existed',
+      );
 
       expect(result).toBe('Bigo API Error (7212004): Bigo user does not exist');
     });
 
     it('should return original message for unknown rescode', () => {
-      const result = (service as any).getBigoErrorMessage(999999, 'Unknown error');
+      const result = (service as any).getBigoErrorMessage(
+        999999,
+        'Unknown error',
+      );
 
       expect(result).toBe('Bigo API Error (999999): Unknown error');
     });

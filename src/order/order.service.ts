@@ -19,7 +19,10 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { ValidateCouponDto } from './dto/validate-coupon.dto';
 import { BraviveService } from '../bravive/bravive.service';
 import { StoreService } from '../store/store.service';
-import { CreatePaymentDto, PaymentMethod } from '../bravive/dto/create-payment.dto';
+import {
+  CreatePaymentDto,
+  PaymentMethod,
+} from '../bravive/dto/create-payment.dto';
 import { BigoService } from '../bigo/bigo.service';
 import { env } from '../env';
 
@@ -533,7 +536,9 @@ export class OrderService {
         attempts++;
 
         if (attempts >= maxAttempts) {
-          throw new BadRequestException('Failed to generate unique order number');
+          throw new BadRequestException(
+            'Failed to generate unique order number',
+          );
         }
       } while (existingOrder);
 
@@ -543,7 +548,9 @@ export class OrderService {
         const braviveToken = await this.storeService.getBraviveToken(storeId);
 
         if (!braviveToken) {
-          throw new BadRequestException('Payment processing failed: Bravive token not configured');
+          throw new BadRequestException(
+            'Payment processing failed: Bravive token not configured',
+          );
         }
 
         try {
@@ -612,7 +619,6 @@ export class OrderService {
             externalId: braviveResponse?.id || null,
           },
         });
-
 
         // 5. Create coupon usage record if coupon was validated
         let couponUsage: any = null;
@@ -1124,7 +1130,6 @@ export class OrderService {
 
     return `${timestamp}${hash}${random}`;
   }
-
 
   async validateCoupon(
     validateCouponDto: ValidateCouponDto,

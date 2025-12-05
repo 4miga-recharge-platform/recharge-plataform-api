@@ -455,7 +455,9 @@ export class BraviveService {
       }
     });
 
-    this.logger.warn(`Payment dispute registered for order ${orderId} - Awaiting resolution`);
+    this.logger.warn(
+      `Payment dispute registered for order ${orderId} - Awaiting resolution`,
+    );
   }
 
   /**

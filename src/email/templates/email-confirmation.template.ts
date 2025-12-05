@@ -3,7 +3,7 @@ export function getEmailConfirmationTemplate(
   userName: string,
   domain: string,
   email: string,
-  storeId: string
+  storeId: string,
 ): string {
   // URL encode the email for the query parameter
   const encodedEmail = encodeURIComponent(email);

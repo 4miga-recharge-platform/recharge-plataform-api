@@ -36,7 +36,9 @@ export class UserCleanupService {
         return;
       }
 
-      this.logger.log(`Found ${unverifiedUsers.length} unverified users to delete`);
+      this.logger.log(
+        `Found ${unverifiedUsers.length} unverified users to delete`,
+      );
 
       // Delete unverified users
       const deleteResult = await this.prisma.user.deleteMany({
@@ -48,13 +50,16 @@ export class UserCleanupService {
         },
       });
 
-      this.logger.log(`Successfully deleted ${deleteResult.count} unverified users`);
+      this.logger.log(
+        `Successfully deleted ${deleteResult.count} unverified users`,
+      );
 
       // Log details of deleted users for monitoring
-      unverifiedUsers.forEach(user => {
-        this.logger.log(`Deleted unverified user: ${user.email} (${user.name}) - Created: ${user.createdAt}`);
+      unverifiedUsers.forEach((user) => {
+        this.logger.log(
+          `Deleted unverified user: ${user.email} (${user.name}) - Created: ${user.createdAt}`,
+        );
       });
-
     } catch (error) {
       this.logger.error('Error during cleanup of unverified users:', error);
     }

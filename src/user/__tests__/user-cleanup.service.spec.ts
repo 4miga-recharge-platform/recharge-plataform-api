@@ -116,8 +116,6 @@ describe('UserCleanupService', () => {
       expect(prismaService.user.deleteMany).not.toHaveBeenCalled();
     });
 
-
-
     it('should handle single user cleanup', async () => {
       const now = new Date('2024-01-02T12:00:00Z');
       jest.spyOn(global, 'Date').mockImplementation(() => now as any);

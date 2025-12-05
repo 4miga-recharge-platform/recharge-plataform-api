@@ -37,7 +37,7 @@ describe('InfluencerService', () => {
       influencerId: 'influencer-123',
       month: 12,
       year: 2024,
-      totalSales: 1500.50,
+      totalSales: 1500.5,
       createdAt: new Date('2024-12-01T00:00:00.000Z'),
       updatedAt: new Date('2024-12-01T00:00:00.000Z'),
     },
@@ -198,8 +198,8 @@ describe('InfluencerService', () => {
           storeId: 'store-123',
           OR: [
             { name: { contains: 'joão', mode: 'insensitive' } },
-            { email: { contains: 'joão', mode: 'insensitive' } }
-          ]
+            { email: { contains: 'joão', mode: 'insensitive' } },
+          ],
         },
         select: mockInfluencerSelectBasic,
         orderBy: {
@@ -213,9 +213,9 @@ describe('InfluencerService', () => {
           storeId: 'store-123',
           OR: [
             { name: { contains: 'joão', mode: 'insensitive' } },
-            { email: { contains: 'joão', mode: 'insensitive' } }
-          ]
-        }
+            { email: { contains: 'joão', mode: 'insensitive' } },
+          ],
+        },
       });
       expect(result).toEqual({
         data: influencers,
@@ -232,12 +232,18 @@ describe('InfluencerService', () => {
       prismaService.influencer.findMany.mockResolvedValue(influencers);
       prismaService.influencer.count.mockResolvedValue(totalInfluencers);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, true);
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        true,
+      );
 
       expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: true
+          isActive: true,
         },
         select: mockInfluencerSelectBasic,
         orderBy: {
@@ -249,8 +255,8 @@ describe('InfluencerService', () => {
       expect(prismaService.influencer.count).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: true
-        }
+          isActive: true,
+        },
       });
       expect(result).toEqual({
         data: influencers,
@@ -267,12 +273,18 @@ describe('InfluencerService', () => {
       prismaService.influencer.findMany.mockResolvedValue(influencers);
       prismaService.influencer.count.mockResolvedValue(totalInfluencers);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, false);
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        false,
+      );
 
       expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: false
+          isActive: false,
         },
         select: mockInfluencerSelectBasic,
         orderBy: {
@@ -284,8 +296,8 @@ describe('InfluencerService', () => {
       expect(prismaService.influencer.count).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
-          isActive: false
-        }
+          isActive: false,
+        },
       });
       expect(result).toEqual({
         data: influencers,
@@ -302,7 +314,13 @@ describe('InfluencerService', () => {
       prismaService.influencer.findMany.mockResolvedValue(influencers);
       prismaService.influencer.count.mockResolvedValue(totalInfluencers);
 
-      const result = await service.findByStore('store-123', 1, 10, undefined, undefined);
+      const result = await service.findByStore(
+        'store-123',
+        1,
+        10,
+        undefined,
+        undefined,
+      );
 
       expect(prismaService.influencer.findMany).toHaveBeenCalledWith({
         where: { storeId: 'store-123' },
@@ -322,9 +340,13 @@ describe('InfluencerService', () => {
     });
 
     it('should handle errors', async () => {
-      prismaService.influencer.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.influencer.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.findByStore('store-123')).rejects.toThrow(BadRequestException);
+      await expect(service.findByStore('store-123')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -354,19 +376,16 @@ describe('InfluencerService', () => {
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
         where: {
           id: 'influencer-123',
-          storeId: 'store-123'
+          storeId: 'store-123',
         },
         select: {
           ...mockInfluencerSelectComplete,
           monthlySales: {
             where: {
-              OR: months.map(({ month, year }) => ({ month, year }))
+              OR: months.map(({ month, year }) => ({ month, year })),
             },
-            orderBy: [
-              { year: 'desc' },
-              { month: 'desc' }
-            ]
-          }
+            orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          },
         },
       });
       expect(result).toEqual(mockInfluencer);
@@ -375,9 +394,9 @@ describe('InfluencerService', () => {
     it('should throw BadRequestException when influencer not found', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(null);
 
-      await expect(service.findOne('influencer-123', 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.findOne('influencer-123', 'store-123'),
+      ).rejects.toThrow(BadRequestException);
 
       // Get current date to calculate expected month/year filters (current + 2 previous)
       const currentDate = new Date();
@@ -399,31 +418,30 @@ describe('InfluencerService', () => {
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
         where: {
           id: 'influencer-123',
-          storeId: 'store-123'
+          storeId: 'store-123',
         },
         select: {
           ...mockInfluencerSelectComplete,
           monthlySales: {
             where: {
-              OR: months.map(({ month, year }) => ({ month, year }))
+              OR: months.map(({ month, year }) => ({ month, year })),
             },
-            orderBy: [
-              { year: 'desc' },
-              { month: 'desc' }
-            ]
-          }
+            orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          },
         },
       });
     });
 
     it('should handle errors', async () => {
-      prismaService.influencer.findFirst.mockRejectedValue(new Error('Database error'));
+      prismaService.influencer.findFirst.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.findOne('influencer-123', 'store-123')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.findOne('influencer-123', 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
-
-
 
   describe('create', () => {
     const createInfluencerDto: CreateInfluencerDto = {
@@ -465,9 +483,9 @@ describe('InfluencerService', () => {
     it('should throw BadRequestException when store not found', async () => {
       prismaService.store.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createInfluencerDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create(createInfluencerDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
       expect(prismaService.store.findUnique).toHaveBeenCalledWith({
         where: { id: 'store-123' },
       });
@@ -477,9 +495,9 @@ describe('InfluencerService', () => {
       prismaService.store.findUnique.mockResolvedValue(mockStore);
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
 
-      await expect(service.create(createInfluencerDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.create(createInfluencerDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
       expect(prismaService.influencer.findFirst).toHaveBeenCalledWith({
         where: {
           name: 'João Silva',
@@ -489,9 +507,13 @@ describe('InfluencerService', () => {
     });
 
     it('should handle errors', async () => {
-      prismaService.store.findUnique.mockRejectedValue(new Error('Database error'));
+      prismaService.store.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.create(createInfluencerDto, 'store-123')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(createInfluencerDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should set isActive to true by default when not provided', async () => {
@@ -537,7 +559,11 @@ describe('InfluencerService', () => {
         ...updateInfluencerDto,
       });
 
-      const result = await service.update('influencer-123', updateInfluencerDto, 'store-123');
+      const result = await service.update(
+        'influencer-123',
+        updateInfluencerDto,
+        'store-123',
+      );
 
       expect(prismaService.influencer.update).toHaveBeenCalledWith({
         where: { id: 'influencer-123' },
@@ -553,26 +579,28 @@ describe('InfluencerService', () => {
     it('should throw BadRequestException when influencer not found', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(null);
 
-      await expect(service.update('influencer-123', updateInfluencerDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.update('influencer-123', updateInfluencerDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when new name already exists for store', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
 
-      await expect(service.update('influencer-123', updateInfluencerDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.update('influencer-123', updateInfluencerDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should handle errors', async () => {
-      prismaService.influencer.findFirst.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.update('influencer-123', updateInfluencerDto, 'store-123')).rejects.toThrow(
-        BadRequestException,
+      prismaService.influencer.findFirst.mockRejectedValue(
+        new Error('Database error'),
       );
+
+      await expect(
+        service.update('influencer-123', updateInfluencerDto, 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -596,23 +624,31 @@ describe('InfluencerService', () => {
     it('should throw BadRequestException when influencer not found', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(null);
 
-      await expect(service.remove('influencer-123', 'store-123')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.remove('influencer-123', 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException when influencer has associated coupons', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
       prismaService.coupon.findMany.mockResolvedValue([{ id: 'coupon-123' }]);
 
-      await expect(service.remove('influencer-123', 'store-123')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.remove('influencer-123', 'store-123'),
+      ).rejects.toThrow(BadRequestException);
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: { influencerId: 'influencer-123' },
       });
     });
 
     it('should handle errors', async () => {
-      prismaService.influencer.findFirst.mockRejectedValue(new Error('Database error'));
+      prismaService.influencer.findFirst.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.remove('influencer-123', 'store-123')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.remove('influencer-123', 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -624,7 +660,9 @@ describe('InfluencerService', () => {
         { id: 'influencer-789', name: 'Pedro Costa' },
       ];
 
-      prismaService.influencer.findMany.mockResolvedValue(mockSimpleInfluencers);
+      prismaService.influencer.findMany.mockResolvedValue(
+        mockSimpleInfluencers,
+      );
 
       const result = await service.findAllByStoreSimple('store-123');
 
@@ -664,9 +702,13 @@ describe('InfluencerService', () => {
     });
 
     it('should handle errors', async () => {
-      prismaService.influencer.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.influencer.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.findAllByStoreSimple('store-123')).rejects.toThrow(BadRequestException);
+      await expect(service.findAllByStoreSimple('store-123')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -674,17 +716,21 @@ describe('InfluencerService', () => {
     it('should return sales history with pagination successfully', async () => {
       // Mock findOne to verify influencer exists
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
-      prismaService.influencerMonthlySales.findMany.mockResolvedValue(mockSalesHistory);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue(
+        mockSalesHistory,
+      );
       prismaService.influencerMonthlySales.count.mockResolvedValue(2);
 
-      const result = await service.getSalesHistory('influencer-123', 'store-123');
+      const result = await service.getSalesHistory(
+        'influencer-123',
+        'store-123',
+      );
 
-      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+      expect(
+        prismaService.influencerMonthlySales.findMany,
+      ).toHaveBeenCalledWith({
         where: { influencerId: 'influencer-123' },
-        orderBy: [
-          { year: 'desc' },
-          { month: 'desc' }
-        ],
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
         skip: 0,
         take: 10,
       });
@@ -702,17 +748,23 @@ describe('InfluencerService', () => {
 
     it('should return sales history with custom pagination parameters', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
-      prismaService.influencerMonthlySales.findMany.mockResolvedValue(mockSalesHistory);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue(
+        mockSalesHistory,
+      );
       prismaService.influencerMonthlySales.count.mockResolvedValue(15);
 
-      const result = await service.getSalesHistory('influencer-123', 'store-123', 2, 5);
+      const result = await service.getSalesHistory(
+        'influencer-123',
+        'store-123',
+        2,
+        5,
+      );
 
-      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+      expect(
+        prismaService.influencerMonthlySales.findMany,
+      ).toHaveBeenCalledWith({
         where: { influencerId: 'influencer-123' },
-        orderBy: [
-          { year: 'desc' },
-          { month: 'desc' }
-        ],
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
         skip: 5,
         take: 5,
       });
@@ -727,47 +779,56 @@ describe('InfluencerService', () => {
 
     it('should return sales history with year filter', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
-      prismaService.influencerMonthlySales.findMany.mockResolvedValue(mockSalesHistory);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue(
+        mockSalesHistory,
+      );
       prismaService.influencerMonthlySales.count.mockResolvedValue(2);
 
       await service.getSalesHistory('influencer-123', 'store-123', 1, 10, 2024);
 
-      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+      expect(
+        prismaService.influencerMonthlySales.findMany,
+      ).toHaveBeenCalledWith({
         where: {
           influencerId: 'influencer-123',
-          year: 2024
+          year: 2024,
         },
-        orderBy: [
-          { year: 'desc' },
-          { month: 'desc' }
-        ],
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
         skip: 0,
         take: 10,
       });
       expect(prismaService.influencerMonthlySales.count).toHaveBeenCalledWith({
         where: {
           influencerId: 'influencer-123',
-          year: 2024
+          year: 2024,
         },
       });
     });
 
     it('should return sales history with month filter', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
-      prismaService.influencerMonthlySales.findMany.mockResolvedValue([mockSalesHistory[0]]);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue([
+        mockSalesHistory[0],
+      ]);
       prismaService.influencerMonthlySales.count.mockResolvedValue(1);
 
-      await service.getSalesHistory('influencer-123', 'store-123', 1, 10, undefined, 12);
+      await service.getSalesHistory(
+        'influencer-123',
+        'store-123',
+        1,
+        10,
+        undefined,
+        12,
+      );
 
-      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+      expect(
+        prismaService.influencerMonthlySales.findMany,
+      ).toHaveBeenCalledWith({
         where: {
           influencerId: 'influencer-123',
-          month: 12
+          month: 12,
         },
-        orderBy: [
-          { year: 'desc' },
-          { month: 'desc' }
-        ],
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
         skip: 0,
         take: 10,
       });
@@ -775,21 +836,29 @@ describe('InfluencerService', () => {
 
     it('should return sales history with both year and month filters', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
-      prismaService.influencerMonthlySales.findMany.mockResolvedValue([mockSalesHistory[0]]);
+      prismaService.influencerMonthlySales.findMany.mockResolvedValue([
+        mockSalesHistory[0],
+      ]);
       prismaService.influencerMonthlySales.count.mockResolvedValue(1);
 
-      await service.getSalesHistory('influencer-123', 'store-123', 1, 10, 2024, 12);
+      await service.getSalesHistory(
+        'influencer-123',
+        'store-123',
+        1,
+        10,
+        2024,
+        12,
+      );
 
-      expect(prismaService.influencerMonthlySales.findMany).toHaveBeenCalledWith({
+      expect(
+        prismaService.influencerMonthlySales.findMany,
+      ).toHaveBeenCalledWith({
         where: {
           influencerId: 'influencer-123',
           year: 2024,
-          month: 12
+          month: 12,
         },
-        orderBy: [
-          { year: 'desc' },
-          { month: 'desc' }
-        ],
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
         skip: 0,
         take: 10,
       });
@@ -798,17 +867,19 @@ describe('InfluencerService', () => {
     it('should throw BadRequestException when influencer not found', async () => {
       prismaService.influencer.findFirst.mockResolvedValue(null);
 
-      await expect(service.getSalesHistory('influencer-123', 'store-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.getSalesHistory('influencer-123', 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should handle errors', async () => {
-      prismaService.influencer.findFirst.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.getSalesHistory('influencer-123', 'store-123')).rejects.toThrow(
-        BadRequestException,
+      prismaService.influencer.findFirst.mockRejectedValue(
+        new Error('Database error'),
       );
+
+      await expect(
+        service.getSalesHistory('influencer-123', 'store-123'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

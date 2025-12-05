@@ -17,11 +17,12 @@ describe('PackageService', () => {
   let prismaService: any;
   let storageService: any;
 
-  const dec = (n: number) => ({
-    toNumber: () => n,
-    valueOf: () => n,
-    toString: () => String(n),
-  } as any);
+  const dec = (n: number) =>
+    ({
+      toNumber: () => n,
+      valueOf: () => n,
+      toString: () => String(n),
+    }) as any;
 
   const mockPackage = {
     id: 'package-123',
@@ -154,7 +155,7 @@ describe('PackageService', () => {
         {
           ...mockPackage,
           basePrice: 19.99,
-          paymentMethods: mockPackage.paymentMethods.map(pm => ({
+          paymentMethods: mockPackage.paymentMethods.map((pm) => ({
             ...pm,
             price: 19.99,
           })),
@@ -188,7 +189,7 @@ describe('PackageService', () => {
       expect(result).toEqual({
         ...mockPackage,
         basePrice: 19.99,
-        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+        paymentMethods: mockPackage.paymentMethods.map((pm) => ({
           ...pm,
           price: 19.99,
         })),
@@ -272,7 +273,7 @@ describe('PackageService', () => {
       expect(result).toEqual({
         ...mockPackage,
         basePrice: 19.99,
-        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+        paymentMethods: mockPackage.paymentMethods.map((pm) => ({
           ...pm,
           price: 19.99,
         })),
@@ -308,7 +309,7 @@ describe('PackageService', () => {
       expect(result).toEqual({
         ...mockPackage,
         basePrice: 19.99,
-        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+        paymentMethods: mockPackage.paymentMethods.map((pm) => ({
           ...pm,
           price: 19.99,
         })),
@@ -354,7 +355,7 @@ describe('PackageService', () => {
         ...mockPackage,
         isActive: false,
         basePrice: 19.99,
-        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+        paymentMethods: mockPackage.paymentMethods.map((pm) => ({
           ...pm,
           price: 19.99,
         })),
@@ -409,7 +410,7 @@ describe('PackageService', () => {
         name: updatePackageDto.name,
         isActive: updatePackageDto.isActive,
         basePrice: dec(updatePackageDto.basePrice as number),
-        paymentMethods: updatePackageDto.paymentMethods?.map(pm => ({
+        paymentMethods: updatePackageDto.paymentMethods?.map((pm) => ({
           name: pm.name,
           price: dec(pm.price as number),
         })),
@@ -452,7 +453,7 @@ describe('PackageService', () => {
         name: updatePackageDto.name,
         isActive: updatePackageDto.isActive,
         basePrice: updatePackageDto.basePrice,
-        paymentMethods: updatePackageDto.paymentMethods?.map(pm => ({
+        paymentMethods: updatePackageDto.paymentMethods?.map((pm) => ({
           name: pm.name,
           price: pm.price,
         })),
@@ -483,10 +484,11 @@ describe('PackageService', () => {
         ...mockPackage,
         ...dtoWithProductId,
         basePrice: dec((dtoWithProductId as any).basePrice ?? 19.99),
-        paymentMethods: (dtoWithProductId as any).paymentMethods?.map((pm: any) => ({
-          name: pm.name,
-          price: dec(pm.price),
-        })) ?? mockPackage.paymentMethods,
+        paymentMethods:
+          (dtoWithProductId as any).paymentMethods?.map((pm: any) => ({
+            name: pm.name,
+            price: dec(pm.price),
+          })) ?? mockPackage.paymentMethods,
       });
 
       const result = await service.update(packageId, dtoWithProductId);
@@ -519,10 +521,11 @@ describe('PackageService', () => {
         ...mockPackage,
         ...dtoWithStoreId,
         basePrice: dec((dtoWithStoreId as any).basePrice ?? 19.99),
-        paymentMethods: (dtoWithStoreId as any).paymentMethods?.map((pm: any) => ({
-          name: pm.name,
-          price: dec(pm.price),
-        })) ?? mockPackage.paymentMethods,
+        paymentMethods:
+          (dtoWithStoreId as any).paymentMethods?.map((pm: any) => ({
+            name: pm.name,
+            price: dec(pm.price),
+          })) ?? mockPackage.paymentMethods,
       });
 
       const result = await service.update(packageId, dtoWithStoreId);
@@ -603,13 +606,16 @@ describe('PackageService', () => {
         basePrice: (mockPackage as any).basePrice,
       });
 
-      const result = await service.update(packageId, updateDtoWithoutPaymentMethods);
+      const result = await service.update(
+        packageId,
+        updateDtoWithoutPaymentMethods,
+      );
 
       expect(result).toEqual({
         ...mockPackage,
         ...updateDtoWithoutPaymentMethods,
         basePrice: 19.99,
-        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+        paymentMethods: mockPackage.paymentMethods.map((pm) => ({
           ...pm,
           price: 19.99,
         })),
@@ -641,7 +647,7 @@ describe('PackageService', () => {
         ...mockPackage,
         ...updateDtoWithRemoval,
         basePrice: (mockPackage as any).basePrice,
-        paymentMethods: updateDtoWithRemoval.paymentMethods.map(pm => ({
+        paymentMethods: updateDtoWithRemoval.paymentMethods.map((pm) => ({
           name: pm.name,
           price: dec(pm.price),
         })),
@@ -695,10 +701,12 @@ describe('PackageService', () => {
         ...mockPackage,
         ...updateDtoSamePaymentMethods,
         basePrice: (mockPackage as any).basePrice,
-        paymentMethods: updateDtoSamePaymentMethods.paymentMethods.map(pm => ({
-          name: pm.name,
-          price: dec(pm.price),
-        })),
+        paymentMethods: updateDtoSamePaymentMethods.paymentMethods.map(
+          (pm) => ({
+            name: pm.name,
+            price: dec(pm.price),
+          }),
+        ),
       });
 
       const result = await service.update(
@@ -738,7 +746,9 @@ describe('PackageService', () => {
     it('should remove a package successfully', async () => {
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: null });
-      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: null });
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({
+        imgCardUrl: null,
+      });
       prismaService.package.count = jest.fn().mockResolvedValue(0);
       storageService.deleteFile.mockResolvedValue(undefined);
       prismaService.package.delete.mockResolvedValue(mockPackage);
@@ -758,7 +768,7 @@ describe('PackageService', () => {
       expect(result).toEqual({
         ...mockPackage,
         basePrice: 19.99,
-        paymentMethods: mockPackage.paymentMethods.map(pm => ({
+        paymentMethods: mockPackage.paymentMethods.map((pm) => ({
           ...pm,
           price: 19.99,
         })),
@@ -791,14 +801,24 @@ describe('PackageService', () => {
 
     it('should delete unreferenced package images for a specific product', async () => {
       // Defaults
-      prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: 'https://storage.googleapis.com/bucket/product-default.png' });
-      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: 'https://storage.googleapis.com/bucket/store-default.png' });
+      prismaService.product.findUnique.mockResolvedValue({
+        imgCardUrl: 'https://storage.googleapis.com/bucket/product-default.png',
+      });
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({
+        imgCardUrl: 'https://storage.googleapis.com/bucket/store-default.png',
+      });
       // Packages referencing
       prismaService.package.findMany.mockResolvedValue([
-        { id: 'p1', imgCardUrl: 'https://storage.googleapis.com/bucket/store/store-123/product/product-123/package/p1/card.png?v=1' },
+        {
+          id: 'p1',
+          imgCardUrl:
+            'https://storage.googleapis.com/bucket/store/store-123/product/product-123/package/p1/card.png?v=1',
+        },
       ]);
       // Files in bucket
-      (storageService.getBucketUrl as jest.Mock).mockReturnValue('https://storage.googleapis.com/bucket');
+      (storageService.getBucketUrl as jest.Mock).mockReturnValue(
+        'https://storage.googleapis.com/bucket',
+      );
       (storageService.listFiles as jest.Mock).mockResolvedValue([
         'store/store-123/product/product-123/package/p1/card.png', // referenced → skip
         'store/store-123/product/product-123/package/p2/card.png', // unreferenced → delete
@@ -806,40 +826,66 @@ describe('PackageService', () => {
       ]);
       (storageService.deleteFile as jest.Mock).mockResolvedValue(undefined);
 
-      const result = (await service.cleanupPackageImages(productId, storeId)) as any;
+      const result = (await service.cleanupPackageImages(
+        productId,
+        storeId,
+      )) as any;
 
-      expect(storageService.listFiles).toHaveBeenCalledWith(`store/${storeId}/product/${productId}/package/`);
+      expect(storageService.listFiles).toHaveBeenCalledWith(
+        `store/${storeId}/product/${productId}/package/`,
+      );
       expect(storageService.deleteFile).toHaveBeenCalledTimes(2);
       expect(result.deleted.length).toBe(2);
-      expect(result.skipped.find((s: any) => s.reason === 'referenced_by_package')).toBeTruthy();
+      expect(
+        result.skipped.find((s: any) => s.reason === 'referenced_by_package'),
+      ).toBeTruthy();
     });
 
     it('should return errors when deletion fails', async () => {
       prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: null });
-      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: null });
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({
+        imgCardUrl: null,
+      });
       prismaService.package.findMany.mockResolvedValue([]);
-      (storageService.getBucketUrl as jest.Mock).mockReturnValue('https://storage.googleapis.com/bucket');
+      (storageService.getBucketUrl as jest.Mock).mockReturnValue(
+        'https://storage.googleapis.com/bucket',
+      );
       (storageService.listFiles as jest.Mock).mockResolvedValue([
         'store/store-123/product/product-123/package/pX/card.png',
       ]);
-      (storageService.deleteFile as jest.Mock).mockRejectedValue(new Error('fail'));
+      (storageService.deleteFile as jest.Mock).mockRejectedValue(
+        new Error('fail'),
+      );
 
-      const result = (await service.cleanupPackageImages(productId, storeId)) as any;
+      const result = (await service.cleanupPackageImages(
+        productId,
+        storeId,
+      )) as any;
       expect(result.errors.length).toBe(1);
     });
 
     it('should iterate all products when productId is missing', async () => {
       prismaService.package.findMany
-        .mockResolvedValueOnce([{ productId: 'prod-1' }, { productId: 'prod-2' }]) // distinct query simulation
+        .mockResolvedValueOnce([
+          { productId: 'prod-1' },
+          { productId: 'prod-2' },
+        ]) // distinct query simulation
         .mockResolvedValueOnce([]) // for prod-1 referenced
         .mockResolvedValueOnce([]); // for prod-2 referenced
 
       prismaService.product.findUnique.mockResolvedValue({ imgCardUrl: null });
-      prismaService.storeProductSettings.findUnique.mockResolvedValue({ imgCardUrl: null });
-      (storageService.getBucketUrl as jest.Mock).mockReturnValue('https://storage.googleapis.com/bucket');
+      prismaService.storeProductSettings.findUnique.mockResolvedValue({
+        imgCardUrl: null,
+      });
+      (storageService.getBucketUrl as jest.Mock).mockReturnValue(
+        'https://storage.googleapis.com/bucket',
+      );
       (storageService.listFiles as jest.Mock).mockResolvedValue([]);
 
-      const result = (await service.cleanupPackageImages(undefined, storeId)) as any;
+      const result = (await service.cleanupPackageImages(
+        undefined,
+        storeId,
+      )) as any;
       expect(result).toHaveProperty('perProduct');
       expect(storageService.listFiles).toHaveBeenCalledTimes(2);
     });
@@ -932,8 +978,24 @@ describe('PackageService', () => {
       storageService.uploadFile.mockResolvedValue(uploadedUrl);
 
       const updatedPackages = [
-        { id: 'package-1', name: 'P1', amountCredits: 10, storeId, imgCardUrl: uploadedUrl, basePrice: dec(9.99), paymentMethods: [] },
-        { id: 'package-2', name: 'P2', amountCredits: 20, storeId, imgCardUrl: uploadedUrl, basePrice: dec(19.99), paymentMethods: [] },
+        {
+          id: 'package-1',
+          name: 'P1',
+          amountCredits: 10,
+          storeId,
+          imgCardUrl: uploadedUrl,
+          basePrice: dec(9.99),
+          paymentMethods: [],
+        },
+        {
+          id: 'package-2',
+          name: 'P2',
+          amountCredits: 20,
+          storeId,
+          imgCardUrl: uploadedUrl,
+          basePrice: dec(19.99),
+          paymentMethods: [],
+        },
       ];
       prismaService.package.update.mockResolvedValue(updatedPackages[0]);
 
@@ -992,7 +1054,8 @@ describe('PackageService', () => {
         name: 'Premium Package',
         amountCredits: 100,
         storeId,
-        imgCardUrl: 'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.jpg',
+        imgCardUrl:
+          'https://storage.googleapis.com/bucket/store/store-123/packages/package-123/card.jpg',
         productId,
         basePrice: dec(19.99),
         isActive: true,

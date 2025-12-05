@@ -36,7 +36,13 @@ export class CryptoService {
       .slice(0, this.saltLength);
 
     // Derive key using PBKDF2
-    return pbkdf2Sync(masterKey, salt, this.iterations, this.keyLength, 'sha256');
+    return pbkdf2Sync(
+      masterKey,
+      salt,
+      this.iterations,
+      this.keyLength,
+      'sha256',
+    );
   }
 
   /**
@@ -61,11 +67,7 @@ export class CryptoService {
       const tag = cipher.getAuthTag();
 
       // Combine iv:tag:ciphertext and encode as base64
-      const combined = Buffer.concat([
-        iv,
-        tag,
-        ciphertext,
-      ]);
+      const combined = Buffer.concat([iv, tag, ciphertext]);
 
       return combined.toString('base64');
     } catch (error) {
@@ -89,10 +91,7 @@ export class CryptoService {
 
       // Extract iv, tag, and encrypted data
       const iv = combined.slice(0, this.ivLength);
-      const tag = combined.slice(
-        this.ivLength,
-        this.ivLength + this.tagLength,
-      );
+      const tag = combined.slice(this.ivLength, this.ivLength + this.tagLength);
       const encrypted = combined.slice(this.ivLength + this.tagLength);
 
       const decipher = createDecipheriv(this.algorithm, key, iv);
@@ -111,4 +110,3 @@ export class CryptoService {
     }
   }
 }
-

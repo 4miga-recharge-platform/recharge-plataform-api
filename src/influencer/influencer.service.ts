@@ -293,11 +293,13 @@ export class InfluencerService {
     }
   }
 
-  async findAllByStoreSimple(storeId: string): Promise<{ id: string; name: string }[]> {
+  async findAllByStoreSimple(
+    storeId: string,
+  ): Promise<{ id: string; name: string }[]> {
     try {
       const influencers = await this.prisma.influencer.findMany({
         where: {
-          storeId
+          storeId,
         },
         select: {
           id: true,

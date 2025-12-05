@@ -18,7 +18,7 @@ export class BraviveHttpService {
    */
   private getHeaders(token: string): Record<string, string> {
     return {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     };
   }
@@ -26,11 +26,7 @@ export class BraviveHttpService {
   /**
    * Makes POST request to Bravive API
    */
-  async post<T = any>(
-    endpoint: string,
-    data: any,
-    token: string,
-  ): Promise<T> {
+  async post<T = any>(endpoint: string, data: any, token: string): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = this.getHeaders(token);
 
@@ -102,4 +98,3 @@ export class BraviveHttpService {
     throw error;
   }
 }
-

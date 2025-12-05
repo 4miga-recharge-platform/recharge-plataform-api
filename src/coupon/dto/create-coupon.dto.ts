@@ -28,7 +28,9 @@ export class CreateCouponDto {
   })
   influencerId: string;
 
-  @ValidateIf((o) => o.discountPercentage !== null && o.discountPercentage !== undefined)
+  @ValidateIf(
+    (o) => o.discountPercentage !== null && o.discountPercentage !== undefined,
+  )
   @IsNumber()
   @IsOptional()
   @Min(0)
@@ -42,7 +44,9 @@ export class CreateCouponDto {
   })
   discountPercentage?: number | null;
 
-  @ValidateIf((o) => o.discountAmount !== null && o.discountAmount !== undefined)
+  @ValidateIf(
+    (o) => o.discountAmount !== null && o.discountAmount !== undefined,
+  )
   @IsNumber()
   @IsOptional()
   @Min(0)

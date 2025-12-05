@@ -53,7 +53,9 @@ describe('StorageService', () => {
       );
 
       expect(url).toMatch(
-        new RegExp(`^https://storage\\.googleapis\\.com/${env.GCP_BUCKET_NAME || '4miga-images'}/stores/store-123/logo/card\\.jpg\\?v=\\d+$`),
+        new RegExp(
+          `^https://storage\\.googleapis\\.com/${env.GCP_BUCKET_NAME || '4miga-images'}/stores/store-123/logo/card\\.jpg\\?v=\\d+$`,
+        ),
       );
     });
   });

@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, IsOptional, IsArray } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsArray,
+} from 'class-validator';
 
 export class CreateStoreDto {
   @IsString()
@@ -96,7 +102,10 @@ export class CreateStoreDto {
   @IsOptional()
   @ApiProperty({
     description: 'Banner URLs array',
-    example: ['https://example.com/banner1.png', 'https://example.com/banner2.png'],
+    example: [
+      'https://example.com/banner1.png',
+      'https://example.com/banner2.png',
+    ],
     required: false,
     type: [String],
   })

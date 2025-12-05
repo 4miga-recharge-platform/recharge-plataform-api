@@ -44,30 +44,53 @@ export class WebhookService {
 
       if (webhooksConfig) {
         this.storeWebhooks = JSON.parse(webhooksConfig);
-        console.log('🔍 DEBUG: Parsed webhooks successfully:', this.storeWebhooks);
-        this.logger.log(`Loaded ${this.storeWebhooks.length} store webhook configurations`);
-        this.storeWebhooks.forEach(store => {
-          this.logger.log(`Store: ${store.storeName} (${store.storeId}) -> ${store.webhookUrl}`);
+        console.log(
+          '🔍 DEBUG: Parsed webhooks successfully:',
+          this.storeWebhooks,
+        );
+        this.logger.log(
+          `Loaded ${this.storeWebhooks.length} store webhook configurations`,
+        );
+        this.storeWebhooks.forEach((store) => {
+          this.logger.log(
+            `Store: ${store.storeName} (${store.storeId}) -> ${store.webhookUrl}`,
+          );
         });
       } else {
-        this.logger.warn('STORE_WEBHOOKS not configured. Webhooks will not be sent.');
+        this.logger.warn(
+          'STORE_WEBHOOKS not configured. Webhooks will not be sent.',
+        );
       }
     } catch (error) {
       console.error('🔍 DEBUG: JSON parse error details:', error);
       console.error('🔍 DEBUG: Error message:', error.message);
       console.error('🔍 DEBUG: Error stack:', error.stack);
-      this.logger.error('Failed to parse STORE_WEBHOOKS configuration:', error.message);
+      this.logger.error(
+        'Failed to parse STORE_WEBHOOKS configuration:',
+        error.message,
+      );
       this.storeWebhooks = [];
     }
   }
 
   // Products are global - notify ALL stores
-  async notifyProductUpdate(productId: string, action: 'created' | 'updated' | 'deleted'): Promise<void> {
-    console.log('🔍 DEBUG: notifyProductUpdate called with:', { productId, action });
-    console.log('🔍 DEBUG: Current storeWebhooks count:', this.storeWebhooks.length);
+  async notifyProductUpdate(
+    productId: string,
+    action: 'created' | 'updated' | 'deleted',
+  ): Promise<void> {
+    console.log('🔍 DEBUG: notifyProductUpdate called with:', {
+      productId,
+      action,
+    });
+    console.log(
+      '🔍 DEBUG: Current storeWebhooks count:',
+      this.storeWebhooks.length,
+    );
 
     if (this.storeWebhooks.length === 0) {
-      this.logger.debug('No store webhooks configured, skipping product webhook');
+      this.logger.debug(
+        'No store webhooks configured, skipping product webhook',
+      );
       return;
     }
 
@@ -78,18 +101,26 @@ export class WebhookService {
     };
 
     console.log('🔍 DEBUG: Product webhook data to send:', webhookData);
-    console.log('🔍 DEBUG: Will send to stores:', this.storeWebhooks.map(s => `${s.storeName} (${s.storeId})`));
+    console.log(
+      '🔍 DEBUG: Will send to stores:',
+      this.storeWebhooks.map((s) => `${s.storeName} (${s.storeId})`),
+    );
 
     // Send to ALL stores (products are global)
-    const promises = this.storeWebhooks.map(store =>
-      this.sendWebhook(store, '/api/revalidate-products', webhookData)
+    const promises = this.storeWebhooks.map((store) =>
+      this.sendWebhook(store, '/api/revalidate-products', webhookData),
     );
 
     try {
       await Promise.allSettled(promises);
-      this.logger.log(`Product webhook sent to ${this.storeWebhooks.length} stores: ${productId} ${action}`);
+      this.logger.log(
+        `Product webhook sent to ${this.storeWebhooks.length} stores: ${productId} ${action}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to send product webhook for ${productId}:`, error.message);
+      this.logger.error(
+        `Failed to send product webhook for ${productId}:`,
+        error.message,
+      );
     }
   }
 
@@ -99,19 +130,30 @@ export class WebhookService {
     storeId: string,
     action: 'created' | 'updated' | 'deleted',
   ): Promise<void> {
-    console.log('🔍 DEBUG: notifyPackageUpdate called with:', { packageId, storeId, action });
-    console.log('🔍 DEBUG: Current storeWebhooks count:', this.storeWebhooks.length);
+    console.log('🔍 DEBUG: notifyPackageUpdate called with:', {
+      packageId,
+      storeId,
+      action,
+    });
+    console.log(
+      '🔍 DEBUG: Current storeWebhooks count:',
+      this.storeWebhooks.length,
+    );
 
     if (this.storeWebhooks.length === 0) {
-      this.logger.debug('No store webhooks configured, skipping package webhook');
+      this.logger.debug(
+        'No store webhooks configured, skipping package webhook',
+      );
       return;
     }
 
-    const store = this.storeWebhooks.find(s => s.storeId === storeId);
+    const store = this.storeWebhooks.find((s) => s.storeId === storeId);
     console.log('🔍 DEBUG: Found store for package update:', store);
 
     if (!store) {
-      this.logger.warn(`No webhook configured for store ${storeId}, skipping package webhook`);
+      this.logger.warn(
+        `No webhook configured for store ${storeId}, skipping package webhook`,
+      );
       return;
     }
 
@@ -123,26 +165,39 @@ export class WebhookService {
     };
 
     console.log('🔍 DEBUG: Package webhook data to send:', webhookData);
-    console.log('🔍 DEBUG: Will send to store:', `${store.storeName} (${store.storeId})`);
+    console.log(
+      '🔍 DEBUG: Will send to store:',
+      `${store.storeName} (${store.storeId})`,
+    );
 
     try {
       await this.sendWebhook(store, '/api/revalidate-products', webhookData);
-      this.logger.log(`Package webhook sent successfully: ${packageId} ${action} for store ${store.storeName} (${storeId})`);
+      this.logger.log(
+        `Package webhook sent successfully: ${packageId} ${action} for store ${store.storeName} (${storeId})`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to send package webhook for ${packageId}:`, error.message);
+      this.logger.error(
+        `Failed to send package webhook for ${packageId}:`,
+        error.message,
+      );
     }
   }
 
   // Store updates are store-specific - notify only the specific store
-  async notifyStoreUpdate(storeId: string, action: 'created' | 'updated' | 'deleted'): Promise<void> {
+  async notifyStoreUpdate(
+    storeId: string,
+    action: 'created' | 'updated' | 'deleted',
+  ): Promise<void> {
     if (this.storeWebhooks.length === 0) {
       this.logger.debug('No store webhooks configured, skipping store webhook');
       return;
     }
 
-    const store = this.storeWebhooks.find(s => s.storeId === storeId);
+    const store = this.storeWebhooks.find((s) => s.storeId === storeId);
     if (!store) {
-      this.logger.warn(`No webhook configured for store ${storeId}, skipping store webhook`);
+      this.logger.warn(
+        `No webhook configured for store ${storeId}, skipping store webhook`,
+      );
       return;
     }
 
@@ -154,13 +209,22 @@ export class WebhookService {
 
     try {
       await this.sendWebhook(store, '/api/revalidate-store', webhookData);
-      this.logger.log(`Store webhook sent successfully: ${storeId} ${action} for store ${store.storeName}`);
+      this.logger.log(
+        `Store webhook sent successfully: ${storeId} ${action} for store ${store.storeName}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to send store webhook for ${storeId}:`, error.message);
+      this.logger.error(
+        `Failed to send store webhook for ${storeId}:`,
+        error.message,
+      );
     }
   }
 
-  private async sendWebhook(store: StoreWebhookConfig, endpoint: string, data: any): Promise<void> {
+  private async sendWebhook(
+    store: StoreWebhookConfig,
+    endpoint: string,
+    data: any,
+  ): Promise<void> {
     const fullUrl = `${store.webhookUrl}${endpoint}`;
 
     console.log('🔍 DEBUG: ===== WEBHOOK REQUEST =====');
@@ -174,7 +238,9 @@ export class WebhookService {
 
     try {
       const token = process.env.REVALIDATE_TOKEN;
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -187,7 +253,6 @@ export class WebhookService {
       console.log('✅ DEBUG: Webhook SUCCESS for', store.storeName);
       console.log('✅ DEBUG: Response status:', response.status);
       console.log('✅ DEBUG: Response data:', response.data);
-
     } catch (error) {
       console.error('❌ DEBUG: Webhook FAILED for', store.storeName);
       console.error('❌ DEBUG: Error message:', error.message);
@@ -195,7 +260,10 @@ export class WebhookService {
       console.error('❌ DEBUG: Error response data:', error.response?.data);
       console.error('❌ DEBUG: Full error:', error);
 
-      this.logger.error(`Failed to send webhook to ${store.storeName} (${store.storeId}):`, error.message);
+      this.logger.error(
+        `Failed to send webhook to ${store.storeName} (${store.storeId}):`,
+        error.message,
+      );
       throw error; // Re-throw to be handled by caller
     }
   }

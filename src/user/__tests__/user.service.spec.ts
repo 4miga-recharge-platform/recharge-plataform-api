@@ -19,7 +19,9 @@ jest.mock('../../utils/validation.util', () => ({
 
 // Mock email template
 jest.mock('../../email/templates/email-confirmation.template', () => ({
-  getEmailConfirmationTemplate: jest.fn().mockReturnValue('<html>Email template</html>'),
+  getEmailConfirmationTemplate: jest
+    .fn()
+    .mockReturnValue('<html>Email template</html>'),
 }));
 
 describe('UserService', () => {
@@ -120,7 +122,9 @@ describe('UserService', () => {
     it('should throw BadRequestException when database error occurs', async () => {
       const storeId = 'store-123';
 
-      prismaService.user.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.user.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAll(storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch users'),
@@ -156,7 +160,9 @@ describe('UserService', () => {
     it('should throw BadRequestException when database error occurs', async () => {
       const userId = 'user-123';
 
-      prismaService.user.findUnique.mockRejectedValue(new Error('Database error'));
+      prismaService.user.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findOne(userId)).rejects.toThrow(
         new BadRequestException('Failed to fetch user'),
@@ -177,12 +183,16 @@ describe('UserService', () => {
 
     it('should create a new user successfully', async () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
-      const { getEmailConfirmationTemplate } = require('../../email/templates/email-confirmation.template');
+      const {
+        getEmailConfirmationTemplate,
+      } = require('../../email/templates/email-confirmation.template');
 
       // Mock findFirst to return null (user doesn't exist)
       prismaService.user.findFirst.mockResolvedValue(null);
       prismaService.user.create.mockResolvedValue(mockUser);
-      prismaService.store.findUnique.mockResolvedValue({ domain: 'https://www.example.com' });
+      prismaService.store.findUnique.mockResolvedValue({
+        domain: 'https://www.example.com',
+      });
       emailService.sendEmail.mockResolvedValue({} as any);
 
       const result = await service.create(createUserDto);
@@ -251,7 +261,10 @@ describe('UserService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
 
       prismaService.user.findUnique.mockResolvedValue(mockUser);
-      prismaService.user.update.mockResolvedValue({ ...mockUser, ...updateUserDto });
+      prismaService.user.update.mockResolvedValue({
+        ...mockUser,
+        ...updateUserDto,
+      });
 
       const result = await service.update(userId, updateUserDto);
 
@@ -260,7 +273,10 @@ describe('UserService', () => {
         select: mockUserSelect,
       });
 
-      expect(validateRequiredFields).toHaveBeenCalledWith(updateUserDto, ['name', 'email']);
+      expect(validateRequiredFields).toHaveBeenCalledWith(updateUserDto, [
+        'name',
+        'email',
+      ]);
 
       expect(prismaService.user.update).toHaveBeenCalledWith({
         where: { id: userId },
@@ -279,7 +295,10 @@ describe('UserService', () => {
       };
 
       prismaService.user.findUnique.mockResolvedValue(mockUser);
-      prismaService.user.update.mockResolvedValue({ ...mockUser, name: 'Jane Doe' });
+      prismaService.user.update.mockResolvedValue({
+        ...mockUser,
+        name: 'Jane Doe',
+      });
 
       const result = await service.update(userId, updateWithPassword);
 
@@ -392,9 +411,7 @@ describe('UserService', () => {
     it('should return filtered emails when search parameter is provided', async () => {
       const storeId = 'store-123';
       const search = 'john';
-      const expectedEmails = [
-        { id: 'user-1', email: 'john@example.com' },
-      ];
+      const expectedEmails = [{ id: 'user-1', email: 'john@example.com' }];
 
       prismaService.user.findMany.mockResolvedValue(expectedEmails);
 
@@ -423,7 +440,9 @@ describe('UserService', () => {
     it('should throw BadRequestException when database error occurs', async () => {
       const storeId = 'store-123';
 
-      prismaService.user.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.user.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findEmailsByStore(storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch emails'),
@@ -462,7 +481,9 @@ describe('UserService', () => {
     it('should throw BadRequestException when database error occurs', async () => {
       const storeId = 'store-123';
 
-      prismaService.user.findMany.mockRejectedValue(new Error('Database error'));
+      prismaService.user.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAdminsByStore(storeId)).rejects.toThrow(
         new BadRequestException('Failed to fetch admins'),
@@ -476,12 +497,20 @@ describe('UserService', () => {
       const adminStoreId = 'store-123';
       const currentUserId = 'current-admin-123';
       const userToPromote = { ...mockUser, id: userId };
-      const promotedUser = { ...mockUser, id: userId, role: 'RESELLER_ADMIN_4MIGA_USER' };
+      const promotedUser = {
+        ...mockUser,
+        id: userId,
+        role: 'RESELLER_ADMIN_4MIGA_USER',
+      };
 
       prismaService.user.findUnique.mockResolvedValue(userToPromote);
       prismaService.user.update.mockResolvedValue(promotedUser);
 
-      const result = await service.promoteToAdmin(userId, adminStoreId, currentUserId);
+      const result = await service.promoteToAdmin(
+        userId,
+        adminStoreId,
+        currentUserId,
+      );
 
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
         where: { id: userId },
@@ -507,20 +536,26 @@ describe('UserService', () => {
 
       prismaService.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
-        new BadRequestException('User not found'),
-      );
+      await expect(
+        service.promoteToAdmin(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(new BadRequestException('User not found'));
     });
 
     it('should throw BadRequestException when user is from different store', async () => {
       const userId = 'user-456';
       const adminStoreId = 'store-123';
       const currentUserId = 'current-admin-123';
-      const userFromDifferentStore = { ...mockUser, id: userId, storeId: 'different-store' };
+      const userFromDifferentStore = {
+        ...mockUser,
+        id: userId,
+        storeId: 'different-store',
+      };
 
       prismaService.user.findUnique.mockResolvedValue(userFromDifferentStore);
 
-      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
+      await expect(
+        service.promoteToAdmin(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(
         new BadRequestException('Cannot promote users from different stores'),
       );
     });
@@ -529,13 +564,17 @@ describe('UserService', () => {
       const userId = 'user-456';
       const adminStoreId = 'store-123';
       const currentUserId = 'current-admin-123';
-      const adminUser = { ...mockUser, id: userId, role: 'RESELLER_ADMIN_4MIGA_USER' };
+      const adminUser = {
+        ...mockUser,
+        id: userId,
+        role: 'RESELLER_ADMIN_4MIGA_USER',
+      };
 
       prismaService.user.findUnique.mockResolvedValue(adminUser);
 
-      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
-        new BadRequestException('User is already an admin'),
-      );
+      await expect(
+        service.promoteToAdmin(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(new BadRequestException('User is already an admin'));
     });
 
     it('should throw BadRequestException when database error occurs during update', async () => {
@@ -547,9 +586,9 @@ describe('UserService', () => {
       prismaService.user.findUnique.mockResolvedValue(userToPromote);
       prismaService.user.update.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.promoteToAdmin(userId, adminStoreId, currentUserId)).rejects.toThrow(
-        new BadRequestException('Failed to promote user'),
-      );
+      await expect(
+        service.promoteToAdmin(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(new BadRequestException('Failed to promote user'));
     });
   });
 
@@ -558,13 +597,21 @@ describe('UserService', () => {
       const userId = 'admin-456';
       const adminStoreId = 'store-123';
       const currentUserId = 'current-admin-123';
-      const adminToDemote = { ...mockUser, id: userId, role: 'RESELLER_ADMIN_4MIGA_USER' };
+      const adminToDemote = {
+        ...mockUser,
+        id: userId,
+        role: 'RESELLER_ADMIN_4MIGA_USER',
+      };
       const demotedUser = { ...mockUser, id: userId, role: 'USER' };
 
       prismaService.user.findUnique.mockResolvedValue(adminToDemote);
       prismaService.user.update.mockResolvedValue(demotedUser);
 
-      const result = await service.demoteToUser(userId, adminStoreId, currentUserId);
+      const result = await service.demoteToUser(
+        userId,
+        adminStoreId,
+        currentUserId,
+      );
 
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
         where: { id: userId },
@@ -588,9 +635,9 @@ describe('UserService', () => {
       const adminStoreId = 'store-123';
       const currentUserId = userId;
 
-      await expect(service.demoteToUser(userId, adminStoreId, currentUserId)).rejects.toThrow(
-        new BadRequestException('Cannot demote yourself'),
-      );
+      await expect(
+        service.demoteToUser(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(new BadRequestException('Cannot demote yourself'));
     });
 
     it('should throw BadRequestException when user not found', async () => {
@@ -600,9 +647,9 @@ describe('UserService', () => {
 
       prismaService.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.demoteToUser(userId, adminStoreId, currentUserId)).rejects.toThrow(
-        new BadRequestException('User not found'),
-      );
+      await expect(
+        service.demoteToUser(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(new BadRequestException('User not found'));
     });
 
     it('should throw BadRequestException when user is from different store', async () => {
@@ -613,12 +660,14 @@ describe('UserService', () => {
         ...mockUser,
         id: userId,
         storeId: 'different-store',
-        role: 'RESELLER_ADMIN_4MIGA_USER'
+        role: 'RESELLER_ADMIN_4MIGA_USER',
       };
 
       prismaService.user.findUnique.mockResolvedValue(adminFromDifferentStore);
 
-      await expect(service.demoteToUser(userId, adminStoreId, currentUserId)).rejects.toThrow(
+      await expect(
+        service.demoteToUser(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(
         new BadRequestException('Cannot demote users from different stores'),
       );
     });
@@ -631,7 +680,9 @@ describe('UserService', () => {
 
       prismaService.user.findUnique.mockResolvedValue(regularUser);
 
-      await expect(service.demoteToUser(userId, adminStoreId, currentUserId)).rejects.toThrow(
+      await expect(
+        service.demoteToUser(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(
         new BadRequestException('User is not a reseller admin'),
       );
     });
@@ -640,14 +691,18 @@ describe('UserService', () => {
       const userId = 'admin-456';
       const adminStoreId = 'store-123';
       const currentUserId = 'current-admin-123';
-      const adminToDemote = { ...mockUser, id: userId, role: 'RESELLER_ADMIN_4MIGA_USER' };
+      const adminToDemote = {
+        ...mockUser,
+        id: userId,
+        role: 'RESELLER_ADMIN_4MIGA_USER',
+      };
 
       prismaService.user.findUnique.mockResolvedValue(adminToDemote);
       prismaService.user.update.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.demoteToUser(userId, adminStoreId, currentUserId)).rejects.toThrow(
-        new BadRequestException('Failed to demote user'),
-      );
+      await expect(
+        service.demoteToUser(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(new BadRequestException('Failed to demote user'));
     });
   });
 });

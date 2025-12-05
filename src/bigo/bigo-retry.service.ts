@@ -1,10 +1,19 @@
-import { Injectable, Logger, Inject, forwardRef, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  forwardRef,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { BigoService } from './bigo.service';
 
 // Node.js globals
-declare const setTimeout: (callback: (...args: any[]) => void, ms: number) => any;
+declare const setTimeout: (
+  callback: (...args: any[]) => void,
+  ms: number,
+) => any;
 declare const clearTimeout: (timeoutId: any) => void;
 
 @Injectable()
@@ -26,7 +35,7 @@ export class BigoRetryService implements OnModuleDestroy {
   private shouldRetry(rescode: number): boolean {
     const retryableErrors = [
       7212012, // "request frequently, just wait a second to call" - Rate limit
-      500001,  // "Other errors, contact Bigo team" - Erro interno temporário
+      500001, // "Other errors, contact Bigo team" - Erro interno temporário
     ];
 
     return retryableErrors.includes(rescode);
@@ -48,19 +57,29 @@ export class BigoRetryService implements OnModuleDestroy {
   /**
    * Adiciona uma recarga à fila de retry com agendamento sob demanda
    */
-  async addToRetryQueue(rechargeId: string, rescode: number, errorMessage: string, attemptNumber?: number) {
+  async addToRetryQueue(
+    rechargeId: string,
+    rescode: number,
+    errorMessage: string,
+    attemptNumber?: number,
+  ) {
     const currentAttempt = attemptNumber || 1;
 
     // Verificar se o erro é retryable
     if (!this.shouldRetry(rescode)) {
-      this.logger.warn(`Error ${rescode} is not retryable for recharge ${rechargeId}`);
+      this.logger.warn(
+        `Error ${rescode} is not retryable for recharge ${rechargeId}`,
+      );
       await this.markAsFailed(rechargeId, `Error ${rescode} is not retryable`);
       return;
     }
 
     if (currentAttempt > this.maxRetries) {
       // Máximo de tentativas atingido
-      await this.markAsFailed(rechargeId, `Max retries (${this.maxRetries}) exceeded for error ${rescode}`);
+      await this.markAsFailed(
+        rechargeId,
+        `Max retries (${this.maxRetries}) exceeded for error ${rescode}`,
+      );
       return;
     }
 
@@ -80,9 +99,12 @@ export class BigoRetryService implements OnModuleDestroy {
     });
 
     // Agendar retry específico
-    const timeout = setTimeout(() => {
-      this.processSpecificRetry(rechargeId, currentAttempt);
-    }, delayMinutes * 60 * 1000);
+    const timeout = setTimeout(
+      () => {
+        this.processSpecificRetry(rechargeId, currentAttempt);
+      },
+      delayMinutes * 60 * 1000,
+    );
 
     // Armazenar timeout para possível cancelamento
     this.retryTimeouts.set(rechargeId, timeout);
@@ -93,7 +115,10 @@ export class BigoRetryService implements OnModuleDestroy {
   /**
    * Processa retry específico
    */
-  private async processSpecificRetry(rechargeId: string, attemptNumber: number) {
+  private async processSpecificRetry(
+    rechargeId: string,
+    attemptNumber: number,
+  ) {
     this.retryTimeouts.delete(rechargeId);
 
     try {
@@ -102,11 +127,15 @@ export class BigoRetryService implements OnModuleDestroy {
       });
 
       if (!recharge || recharge.status !== 'RETRY_PENDING') {
-        this.logger.debug(`Recharge ${rechargeId} not found or already processed`);
+        this.logger.debug(
+          `Recharge ${rechargeId} not found or already processed`,
+        );
         return; // Já foi processado ou cancelado
       }
 
-      this.logger.log(`Processing retry ${attemptNumber} for recharge ${rechargeId}`);
+      this.logger.log(
+        `Processing retry ${attemptNumber} for recharge ${rechargeId}`,
+      );
 
       // Marcar como REQUESTED para evitar duplicação
       await this.prisma.bigoRecharge.update({
@@ -137,10 +166,13 @@ export class BigoRetryService implements OnModuleDestroy {
         },
       });
 
-      this.logger.log(`Retry ${attemptNumber} successful for recharge ${rechargeId}`);
-
+      this.logger.log(
+        `Retry ${attemptNumber} successful for recharge ${rechargeId}`,
+      );
     } catch (error) {
-      this.logger.warn(`Retry ${attemptNumber} failed for recharge ${rechargeId}: ${error.message}`);
+      this.logger.warn(
+        `Retry ${attemptNumber} failed for recharge ${rechargeId}: ${error.message}`,
+      );
 
       // Extrair rescode do erro se possível
       let rescode = 500001; // default para erro interno
@@ -153,9 +185,17 @@ export class BigoRetryService implements OnModuleDestroy {
 
       // Agendar próxima tentativa se o erro for retryable
       if (this.shouldRetry(rescode)) {
-        await this.addToRetryQueue(rechargeId, rescode, error.message, attemptNumber + 1);
+        await this.addToRetryQueue(
+          rechargeId,
+          rescode,
+          error.message,
+          attemptNumber + 1,
+        );
       } else {
-        await this.markAsFailed(rechargeId, `Retry ${attemptNumber} failed: ${error.message}`);
+        await this.markAsFailed(
+          rechargeId,
+          `Retry ${attemptNumber} failed: ${error.message}`,
+        );
       }
     }
   }
@@ -192,7 +232,9 @@ export class BigoRetryService implements OnModuleDestroy {
       });
 
       if (stuckRetries.length > 0) {
-        this.logger.warn(`Found ${stuckRetries.length} stuck retries, reprocessing...`);
+        this.logger.warn(
+          `Found ${stuckRetries.length} stuck retries, reprocessing...`,
+        );
 
         for (const retry of stuckRetries) {
           // Reagendar com delay mínimo
@@ -280,7 +322,7 @@ export class BigoRetryService implements OnModuleDestroy {
    * Limpa timeouts ao destruir o módulo
    */
   onModuleDestroy() {
-    this.retryTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.retryTimeouts.forEach((timeout) => clearTimeout(timeout));
     this.retryTimeouts.clear();
     this.logger.log('Cleared all retry timeouts');
   }

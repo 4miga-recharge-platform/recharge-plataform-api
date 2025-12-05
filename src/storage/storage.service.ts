@@ -120,9 +120,11 @@ export class StorageService {
     try {
       const bucket = this.storage.bucket(this.bucketName);
       const [files] = await bucket.getFiles({ prefix });
-      return files.map(f => f.name);
+      return files.map((f) => f.name);
     } catch (error) {
-      this.logger.error(`Failed to list files for prefix ${prefix}: ${error.message}`);
+      this.logger.error(
+        `Failed to list files for prefix ${prefix}: ${error.message}`,
+      );
       throw new Error(`List failed: ${error.message}`);
     }
   }
@@ -166,7 +168,9 @@ export class StorageService {
 
   private extractFileNameFromUrl(fileUrl: string): string {
     const url = new URL(fileUrl);
-    const pathname = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+    const pathname = url.pathname.startsWith('/')
+      ? url.pathname.substring(1)
+      : url.pathname;
     // pathname may be "<bucket>/<filePath>" for public URLs; strip leading bucket segment if present
     if (pathname.startsWith(`${this.bucketName}/`)) {
       return pathname.substring(this.bucketName.length + 1);

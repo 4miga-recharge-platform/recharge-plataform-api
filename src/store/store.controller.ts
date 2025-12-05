@@ -115,7 +115,8 @@ export class StoreController {
           {
             productId: 'prod-123',
             productName: 'Bigo Live Coins',
-            imgCardUrl: 'https://storage.example.com/store/store-123/product/prod-123/card/card.png',
+            imgCardUrl:
+              'https://storage.example.com/store/store-123/product/prod-123/card/card.png',
             totalSales: 30000.0,
             totalOrders: 90,
             percentage: 60.0,
@@ -167,9 +168,12 @@ export class StoreController {
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a store' })
-  async update(@LoggedUser() user: User, @Body() updateStoreDto: UpdateStoreDto) {
-    if (!user.storeId){
-      throw new BadRequestException('Store ID not found in user data')
+  async update(
+    @LoggedUser() user: User,
+    @Body() updateStoreDto: UpdateStoreDto,
+  ) {
+    if (!user.storeId) {
+      throw new BadRequestException('Store ID not found in user data');
     }
     return this.storeService.update(user.storeId, updateStoreDto);
   }
@@ -178,7 +182,9 @@ export class StoreController {
   @UseGuards(AuthGuard('jwt'), RoleGuard)
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update Bravive API token for the logged admin store' })
+  @ApiOperation({
+    summary: 'Update Bravive API token for the logged admin store',
+  })
   @ApiResponse({
     status: 200,
     description: 'Bravive token updated successfully',

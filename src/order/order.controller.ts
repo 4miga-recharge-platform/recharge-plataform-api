@@ -27,7 +27,6 @@ import { LoggedUser } from '../auth/logged-user.decorator';
 import { User } from '../user/entities/user.entity';
 import { OrderService } from './order.service';
 
-
 @ApiTags('orders')
 @Controller('orders')
 @UseGuards(AuthGuard('jwt'))
@@ -44,15 +43,22 @@ export class OrderController {
     description: 'Paginated list of orders returned successfully.',
     schema: {
       example: {
-        data: [/* orders */],
+        data: [
+          /* orders */
+        ],
         totalOrders: 42,
         page: 1,
-        totalPages: 7
-      }
-    }
+        totalPages: 7,
+      },
+    },
   })
   findAll(@Request() req, @Query('page') page = 1, @Query('limit') limit = 6) {
-    return this.orderService.findAll(req.user.storeId, req.user.id, Number(page), Number(limit));
+    return this.orderService.findAll(
+      req.user.storeId,
+      req.user.id,
+      Number(page),
+      Number(limit),
+    );
   }
 
   @Get('admin')
@@ -82,10 +88,13 @@ export class OrderController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Paginated list of store orders returned successfully for admin users.',
+    description:
+      'Paginated list of store orders returned successfully for admin users.',
     schema: {
       example: {
-        data: [/* orders */],
+        data: [
+          /* orders */
+        ],
         totalOrders: 42,
         page: 1,
         totalPages: 7,
@@ -95,8 +104,8 @@ export class OrderController {
             name: 'Sample Product',
           },
         ],
-      }
-    }
+      },
+    },
   })
   findAllForStore(
     @LoggedUser() user: User,
