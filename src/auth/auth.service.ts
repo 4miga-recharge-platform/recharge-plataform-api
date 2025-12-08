@@ -125,19 +125,19 @@ export class AuthService {
   async adminLogin(adminLoginDto: AdminLoginDto) {
     const { email, password } = adminLoginDto;
 
-    // Find user by email (without storeId) with store data
+    // Find admin user by email and role (unique partial index ensures only one admin per email)
     const user = await this.prisma.user.findFirst({
-      where: { email },
+      where: {
+        email,
+        role: {
+          in: ['RESELLER_ADMIN_4MIGA_USER', 'MASTER_ADMIN_4MIGA_USER'],
+        },
+      },
       select: this.adminAuthUser,
     });
 
     if (!user) {
       throw new UnauthorizedException('User or password invalid');
-    }
-
-    // Validate if user is admin
-    if (user.role !== 'RESELLER_ADMIN_4MIGA_USER') {
-      throw new UnauthorizedException('Access denied - Admin role required');
     }
 
     if (user.emailVerified === false) {

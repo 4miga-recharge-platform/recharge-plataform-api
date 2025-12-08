@@ -322,6 +322,22 @@ export class UserService {
         throw new BadRequestException('User is already an admin');
       }
 
+      // Check if this email is already RESELLER_ADMIN in another store
+      // MASTER_ADMIN_4MIGA_USER is excluded as it can access all stores
+      const existingAdminInOtherStore = await this.prisma.user.findFirst({
+        where: {
+          email: user.email,
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+          storeId: { not: adminStoreId },
+        },
+      });
+
+      if (existingAdminInOtherStore) {
+        throw new BadRequestException(
+          'This email is already an administrator in another store',
+        );
+      }
+
       // Promote user with audit fields
       const updatedUser = await this.prisma.user.update({
         where: { id: userId },

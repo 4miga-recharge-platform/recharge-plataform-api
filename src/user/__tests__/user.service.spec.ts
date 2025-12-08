@@ -504,6 +504,7 @@ describe('UserService', () => {
       };
 
       prismaService.user.findUnique.mockResolvedValue(userToPromote);
+      prismaService.user.findFirst.mockResolvedValue(null); // No admin in other store
       prismaService.user.update.mockResolvedValue(promotedUser);
 
       const result = await service.promoteToAdmin(
@@ -514,6 +515,14 @@ describe('UserService', () => {
 
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
         where: { id: userId },
+      });
+
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          email: userToPromote.email,
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+          storeId: { not: adminStoreId },
+        },
       });
 
       expect(prismaService.user.update).toHaveBeenCalledWith({
@@ -575,6 +584,39 @@ describe('UserService', () => {
       await expect(
         service.promoteToAdmin(userId, adminStoreId, currentUserId),
       ).rejects.toThrow(new BadRequestException('User is already an admin'));
+    });
+
+    it('should throw BadRequestException when email is already admin in another store', async () => {
+      const userId = 'user-456';
+      const adminStoreId = 'store-123';
+      const currentUserId = 'current-admin-123';
+      const userToPromote = { ...mockUser, id: userId, email: 'test@example.com' };
+      const existingAdminInOtherStore = {
+        ...mockUser,
+        id: 'other-admin-id',
+        email: 'test@example.com',
+        storeId: 'other-store-456',
+        role: 'RESELLER_ADMIN_4MIGA_USER',
+      };
+
+      prismaService.user.findUnique.mockResolvedValue(userToPromote);
+      prismaService.user.findFirst.mockResolvedValue(existingAdminInOtherStore);
+
+      await expect(
+        service.promoteToAdmin(userId, adminStoreId, currentUserId),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'This email is already an administrator in another store',
+        ),
+      );
+
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          email: 'test@example.com',
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+          storeId: { not: adminStoreId },
+        },
+      });
     });
 
     it('should throw BadRequestException when database error occurs during update', async () => {

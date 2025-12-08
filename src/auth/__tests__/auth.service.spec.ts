@@ -312,7 +312,12 @@ describe('AuthService', () => {
       const result = await service.adminLogin(adminLoginDto);
 
       expect(prismaService.user.findFirst).toHaveBeenCalledWith({
-        where: { email: adminLoginDto.email },
+        where: {
+          email: adminLoginDto.email,
+          role: {
+            in: ['RESELLER_ADMIN_4MIGA_USER', 'MASTER_ADMIN_4MIGA_USER'],
+          },
+        },
         select: mockAdminAuthUser,
       });
 
@@ -359,13 +364,23 @@ describe('AuthService', () => {
       );
     });
 
-    it('should throw UnauthorizedException when user is not admin', async () => {
-      const regularUser = { ...mockAdminUser, role: 'USER' };
-      prismaService.user.findFirst.mockResolvedValue(regularUser);
+    it('should throw UnauthorizedException when user is not admin (query filters by role)', async () => {
+      // Query filters by admin role, so if user is not admin, findFirst returns null
+      prismaService.user.findFirst.mockResolvedValue(null);
 
       await expect(service.adminLogin(adminLoginDto)).rejects.toThrow(
-        new UnauthorizedException('Access denied - Admin role required'),
+        new UnauthorizedException('User or password invalid'),
       );
+
+      expect(prismaService.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          email: adminLoginDto.email,
+          role: {
+            in: ['RESELLER_ADMIN_4MIGA_USER', 'MASTER_ADMIN_4MIGA_USER'],
+          },
+        },
+        select: mockAdminAuthUser,
+      });
     });
 
     it('should throw UnauthorizedException when admin email is not verified', async () => {
