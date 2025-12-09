@@ -130,6 +130,7 @@ export class AuthController {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      rechargeBigoId: user.rechargeBigoId,
       documentType: user.documentType,
       documentValue: user.documentValue,
       storeId: user.storeId,

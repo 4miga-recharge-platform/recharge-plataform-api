@@ -23,6 +23,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UserCleanupService } from './user-cleanup.service';
 import { UserService } from './user.service';
+import { UpdateBigoIdDto } from './dto/update-recharge-bigo-id.dto';
 
 @ApiTags('user')
 @Controller('user')
@@ -72,6 +73,15 @@ export class UserController {
   findAdmins(@LoggedUser() user: User) {
     return this.userService.findAdminsByStore(user.storeId);
   }
+
+  @Patch('recharge-bigo-id')
+  @UseGuards(AuthGuard('jwt'),)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update the recharge bigo id of the logged user' })
+  updateRechargeBigoId(@LoggedUser() user: User, @Body() updateBigoIdDto: UpdateBigoIdDto) {
+    return this.userService.updateRechargeBigoId(user.id, updateBigoIdDto.rechargeBigoId ?? null);
+  }
+
 
   @Patch(':id/promote')
   @UseGuards(AuthGuard('jwt'), RoleGuard)
@@ -140,4 +150,5 @@ export class UserController {
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
+
 }

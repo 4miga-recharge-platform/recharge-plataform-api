@@ -38,6 +38,7 @@ export class AuthService {
     documentType: true,
     documentValue: true,
     emailVerified: true,
+    rechargeBigoId: true,
     password: true,
     createdAt: false,
     updatedAt: false,
@@ -53,6 +54,7 @@ export class AuthService {
     documentValue: true,
     emailVerified: true,
     password: true,
+    rechargeBigoId: false,
     createdAt: false,
     updatedAt: false,
     store: {
@@ -100,6 +102,7 @@ export class AuthService {
       phone: user.phone,
       documentType: user.documentType,
       documentValue: user.documentValue,
+      rechargeBigoId: user.rechargeBigoId,
       name: user.name,
     };
 
@@ -395,6 +398,7 @@ export class AuthService {
       storeId: updatedUser.storeId,
       email: updatedUser.email,
       phone: updatedUser.phone,
+      rechargeBigoId: updatedUser.rechargeBigoId,
       documentType: updatedUser.documentType,
       documentValue: updatedUser.documentValue,
       name: updatedUser.name,
@@ -435,6 +439,7 @@ export class AuthService {
         documentValue: true,
         emailVerified: true,
         emailConfirmationCode: true,
+        rechargeBigoId: true,
       },
     });
 
@@ -507,6 +512,7 @@ export class AuthService {
       storeId: user.storeId,
       email: user.email,
       phone: user.phone,
+      rechargeBigoId: user?.rechargeBigoId,
       documentType: user.documentType,
       documentValue: user.documentValue,
       name: user.name,

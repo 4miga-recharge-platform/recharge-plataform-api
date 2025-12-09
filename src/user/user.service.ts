@@ -10,6 +10,7 @@ import { getEmailConfirmationTemplate } from '../email/templates/email-confirmat
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -28,9 +29,10 @@ export class UserService {
     documentValue: true,
     emailVerified: true,
     password: false,
+    storeId: true,
+    rechargeBigoId: true,
     createdAt: false,
     updatedAt: false,
-    storeId: true,
   };
 
   async findAll(storeId: string): Promise<User[]> {
@@ -292,6 +294,23 @@ export class UserService {
       return admins;
     } catch {
       throw new BadRequestException('Failed to fetch admins');
+    }
+  }
+
+  async updateRechargeBigoId(
+    userId: string,
+    rechargeBigoId: string | null,
+  ): Promise<void> {
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { rechargeBigoId },
+      });
+    } catch(error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new BadRequestException('User not found');
+      }
+      throw new BadRequestException('Failed to update recharge bigo id');
     }
   }
 
