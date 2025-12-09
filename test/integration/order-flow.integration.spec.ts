@@ -52,13 +52,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Verify order was created
       expect(order).toBeDefined();
@@ -123,14 +122,13 @@ describe('Order Flow Integration', () => {
 
       // Create order with coupon
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
         couponTitle: 'TEST10',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Verify order was created with discounted price
       expect(order).toBeDefined();
@@ -167,7 +165,6 @@ describe('Order Flow Integration', () => {
       );
 
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'invalid-bigo-id',
@@ -175,7 +172,7 @@ describe('Order Flow Integration', () => {
 
       // Should throw error
       await expect(
-        baseTest.orderService.create(createOrderDto, user.id),
+        baseTest.orderService.create(createOrderDto, store.id, user.id),
       ).rejects.toThrow(BadRequestException);
 
       // Verify no order was created
@@ -204,7 +201,6 @@ describe('Order Flow Integration', () => {
       });
 
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
@@ -212,7 +208,7 @@ describe('Order Flow Integration', () => {
 
       // Should throw error
       await expect(
-        baseTest.orderService.create(createOrderDto, user.id),
+        baseTest.orderService.create(createOrderDto, store.id, user.id),
       ).rejects.toThrow(BadRequestException);
 
       // Verify no order was created
@@ -243,7 +239,6 @@ describe('Order Flow Integration', () => {
       );
 
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
@@ -251,7 +246,7 @@ describe('Order Flow Integration', () => {
 
       // Should throw error
       await expect(
-        baseTest.orderService.create(createOrderDto, user.id),
+        baseTest.orderService.create(createOrderDto, store.id, user.id),
       ).rejects.toThrow(BadRequestException);
 
       // Verify no order was created
@@ -273,7 +268,6 @@ describe('Order Flow Integration', () => {
       const otherUser = await dbHelper.createUser({ storeId: otherStore.id });
 
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
@@ -281,7 +275,7 @@ describe('Order Flow Integration', () => {
 
       // Should throw error
       await expect(
-        baseTest.orderService.create(createOrderDto, otherUser.id),
+        baseTest.orderService.create(createOrderDto, store.id, otherUser.id),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -298,7 +292,6 @@ describe('Order Flow Integration', () => {
       });
 
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: otherPackage.id,
         paymentMethodId: otherPackage.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
@@ -306,7 +299,7 @@ describe('Order Flow Integration', () => {
 
       // Should throw error
       await expect(
-        baseTest.orderService.create(createOrderDto, user.id),
+        baseTest.orderService.create(createOrderDto, store.id, user.id),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -343,13 +336,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player789012',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Verify initial state
       expect(order.payment.status).toBe(PaymentStatus.PAYMENT_PENDING);
@@ -441,14 +433,13 @@ describe('Order Flow Integration', () => {
 
       // Create order with coupon
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player789012',
         couponTitle: 'DISCOUNT15',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Verify order has discounted price
       expect(Number(order.price)).toBe(85.0); // 100.00 - 15% = 85.00
@@ -498,13 +489,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player999888',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook REJECTED
       const webhookDto = BraviveMock.createRejectedWebhook(paymentResponse.id);
@@ -583,13 +573,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player888777',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook CANCELED
       const webhookDto = BraviveMock.createCanceledWebhook(paymentResponse.id);
@@ -653,13 +642,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player777666',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // First, approve the payment (simulate it was paid)
       const approvedWebhook = BraviveMock.createApprovedWebhook(
@@ -745,14 +733,13 @@ describe('Order Flow Integration', () => {
       );
 
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player888999',
         couponTitle: 'TEST20',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       const approvedWebhook = BraviveMock.createApprovedWebhook(
         paymentResponse.id,
@@ -836,13 +823,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player666555',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // First, approve the payment (simulate it was paid)
       const approvedWebhook = BraviveMock.createApprovedWebhook(
@@ -940,14 +926,13 @@ describe('Order Flow Integration', () => {
       );
 
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player111222',
         couponTitle: 'TEST15',
       };
 
-      await baseTest.orderService.create(createOrderDto, user.id);
+      await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       const approvedWebhook = BraviveMock.createApprovedWebhook(
         paymentResponse.id,
@@ -1010,13 +995,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player555444',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook IN_DISPUTE
       const webhookDto = BraviveMock.createInDisputeWebhook(paymentResponse.id);
@@ -1068,13 +1052,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player444333',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook APPROVED
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
@@ -1162,13 +1145,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player333222',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook APPROVED
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
@@ -1232,13 +1214,12 @@ describe('Order Flow Integration', () => {
 
       // Create order
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player111222',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook APPROVED to complete the order
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
@@ -1339,14 +1320,13 @@ describe('Order Flow Integration', () => {
 
       // Create order with coupon
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player222333',
         couponTitle: 'METRICS20',
       };
 
-      const order = await baseTest.orderService.create(createOrderDto, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Verify order has discounted price
       expect(Number(order.price)).toBe(80.0); // 100.00 - 20% = 80.00
@@ -1412,13 +1392,12 @@ describe('Order Flow Integration', () => {
 
       // Create first order
       const createOrderDto1: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player333444',
       };
 
-      await baseTest.orderService.create(createOrderDto1, user.id);
+      await baseTest.orderService.create(createOrderDto1, store.id, user.id);
 
       // Complete first order
       const webhookDto1 = BraviveMock.createApprovedWebhook(
@@ -1427,7 +1406,7 @@ describe('Order Flow Integration', () => {
       await baseTest.braviveService.handleWebhook(webhookDto1);
 
       // Create second order (same user)
-      await baseTest.orderService.create(createOrderDto1, user.id);
+      await baseTest.orderService.create(createOrderDto1, store.id, user.id);
 
       // Complete second order
       const webhookDto2 = BraviveMock.createApprovedWebhook(
@@ -1497,14 +1476,13 @@ describe('Order Flow Integration', () => {
 
       // Create order with coupon
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player444555',
         couponTitle: 'INFLUENCER30',
       };
 
-      await baseTest.orderService.create(createOrderDto, user.id);
+      await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook APPROVED to complete the order and confirm coupon
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
@@ -1581,14 +1559,13 @@ describe('Order Flow Integration', () => {
 
       // Create first order with coupon
       const createOrderDto: CreateOrderDto = {
-        storeId: store.id,
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player555666',
         couponTitle: 'ACCUMULATE10',
       };
 
-      await baseTest.orderService.create(createOrderDto, user.id);
+      await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Complete first order
       const webhookDto1 = BraviveMock.createApprovedWebhook(
@@ -1597,7 +1574,7 @@ describe('Order Flow Integration', () => {
       await baseTest.braviveService.handleWebhook(webhookDto1);
 
       // Create second order with same coupon
-      await baseTest.orderService.create(createOrderDto, user.id);
+      await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Complete second order
       const webhookDto2 = BraviveMock.createApprovedWebhook(

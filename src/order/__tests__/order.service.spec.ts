@@ -753,12 +753,12 @@ describe('OrderService', () => {
 
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
-      storeId: 'store-123',
       packageId: 'package-123',
       paymentMethodId: 'payment-method-123',
       userIdForRecharge: 'player123456',
       couponTitle: undefined,
     };
+    const storeId = 'store-123';
     const userId = 'user-123';
 
     it('should create an order successfully', async () => {
@@ -826,10 +826,9 @@ describe('OrderService', () => {
         pix_code: 'pix-code',
       });
 
-      const result = await service.create(createOrderDto, userId);
+      const result = await service.create(createOrderDto, storeId, userId);
 
       expect(validateRequiredFields).toHaveBeenCalledWith(createOrderDto, [
-        'storeId',
         'packageId',
         'paymentMethodId',
         'userIdForRecharge',
@@ -838,7 +837,7 @@ describe('OrderService', () => {
       expect(prismaService.user.findFirst).toHaveBeenCalledWith({
         where: {
           id: userId,
-          storeId: createOrderDto.storeId,
+          storeId: storeId,
         },
       });
 
@@ -863,7 +862,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new ForbiddenException('User does not belong to this store'),
       );
     });
@@ -875,7 +874,7 @@ describe('OrderService', () => {
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new NotFoundException('Package not found'),
       );
     });
@@ -895,7 +894,7 @@ describe('OrderService', () => {
       );
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new BadRequestException('Package does not belong to this store'),
       );
     });
@@ -915,7 +914,7 @@ describe('OrderService', () => {
       );
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new NotFoundException('Payment method not available for this package'),
       );
     });
@@ -936,7 +935,7 @@ describe('OrderService', () => {
       });
       prismaService.$transaction.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         'Database error',
       );
     });
@@ -1034,7 +1033,7 @@ describe('OrderService', () => {
         pix_code: 'pix-code',
       });
 
-      const result = await service.create(createOrderWithCouponDto, userId);
+      const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
       expect(result).toEqual(mockOrder);
     });
@@ -1136,7 +1135,7 @@ describe('OrderService', () => {
         pix_code: 'pix-code',
       });
 
-      const result = await service.create(createOrderWithCouponDto, userId);
+      const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
       expect(result).toEqual(mockOrder);
     });
@@ -1151,7 +1150,7 @@ describe('OrderService', () => {
         new BadRequestException('Failed to validate bigoId: Invalid bigoId'),
       );
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         BadRequestException,
       );
       expect(bigoService.rechargePrecheck).toHaveBeenCalled();
@@ -1175,7 +1174,7 @@ describe('OrderService', () => {
         new Error('Bravive API error'),
       );
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new BadRequestException('Payment processing failed'),
       );
       expect(braviveService.createPayment).toHaveBeenCalled();
@@ -1196,7 +1195,7 @@ describe('OrderService', () => {
       prismaService.order.findUnique.mockResolvedValue(null);
       storeService.getBraviveToken.mockResolvedValue(null);
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new BadRequestException(
           'Payment processing failed: Bravive token not configured',
         ),

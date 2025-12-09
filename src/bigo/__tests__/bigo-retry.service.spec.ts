@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BigoRetryService } from '../bigo-retry.service';
 import { BigoService } from '../bigo.service';
-import { Cron } from '@nestjs/schedule';
 
 // Remove Logger mock completely - let NestJS use the default Logger
 

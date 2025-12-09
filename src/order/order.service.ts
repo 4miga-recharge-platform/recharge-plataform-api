@@ -427,15 +427,13 @@ export class OrderService {
     }
   }
 
-  async create(createOrderDto: CreateOrderDto, userId: string) {
+  async create(createOrderDto: CreateOrderDto, storeId: string, userId: string) {
     validateRequiredFields(createOrderDto, [
-      'storeId',
       'packageId',
       'paymentMethodId',
       'userIdForRecharge',
     ]);
     const {
-      storeId,
       packageId,
       paymentMethodId,
       userIdForRecharge,

@@ -277,22 +277,19 @@ describe('OrderController', () => {
 
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
-      storeId: 'store-123',
       packageId: 'package-123',
       paymentMethodId: 'payment-method-123',
       userIdForRecharge: 'player123456',
-    };
-    const mockRequest = {
-      user: mockUser,
     };
 
     it('should create an order successfully', async () => {
       orderService.create.mockResolvedValue(mockOrder);
 
-      const result = await controller.create(createOrderDto, mockRequest);
+      const result = await controller.create(createOrderDto, mockUser);
 
       expect(orderService.create).toHaveBeenCalledWith(
         createOrderDto,
+        mockUser.storeId,
         mockUser.id,
       );
       expect(result).toEqual(mockOrder);
@@ -303,10 +300,11 @@ describe('OrderController', () => {
       orderService.create.mockRejectedValue(error);
 
       await expect(
-        controller.create(createOrderDto, mockRequest),
+        controller.create(createOrderDto, mockUser),
       ).rejects.toThrow('Failed to create order');
       expect(orderService.create).toHaveBeenCalledWith(
         createOrderDto,
+        mockUser.storeId,
         mockUser.id,
       );
     });
