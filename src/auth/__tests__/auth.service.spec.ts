@@ -114,6 +114,7 @@ describe('AuthService', () => {
     documentValue: true,
     emailVerified: true,
     password: true,
+    rechargeBigoId: true,
     createdAt: false,
     updatedAt: false,
   };
@@ -128,6 +129,7 @@ describe('AuthService', () => {
     documentValue: true,
     emailVerified: true,
     password: true,
+    rechargeBigoId: false,
     createdAt: false,
     updatedAt: false,
     store: {
@@ -701,6 +703,7 @@ describe('AuthService', () => {
           documentValue: true,
           emailVerified: true,
           emailConfirmationCode: true,
+          rechargeBigoId: true,
         },
       });
 

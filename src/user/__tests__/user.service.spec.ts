@@ -56,6 +56,7 @@ describe('UserService', () => {
     createdAt: false,
     updatedAt: false,
     storeId: true,
+    rechargeBigoId: true,
   };
 
   beforeEach(async () => {

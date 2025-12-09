@@ -432,7 +432,7 @@ export class BigoService {
   private generateSeqIdForPrecheck(): string {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substring(2, 15);
-    let seqid = `precheck_${timestamp}${random}`.toLowerCase();
+    let seqid = `precheck${timestamp}${random}`.toLowerCase().replace(/[^a-z0-9]/g, '');
 
     if (seqid.length > 32) {
       seqid = seqid.substring(0, 32);
@@ -447,8 +447,7 @@ export class BigoService {
     const timestamp = Date.now().toString(36);
     const random = Math.random().toString(36).substring(2, 9);
     const uuid = randomUUID().replace(/-/g, '').substring(0, 8);
-
-    let seqid = `${timestamp}_${random}_${uuid}`.toLowerCase();
+    let seqid = `${timestamp}${random}${uuid}`.toLowerCase().replace(/[^a-z0-9]/g, '');
 
     if (seqid.length > 32) {
       seqid = seqid.substring(0, 32);
