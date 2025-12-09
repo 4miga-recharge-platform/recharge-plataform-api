@@ -22,12 +22,10 @@ describe('BigoController', () => {
 
   const mockRechargePrecheckDto: RechargePrecheckDto = {
     recharge_bigoid: '52900149',
-    seqid: '83jyhm2784_089j',
   };
 
   const mockDiamondRechargeDto: DiamondRechargeDto = {
     recharge_bigoid: '52900149',
-    seqid: '83jyhm2784_089j',
     bu_orderid: 'order_123456789',
     value: 712,
     total_cost: 711.9,

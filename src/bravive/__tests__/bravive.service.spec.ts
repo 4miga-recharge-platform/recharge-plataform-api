@@ -488,23 +488,4 @@ describe('BraviveService', () => {
     });
   });
 
-  describe('generateSeqId', () => {
-    it('should generate a valid seqid', () => {
-      // Access private method through any cast
-      const seqid = (service as any).generateSeqId();
-
-      expect(seqid).toBeDefined();
-      expect(typeof seqid).toBe('string');
-      expect(seqid.length).toBeGreaterThanOrEqual(13);
-      expect(seqid.length).toBeLessThanOrEqual(32);
-      expect(seqid).toMatch(/^[a-z0-9_]+$/);
-    });
-
-    it('should generate unique seqids', () => {
-      const seqid1 = (service as any).generateSeqId();
-      const seqid2 = (service as any).generateSeqId();
-
-      expect(seqid1).not.toBe(seqid2);
-    });
-  });
 });
