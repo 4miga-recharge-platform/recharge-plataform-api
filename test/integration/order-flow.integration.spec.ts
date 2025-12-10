@@ -524,27 +524,7 @@ describe('Order Flow Integration', () => {
         RechargeStatus.RECHARGE_REJECTED,
       );
 
-      // Verify metrics were updated for expired order
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      const monthlySales = await baseTest.prismaService.storeMonthlySales.findFirst(
-        {
-          where: {
-            storeId: store.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(monthlySales).toBeDefined();
-      expect(monthlySales!.totalOrders).toBe(1);
-      expect(monthlySales!.totalExpiredOrders).toBe(1);
-      expect(monthlySales!.totalCompletedOrders).toBe(0);
-      expect(monthlySales!.totalRefundedOrders).toBe(0);
-      // totalSales should be 0 for expired orders
-      expect(Number(monthlySales!.totalSales)).toBe(0);
+      // Note: Metrics are now updated via daily cron job, not in real-time
     });
 
     it('should process CANCELED webhook and mark order as expired', async () => {
@@ -673,30 +653,7 @@ describe('Order Flow Integration', () => {
       });
       expect(updatedPayment!.status).toBe(PaymentStatus.PAYMENT_APPROVED);
 
-      // Verify metrics were updated for refunded order
-      // Note: Order was completed first, so it already has metrics
-      // When refunded, metrics are adjusted (not counted twice)
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      const monthlySales = await baseTest.prismaService.storeMonthlySales.findFirst(
-        {
-          where: {
-            storeId: store.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(monthlySales).toBeDefined();
-      // When order is completed and then refunded, it should count only once in totalOrders
-      expect(monthlySales!.totalOrders).toBe(1);
-      // Completed order was decremented, refunded was incremented
-      expect(monthlySales!.totalCompletedOrders).toBe(0);
-      expect(monthlySales!.totalRefundedOrders).toBe(1);
-      // totalSales should be 0 (was 40.0 when completed, then decremented to 0 when refunded)
-      expect(Number(monthlySales!.totalSales)).toBe(0);
+      // Note: Metrics are now updated via daily cron job, not in real-time
     });
 
     it('should revert coupon and influencer metrics when order with coupon is refunded', async () => {
@@ -752,22 +709,6 @@ describe('Order Flow Integration', () => {
       expect(updatedCoupon!.timesUsed).toBe(1);
       expect(Number(updatedCoupon!.totalSalesAmount)).toBe(Number(order.price));
 
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      const influencerSales = await baseTest.prismaService.influencerMonthlySales.findFirst(
-        {
-          where: {
-            influencerId: influencer.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(influencerSales).toBeDefined();
-      expect(Number(influencerSales!.totalSales)).toBe(Number(order.price));
-
       const refundedWebhook = BraviveMock.createRefundedWebhook(
         paymentResponse.id,
       );
@@ -779,17 +720,7 @@ describe('Order Flow Integration', () => {
       expect(revertedCoupon!.timesUsed).toBe(0);
       expect(Number(revertedCoupon!.totalSalesAmount)).toBe(0);
 
-      const revertedInfluencerSales = await baseTest.prismaService.influencerMonthlySales.findFirst(
-        {
-          where: {
-            influencerId: influencer.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(revertedInfluencerSales).toBeDefined();
-      expect(Number(revertedInfluencerSales!.totalSales)).toBe(0);
+      // Note: Metrics (influencerMonthlySales) are now updated via daily cron job, not in real-time
     });
 
     it('should process CHARGEBACK webhook and reject payment and recharge', async () => {
@@ -866,30 +797,7 @@ describe('Order Flow Integration', () => {
         RechargeStatus.RECHARGE_REJECTED,
       );
 
-      // Verify metrics were updated for chargeback (refunded) order
-      // Note: Order was completed first, so it already has metrics
-      // When chargeback occurs, metrics are adjusted (not counted twice)
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      const monthlySales = await baseTest.prismaService.storeMonthlySales.findFirst(
-        {
-          where: {
-            storeId: store.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(monthlySales).toBeDefined();
-      // When order is completed and then refunded (chargeback), it should count only once in totalOrders
-      expect(monthlySales!.totalOrders).toBe(1);
-      // Completed order was decremented, refunded was incremented
-      expect(monthlySales!.totalCompletedOrders).toBe(0);
-      expect(monthlySales!.totalRefundedOrders).toBe(1);
-      // totalSales should be 0 (was 50.0 when completed, then decremented to 0 when refunded)
-      expect(Number(monthlySales!.totalSales)).toBe(0);
+      // Note: Metrics are now updated via daily cron job, not in real-time
     });
 
     it('should revert coupon and influencer metrics when order with coupon has chargeback', async () => {
@@ -944,27 +852,13 @@ describe('Order Flow Integration', () => {
       );
       await baseTest.braviveService.handleWebhook(chargebackWebhook);
 
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
       const revertedCoupon = await baseTest.prismaService.coupon.findUnique({
         where: { id: coupon.id },
       });
       expect(revertedCoupon!.timesUsed).toBe(0);
       expect(Number(revertedCoupon!.totalSalesAmount)).toBe(0);
 
-      const revertedInfluencerSales = await baseTest.prismaService.influencerMonthlySales.findFirst(
-        {
-          where: {
-            influencerId: influencer.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(revertedInfluencerSales).toBeDefined();
-      expect(Number(revertedInfluencerSales!.totalSales)).toBe(0);
+      // Note: Metrics (influencerMonthlySales) are now updated via daily cron job, not in real-time
     });
   });
 
@@ -1231,52 +1125,7 @@ describe('Order Flow Integration', () => {
       });
       expect(completedOrder!.orderStatus).toBe(OrderStatus.COMPLETED);
 
-      // Get current date for metrics
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      // Verify daily sales were updated
-      const dailySales = await baseTest.prismaService.storeDailySales.findFirst({
-        where: {
-          storeId: store.id,
-          date: new Date(today.getFullYear(), today.getMonth(), today.getDate()),
-        },
-      });
-      expect(dailySales).toBeDefined();
-      expect(Number(dailySales!.totalSales)).toBe(50.0);
-      expect(dailySales!.totalOrders).toBe(1);
-
-      // Verify monthly sales were updated
-      const monthlySales = await baseTest.prismaService.storeMonthlySales.findFirst(
-        {
-          where: {
-            storeId: store.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(monthlySales).toBeDefined();
-      expect(Number(monthlySales!.totalSales)).toBe(50.0);
-      expect(monthlySales!.totalOrders).toBe(1);
-      expect(monthlySales!.totalCompletedOrders).toBe(1);
-      expect(monthlySales!.ordersWithoutCoupon).toBe(1);
-      expect(monthlySales!.ordersWithCoupon).toBe(0);
-
-      // Verify monthly sales by product were updated
-      const monthlySalesByProduct =
-        await baseTest.prismaService.storeMonthlySalesByProduct.findFirst({
-          where: {
-            storeId: store.id,
-            productId: pkg.productId,
-            month,
-            year,
-          },
-        });
-      expect(monthlySalesByProduct).toBeDefined();
-      expect(Number(monthlySalesByProduct!.totalSales)).toBe(50.0);
-      expect(monthlySalesByProduct!.totalOrders).toBe(1);
+      // Note: Metrics are now updated via daily cron job, not in real-time
     });
 
     it('should update metrics correctly for orders with coupons', async () => {
@@ -1335,25 +1184,7 @@ describe('Order Flow Integration', () => {
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
       await baseTest.braviveService.handleWebhook(webhookDto);
 
-      // Get current date for metrics
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      // Verify monthly sales show order with coupon
-      const monthlySales = await baseTest.prismaService.storeMonthlySales.findFirst(
-        {
-          where: {
-            storeId: store.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(monthlySales).toBeDefined();
-      expect(monthlySales!.ordersWithCoupon).toBe(1);
-      expect(monthlySales!.ordersWithoutCoupon).toBe(0);
-      expect(Number(monthlySales!.totalSales)).toBe(80.0); // Discounted price
+      // Note: Metrics are now updated via daily cron job, not in real-time
     });
 
     it('should identify returning customers correctly', async () => {
@@ -1414,23 +1245,7 @@ describe('Order Flow Integration', () => {
       );
       await baseTest.braviveService.handleWebhook(webhookDto2);
 
-      // Get current date for metrics
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      // Verify monthly sales show only 1 new customer (not 2)
-      const monthlySales = await baseTest.prismaService.storeMonthlySales.findFirst(
-        {
-          where: {
-            storeId: store.id,
-            month,
-            year,
-          },
-        },
-      );
-      expect(monthlySales).toBeDefined();
-      expect(monthlySales!.totalOrders).toBe(2); // 2 orders
+      // Note: Metrics are now updated via daily cron job, not in real-time
     });
   });
 
@@ -1488,29 +1303,14 @@ describe('Order Flow Integration', () => {
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
       await baseTest.braviveService.handleWebhook(webhookDto);
 
-      // Get current date for metrics
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      // Verify influencer monthly sales were updated
-      const influencerSales =
-        await baseTest.prismaService.influencerMonthlySales.findFirst({
-          where: {
-            influencerId: influencer.id,
-            month,
-            year,
-          },
-        });
-      expect(influencerSales).toBeDefined();
-      expect(Number(influencerSales!.totalSales)).toBe(42.0); // 60.00 - 30% = 42.00
-
       // Verify coupon was updated
       const updatedCoupon = await baseTest.prismaService.coupon.findUnique({
         where: { id: coupon.id },
       });
       expect(updatedCoupon!.timesUsed).toBe(1);
       expect(Number(updatedCoupon!.totalSalesAmount)).toBe(42.0);
+
+      // Note: Metrics (influencerMonthlySales) are now updated via daily cron job, not in real-time
     });
 
     it('should accumulate influencer sales for multiple orders', async () => {
@@ -1582,30 +1382,14 @@ describe('Order Flow Integration', () => {
       );
       await baseTest.braviveService.handleWebhook(webhookDto2);
 
-      // Get current date for metrics
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const year = today.getFullYear();
-
-      // Verify influencer monthly sales accumulated both orders
-      const influencerSales =
-        await baseTest.prismaService.influencerMonthlySales.findFirst({
-          where: {
-            influencerId: influencer.id,
-            month,
-            year,
-          },
-        });
-      expect(influencerSales).toBeDefined();
-      // 25.00 - 10% = 22.50 per order, so 45.00 total
-      expect(Number(influencerSales!.totalSales)).toBe(45.0);
-
       // Verify coupon was updated twice
       const updatedCoupon = await baseTest.prismaService.coupon.findUnique({
         where: { id: coupon.id },
       });
       expect(updatedCoupon!.timesUsed).toBe(2);
       expect(Number(updatedCoupon!.totalSalesAmount)).toBe(45.0);
+
+      // Note: Metrics (influencerMonthlySales) are now updated via daily cron job, not in real-time
     });
   });
 });

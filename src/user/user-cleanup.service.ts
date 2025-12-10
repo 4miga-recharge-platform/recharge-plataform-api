@@ -1,17 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderService } from '../order/order.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
 export class UserCleanupService {
   private readonly logger = new Logger(UserCleanupService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly orderService: OrderService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Cron(CronExpression.EVERY_HOUR)
   async cleanupUnverifiedUsers() {
@@ -74,7 +70,7 @@ export class UserCleanupService {
 
   /**
    * Expire orders that have been unpaid for more than 24 hours
-   * This ensures totalExpiredOrders metric is consistent
+   * Metrics will be recalculated by the daily cron job
    */
   async expireUnpaidOrders(): Promise<void> {
     this.logger.log('Starting expiration of unpaid orders...');
@@ -131,9 +127,6 @@ export class UserCleanupService {
                 updatedAt: new Date(),
               },
             });
-
-            // Update store sales metrics
-            await this.orderService.updateStoreSalesMetrics(order.id, tx);
           });
 
           expiredCount++;

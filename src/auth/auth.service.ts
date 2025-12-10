@@ -493,19 +493,6 @@ export class AuthService {
       },
     });
 
-    // Update newCustomers metric (only if this is the first time email is verified)
-    if (userWithExpiration?.createdAt) {
-      try {
-        await this.orderService.updateNewCustomerMetric(
-          storeId,
-          userWithExpiration.createdAt,
-        );
-      } catch (error) {
-        // Log error but don't throw - email verification should succeed even if metric update fails
-        console.error('Failed to update new customer metric:', error);
-      }
-    }
-
     // Generate tokens (same as login)
     const userData = {
       id: user.id,

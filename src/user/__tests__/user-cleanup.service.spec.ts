@@ -56,9 +56,7 @@ describe('UserCleanupService', () => {
       $transaction: jest.fn(),
     };
 
-    const mockOrderService = {
-      updateStoreSalesMetrics: jest.fn(),
-    };
+    const mockOrderService = {};
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -273,7 +271,6 @@ describe('UserCleanupService', () => {
         };
         return callback(mockTx);
       });
-      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
 
       await service.expireUnpaidOrders();
 
@@ -298,7 +295,6 @@ describe('UserCleanupService', () => {
       });
 
       expect(prismaService.$transaction).toHaveBeenCalledTimes(2);
-      expect(orderService.updateStoreSalesMetrics).toHaveBeenCalledTimes(2);
     });
 
     it('should handle case when no unpaid orders found', async () => {
@@ -312,7 +308,6 @@ describe('UserCleanupService', () => {
 
       expect(prismaService.order.findMany).toHaveBeenCalled();
       expect(prismaService.$transaction).not.toHaveBeenCalled();
-      expect(orderService.updateStoreSalesMetrics).not.toHaveBeenCalled();
     });
 
     it('should handle errors when expiring individual orders', async () => {
@@ -336,16 +331,10 @@ describe('UserCleanupService', () => {
           throw new Error('Transaction failed');
         }
       });
-      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
-
       await service.expireUnpaidOrders();
 
       expect(prismaService.$transaction).toHaveBeenCalledTimes(2);
       // First order should have succeeded
-      expect(orderService.updateStoreSalesMetrics).toHaveBeenCalledWith(
-        'order-1',
-        expect.anything(),
-      );
     });
 
     it('should handle single unpaid order', async () => {
@@ -363,13 +352,11 @@ describe('UserCleanupService', () => {
         };
         return callback(mockTx);
       });
-      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
 
       await service.expireUnpaidOrders();
 
       expect(prismaService.order.findMany).toHaveBeenCalled();
       expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
-      expect(orderService.updateStoreSalesMetrics).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -388,13 +375,11 @@ describe('UserCleanupService', () => {
         };
         return callback(mockTx);
       });
-      orderService.updateStoreSalesMetrics.mockResolvedValue(undefined);
 
       await service.manualExpireOrders();
 
       expect(prismaService.order.findMany).toHaveBeenCalled();
       expect(prismaService.$transaction).toHaveBeenCalled();
-      expect(orderService.updateStoreSalesMetrics).toHaveBeenCalled();
     });
   });
 });
