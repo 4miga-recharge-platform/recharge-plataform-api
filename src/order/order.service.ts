@@ -1,10 +1,11 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Injectable,
-  NotFoundException,
-  Inject,
   forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   OrderStatus,
@@ -14,20 +15,22 @@ import {
 } from '@prisma/client';
 import { createHash } from 'crypto';
 import { validateRequiredFields } from 'src/utils/validation.util';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { ValidateCouponDto } from './dto/validate-coupon.dto';
+import { BigoService } from '../bigo/bigo.service';
 import { BraviveService } from '../bravive/bravive.service';
-import { StoreService } from '../store/store.service';
 import {
   CreatePaymentDto,
   PaymentMethod,
 } from '../bravive/dto/create-payment.dto';
-import { BigoService } from '../bigo/bigo.service';
 import { env } from '../env';
+import { PrismaService } from '../prisma/prisma.service';
+import { StoreService } from '../store/store.service';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { ValidateCouponDto } from './dto/validate-coupon.dto';
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => BraviveService))
@@ -427,21 +430,25 @@ export class OrderService {
     }
   }
 
-  async create(createOrderDto: CreateOrderDto, storeId: string, userId: string) {
+  private sanitizeValuesToGetNumbersOnly(text: string): string {
+    return text.replace(/\D/g, '');
+  }
+
+  async create(
+    createOrderDto: CreateOrderDto,
+    storeId: string,
+    userId: string,
+  ) {
     validateRequiredFields(createOrderDto, [
       'packageId',
       'paymentMethodId',
       'userIdForRecharge',
     ]);
-    const {
-      packageId,
-      paymentMethodId,
-      userIdForRecharge,
-      couponTitle,
-    } = createOrderDto;
+
+    const { packageId, paymentMethodId, userIdForRecharge, couponTitle } =
+      createOrderDto;
 
     try {
-      // Check if user belongs to the store
       const user = await this.prisma.user.findFirst({
         where: {
           id: userId,
@@ -453,7 +460,6 @@ export class OrderService {
         throw new ForbiddenException('User does not belong to this store');
       }
 
-      // Fetch package and payment method
       const packageData = await this.prisma.package.findUnique({
         where: { id: packageId },
         include: {
@@ -470,7 +476,6 @@ export class OrderService {
         throw new NotFoundException('Package not found');
       }
 
-      // Check if package belongs to the store
       if (packageData.storeId !== storeId) {
         throw new BadRequestException('Package does not belong to this store');
       }
@@ -483,12 +488,10 @@ export class OrderService {
 
       const paymentMethod = packageData.paymentMethods[0];
 
-
       await this.bigoService.rechargePrecheck({
         recharge_bigoid: userIdForRecharge,
       });
 
-      // Calculate final price with coupon if provided
       let finalPrice = paymentMethod.price;
       let couponValidation: any = null;
 
@@ -506,7 +509,6 @@ export class OrderService {
         finalPrice = couponValidation.finalAmount;
       }
 
-      // Generate order number before creating payment
       let orderNumber: string;
       let existingOrder: any;
       let attempts = 0;
@@ -526,9 +528,8 @@ export class OrderService {
         }
       } while (existingOrder);
 
-      // Create Bravive payment BEFORE transaction if payment method is PIX
       let braviveResponse: any = null;
-      if (paymentMethod.name === 'pix') {
+      if (paymentMethod.name.toLowerCase() === 'pix') {
         const braviveToken = await this.storeService.getBraviveToken(storeId);
 
         if (!braviveToken) {
@@ -537,31 +538,44 @@ export class OrderService {
           );
         }
 
-        try {
-          const bravivePaymentDto: CreatePaymentDto = {
-            amount: Math.round(Number(finalPrice) * 100),
-            currency: 'BRL',
-            description: `Pedido ${orderNumber} - ${packageData.name}`,
-            payer_name: user.name,
-            payer_email: user.email,
-            payer_phone: user.phone,
-            payer_document: user.documentValue,
-            method: PaymentMethod.PIX,
-            webhook_url: `${env.BASE_URL}/bravive/webhook`,
-          };
+        if (!user.phone || user.phone.trim() === '') {
+          throw new BadRequestException(
+            'Payment processing failed: User phone is required',
+          );
+        }
 
+        if (!user.documentValue || user.documentValue.trim() === '') {
+          throw new BadRequestException(
+            'Payment processing failed: User document is required',
+          );
+        }
+
+        const bravivePaymentDto: CreatePaymentDto = {
+          amount: Math.round(Number(finalPrice) * 100),
+          currency: 'BRL',
+          description: `Pedido ${orderNumber} - ${packageData.name}`,
+          payer_name: user.name,
+          payer_email: user.email,
+          payer_phone: this.sanitizeValuesToGetNumbersOnly(user.phone),
+          payer_document: this.sanitizeValuesToGetNumbersOnly(user.documentValue),
+          method: PaymentMethod.PIX,
+          webhook_url: `${env.BASE_URL}/bravive/webhook`,
+        };
+
+        try {
           braviveResponse = await this.braviveService.createPayment(
             bravivePaymentDto,
             braviveToken,
           );
-        } catch {
-          throw new BadRequestException('Payment processing failed');
+        } catch (error) {
+          const errorMessage = error.message || 'Unknown error';
+          throw new BadRequestException(
+            `Payment processing failed: ${errorMessage}`,
+          );
         }
       }
 
-      // Execute all operations in a single transaction
       const order = await this.prisma.$transaction(async (tx) => {
-        // 1. Create PackageInfo (package snapshot)
         const packageInfo = await tx.packageInfo.create({
           data: {
             packageId: packageData.id,
@@ -571,7 +585,6 @@ export class OrderService {
           },
         });
 
-        // 2. Recharge
         const recharge = await tx.recharge.create({
           data: {
             userIdForRecharge,
@@ -581,7 +594,6 @@ export class OrderService {
           },
         });
 
-        // 3. OrderItem
         const orderItem = await tx.orderItem.create({
           data: {
             productId: packageData.productId,
@@ -591,7 +603,6 @@ export class OrderService {
           },
         });
 
-        // 4. Payment
         const payment = await tx.payment.create({
           data: {
             name: paymentMethod.name,
@@ -604,7 +615,6 @@ export class OrderService {
           },
         });
 
-        // 5. Create Order
         const order = await tx.order.create({
           data: {
             orderNumber,
@@ -626,7 +636,6 @@ export class OrderService {
           },
         });
 
-        // 6. Create coupon usage record if coupon was validated (after order creation)
         if (couponValidation) {
           await tx.couponUsage.create({
             data: {
@@ -639,7 +648,6 @@ export class OrderService {
         return order;
       });
 
-      // Fetch order with all relations
       const createdOrder = await this.prisma.order.findUnique({
         where: { id: order.id },
         include: {
@@ -659,16 +667,23 @@ export class OrderService {
 
       return createdOrder;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // Handle specific Prisma errors
-        if (error.code === 'P2002') {
-          throw new BadRequestException('Unique constraint violation');
-        }
-        if (error.code === 'P2003') {
-          throw new BadRequestException('Foreign key constraint violation');
-        }
-        throw new BadRequestException(error.message);
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
       }
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new BadRequestException(
+            'Order with this number already exists',
+          );
+        }
+        throw new BadRequestException('Database error while creating order');
+      }
+
       throw error;
     }
   }
@@ -755,7 +770,10 @@ export class OrderService {
 
       // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
       // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
-      if (!wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)) {
+      if (
+        !wasAlreadyCounted &&
+        ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
+      ) {
         updateData.totalOrders = { increment: 1 };
       }
 
@@ -771,7 +789,11 @@ export class OrderService {
           storeId,
           date: dateOnly,
           totalSales: saleAmount,
-          totalOrders: !wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus) ? 1 : 0,
+          totalOrders:
+            !wasAlreadyCounted &&
+            ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
+              ? 1
+              : 0,
         },
       });
     }
@@ -804,7 +826,10 @@ export class OrderService {
 
     // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
     // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
-    if (!wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)) {
+    if (
+      !wasAlreadyCounted &&
+      ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
+    ) {
       updateData.totalOrders = { increment: 1 };
     }
 
@@ -852,12 +877,22 @@ export class OrderService {
         month,
         year,
         totalSales: saleAmount,
-        totalOrders: !wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus) ? 1 : 0,
+        totalOrders:
+          !wasAlreadyCounted &&
+          ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
+            ? 1
+            : 0,
         totalCompletedOrders: orderStatus === 'COMPLETED' ? 1 : 0,
         totalExpiredOrders: orderStatus === 'EXPIRED' ? 1 : 0,
         totalRefundedOrders: orderStatus === 'REFOUNDED' ? 1 : 0,
-        ordersWithCoupon: orderStatus === 'COMPLETED' && !wasAlreadyCounted && hasCoupon ? 1 : 0,
-        ordersWithoutCoupon: orderStatus === 'COMPLETED' && !wasAlreadyCounted && !hasCoupon ? 1 : 0,
+        ordersWithCoupon:
+          orderStatus === 'COMPLETED' && !wasAlreadyCounted && hasCoupon
+            ? 1
+            : 0,
+        ordersWithoutCoupon:
+          orderStatus === 'COMPLETED' && !wasAlreadyCounted && !hasCoupon
+            ? 1
+            : 0,
       };
       await tx.storeMonthlySales.create({ data: initialData });
     }
@@ -894,7 +929,10 @@ export class OrderService {
 
       // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
       // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
-      if (!wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)) {
+      if (
+        !wasAlreadyCounted &&
+        ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
+      ) {
         updateData.totalOrders = { increment: 1 };
       }
 
@@ -912,7 +950,11 @@ export class OrderService {
           month,
           year,
           totalSales: saleAmount,
-          totalOrders: !wasAlreadyCounted && ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus) ? 1 : 0,
+          totalOrders:
+            !wasAlreadyCounted &&
+            ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
+              ? 1
+              : 0,
         },
       });
     }
@@ -1184,7 +1226,10 @@ export class OrderService {
    * Update newCustomers metric when a user confirms their email
    * This should be called when a user's email is verified for the first time
    */
-  async updateNewCustomerMetric(storeId: string, userCreatedAt: Date): Promise<void> {
+  async updateNewCustomerMetric(
+    storeId: string,
+    userCreatedAt: Date,
+  ): Promise<void> {
     try {
       const month = userCreatedAt.getMonth() + 1;
       const year = userCreatedAt.getFullYear();

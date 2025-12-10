@@ -33,10 +33,6 @@ export class BraviveService {
     dto: CreatePaymentDto,
     token: string,
   ): Promise<PaymentResponseDto> {
-    this.logger.log(
-      `Creating payment: ${dto.description} - Amount: ${dto.amount}`,
-    );
-
     try {
       const response = await this.httpService.post<PaymentResponseDto>(
         '/payments',
@@ -44,7 +40,6 @@ export class BraviveService {
         token,
       );
 
-      this.logger.log(`Payment created successfully: ${response.id}`);
       return response;
     } catch (error) {
       this.logger.error(`Failed to create payment: ${error.message}`);
