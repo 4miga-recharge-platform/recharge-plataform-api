@@ -645,6 +645,9 @@ export class OrderService {
           });
         }
 
+        // Increment totalOrders immediately when order is created
+        await this.incrementTotalOrdersOnCreation(tx, storeId, order.createdAt, order.orderItem.productId);
+
         return order;
       });
 
@@ -685,6 +688,84 @@ export class OrderService {
       }
 
       throw error;
+    }
+  }
+
+  /**
+   * Increment totalOrders when an order is created
+   * This ensures totalOrders is updated immediately, not waiting for status changes
+   */
+  private async incrementTotalOrdersOnCreation(
+    tx: any,
+    storeId: string,
+    orderDate: Date,
+    productId: string,
+  ): Promise<void> {
+    const month = orderDate.getMonth() + 1;
+    const year = orderDate.getFullYear();
+    const dateOnly = new Date(
+      orderDate.getFullYear(),
+      orderDate.getMonth(),
+      orderDate.getDate(),
+    );
+
+    // Update daily sales - increment totalOrders
+    const existingDaily = await tx.storeDailySales.findFirst({
+      where: { storeId, date: dateOnly },
+    });
+
+    if (existingDaily) {
+      await tx.storeDailySales.update({
+        where: { id: existingDaily.id },
+        data: { totalOrders: { increment: 1 }, updatedAt: new Date() },
+      });
+    } else {
+      await tx.storeDailySales.create({
+        data: { storeId, date: dateOnly, totalSales: 0, totalOrders: 1 },
+      });
+    }
+
+    // Update monthly sales - increment totalOrders
+    const existingMonthly = await tx.storeMonthlySales.findFirst({
+      where: { storeId, month, year },
+    });
+
+    if (existingMonthly) {
+      await tx.storeMonthlySales.update({
+        where: { id: existingMonthly.id },
+        data: { totalOrders: { increment: 1 }, updatedAt: new Date() },
+      });
+    } else {
+      await tx.storeMonthlySales.create({
+        data: {
+          storeId,
+          month,
+          year,
+          totalSales: 0,
+          totalOrders: 1,
+          totalCompletedOrders: 0,
+          totalExpiredOrders: 0,
+          totalRefundedOrders: 0,
+          ordersWithCoupon: 0,
+          ordersWithoutCoupon: 0,
+        },
+      });
+    }
+
+    // Update monthly sales by product - increment totalOrders
+    const existingByProduct = await tx.storeMonthlySalesByProduct.findFirst({
+      where: { storeId, productId, month, year },
+    });
+
+    if (existingByProduct) {
+      await tx.storeMonthlySalesByProduct.update({
+        where: { id: existingByProduct.id },
+        data: { totalOrders: { increment: 1 }, updatedAt: new Date() },
+      });
+    } else {
+      await tx.storeMonthlySalesByProduct.create({
+        data: { storeId, productId, month, year, totalSales: 0, totalOrders: 1 },
+      });
     }
   }
 
@@ -746,7 +827,6 @@ export class OrderService {
     orderStatus: OrderStatus,
     wasAlreadyCounted: boolean = false,
   ): Promise<void> {
-    // Get date without time (only year, month, day)
     const dateOnly = new Date(
       saleDate.getFullYear(),
       saleDate.getMonth(),
@@ -754,46 +834,30 @@ export class OrderService {
     );
 
     const existing = await tx.storeDailySales.findFirst({
-      where: {
-        storeId,
-        date: dateOnly,
-      },
+      where: { storeId, date: dateOnly },
     });
 
     if (existing) {
       const updateData: any = {
-        totalSales: {
-          increment: saleAmount,
-        },
+        totalSales: { increment: saleAmount },
         updatedAt: new Date(),
       };
 
-      // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
-      // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
-      if (
-        !wasAlreadyCounted &&
-        ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
-      ) {
-        updateData.totalOrders = { increment: 1 };
-      }
+      // totalOrders is already incremented when order is created
+      // Only update totalSales here (for COMPLETED orders with saleAmount > 0)
 
       await tx.storeDailySales.update({
-        where: {
-          id: existing.id,
-        },
+        where: { id: existing.id },
         data: updateData,
       });
     } else {
+      // This should rarely happen as totalOrders should be created on order creation
       await tx.storeDailySales.create({
         data: {
           storeId,
           date: dateOnly,
           totalSales: saleAmount,
-          totalOrders:
-            !wasAlreadyCounted &&
-            ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
-              ? 1
-              : 0,
+          totalOrders: 0,
         },
       });
     }
@@ -808,15 +872,11 @@ export class OrderService {
     hasCoupon: boolean,
     wasAlreadyCounted: boolean = false,
   ): Promise<void> {
-    const month = saleDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+    const month = saleDate.getMonth() + 1;
     const year = saleDate.getFullYear();
 
     const existingRecord = await tx.storeMonthlySales.findFirst({
-      where: {
-        storeId,
-        month,
-        year,
-      },
+      where: { storeId, month, year },
     });
 
     const updateData: any = {
@@ -824,14 +884,8 @@ export class OrderService {
       updatedAt: new Date(),
     };
 
-    // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
-    // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
-    if (
-      !wasAlreadyCounted &&
-      ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
-    ) {
-      updateData.totalOrders = { increment: 1 };
-    }
+    // totalOrders is already incremented when order is created
+    // Only update status-specific counters here
 
     if (orderStatus === 'COMPLETED') {
       updateData.totalCompletedOrders = { increment: 1 };
@@ -866,33 +920,24 @@ export class OrderService {
 
     if (existingRecord) {
       await tx.storeMonthlySales.update({
-        where: {
-          id: existingRecord.id,
-        },
+        where: { id: existingRecord.id },
         data: updateData,
       });
     } else {
+      // This should rarely happen as totalOrders should be created on order creation
       const initialData: any = {
         storeId,
         month,
         year,
         totalSales: saleAmount,
-        totalOrders:
-          !wasAlreadyCounted &&
-          ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
-            ? 1
-            : 0,
+        totalOrders: 0,
         totalCompletedOrders: orderStatus === 'COMPLETED' ? 1 : 0,
         totalExpiredOrders: orderStatus === 'EXPIRED' ? 1 : 0,
         totalRefundedOrders: orderStatus === 'REFOUNDED' ? 1 : 0,
         ordersWithCoupon:
-          orderStatus === 'COMPLETED' && !wasAlreadyCounted && hasCoupon
-            ? 1
-            : 0,
+          orderStatus === 'COMPLETED' && !wasAlreadyCounted && hasCoupon ? 1 : 0,
         ordersWithoutCoupon:
-          orderStatus === 'COMPLETED' && !wasAlreadyCounted && !hasCoupon
-            ? 1
-            : 0,
+          orderStatus === 'COMPLETED' && !wasAlreadyCounted && !hasCoupon ? 1 : 0,
       };
       await tx.storeMonthlySales.create({ data: initialData });
     }
@@ -907,42 +952,28 @@ export class OrderService {
     orderStatus: OrderStatus,
     wasAlreadyCounted: boolean = false,
   ): Promise<void> {
-    const month = saleDate.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+    const month = saleDate.getMonth() + 1;
     const year = saleDate.getFullYear();
 
     const existing = await tx.storeMonthlySalesByProduct.findFirst({
-      where: {
-        storeId,
-        productId,
-        month,
-        year,
-      },
+      where: { storeId, productId, month, year },
     });
 
     if (existing) {
       const updateData: any = {
-        totalSales: {
-          increment: saleAmount,
-        },
+        totalSales: { increment: saleAmount },
         updatedAt: new Date(),
       };
 
-      // totalOrders = totalCompletedOrders + totalExpiredOrders + totalRefundedOrders
-      // Increment totalOrders for COMPLETED, EXPIRED, or REFOUNDED (if not already counted)
-      if (
-        !wasAlreadyCounted &&
-        ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
-      ) {
-        updateData.totalOrders = { increment: 1 };
-      }
+      // totalOrders is already incremented when order is created
+      // Only update totalSales here (for COMPLETED orders with saleAmount > 0)
 
       await tx.storeMonthlySalesByProduct.update({
-        where: {
-          id: existing.id,
-        },
+        where: { id: existing.id },
         data: updateData,
       });
     } else {
+      // This should rarely happen as totalOrders should be created on order creation
       await tx.storeMonthlySalesByProduct.create({
         data: {
           storeId,
@@ -950,11 +981,7 @@ export class OrderService {
           month,
           year,
           totalSales: saleAmount,
-          totalOrders:
-            !wasAlreadyCounted &&
-            ['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(orderStatus)
-              ? 1
-              : 0,
+          totalOrders: 0,
         },
       });
     }

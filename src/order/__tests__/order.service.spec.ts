@@ -30,6 +30,8 @@ describe('OrderService', () => {
     storeId: 'store-123',
     email: 'user@example.com',
     name: 'John Doe',
+    phone: '11999999999',
+    documentValue: '12345678900',
   };
 
   const mockPackage = {
@@ -806,6 +808,21 @@ describe('OrderService', () => {
             findUnique: jest.fn().mockResolvedValue(null),
             create: jest.fn().mockResolvedValue(mockOrder),
           },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
         };
         return await callback(tx);
       });
@@ -923,7 +940,11 @@ describe('OrderService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      prismaService.user.findFirst.mockResolvedValue({
+        ...mockUser,
+        phone: '11999999999',
+        documentValue: '12345678900',
+      });
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.order.findUnique.mockResolvedValue(null);
@@ -1014,6 +1035,21 @@ describe('OrderService', () => {
               year: new Date().getFullYear(),
               totalSales: 17.99,
             }),
+          },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
           },
         };
         return await callback(tx);
@@ -1117,6 +1153,21 @@ describe('OrderService', () => {
               totalSales: 67.99, // 50.00 + 17.99
             }),
           },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
         };
         return await callback(tx);
       });
@@ -1163,7 +1214,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue({
         ...mockUser,
-        phone: '123456789',
+        phone: '11999999999',
         documentValue: '12345678900',
       });
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
@@ -1175,7 +1226,7 @@ describe('OrderService', () => {
       );
 
       await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
-        new BadRequestException('Payment processing failed'),
+        new BadRequestException('Payment processing failed: Bravive API error'),
       );
       expect(braviveService.createPayment).toHaveBeenCalled();
       expect(prismaService.$transaction).not.toHaveBeenCalled();
@@ -1187,7 +1238,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue({
         ...mockUser,
-        phone: '123456789',
+        phone: '11999999999',
         documentValue: '12345678900',
       });
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
