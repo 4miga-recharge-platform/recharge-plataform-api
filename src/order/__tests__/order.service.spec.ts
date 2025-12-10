@@ -30,6 +30,8 @@ describe('OrderService', () => {
     storeId: 'store-123',
     email: 'user@example.com',
     name: 'John Doe',
+    phone: '11999999999',
+    documentValue: '12345678900',
   };
 
   const mockPackage = {
@@ -753,12 +755,12 @@ describe('OrderService', () => {
 
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
-      storeId: 'store-123',
       packageId: 'package-123',
       paymentMethodId: 'payment-method-123',
       userIdForRecharge: 'player123456',
       couponTitle: undefined,
     };
+    const storeId = 'store-123';
     const userId = 'user-123';
 
     it('should create an order successfully', async () => {
@@ -806,6 +808,21 @@ describe('OrderService', () => {
             findUnique: jest.fn().mockResolvedValue(null),
             create: jest.fn().mockResolvedValue(mockOrder),
           },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
         };
         return await callback(tx);
       });
@@ -826,10 +843,9 @@ describe('OrderService', () => {
         pix_code: 'pix-code',
       });
 
-      const result = await service.create(createOrderDto, userId);
+      const result = await service.create(createOrderDto, storeId, userId);
 
       expect(validateRequiredFields).toHaveBeenCalledWith(createOrderDto, [
-        'storeId',
         'packageId',
         'paymentMethodId',
         'userIdForRecharge',
@@ -838,7 +854,7 @@ describe('OrderService', () => {
       expect(prismaService.user.findFirst).toHaveBeenCalledWith({
         where: {
           id: userId,
-          storeId: createOrderDto.storeId,
+          storeId: storeId,
         },
       });
 
@@ -863,7 +879,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new ForbiddenException('User does not belong to this store'),
       );
     });
@@ -875,7 +891,7 @@ describe('OrderService', () => {
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.package.findUnique.mockResolvedValue(null);
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new NotFoundException('Package not found'),
       );
     });
@@ -895,7 +911,7 @@ describe('OrderService', () => {
       );
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new BadRequestException('Package does not belong to this store'),
       );
     });
@@ -915,7 +931,7 @@ describe('OrderService', () => {
       );
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new NotFoundException('Payment method not available for this package'),
       );
     });
@@ -924,7 +940,11 @@ describe('OrderService', () => {
       const { validateRequiredFields } = require('../../utils/validation.util');
       validateRequiredFields.mockImplementation(() => {});
 
-      prismaService.user.findFirst.mockResolvedValue(mockUser);
+      prismaService.user.findFirst.mockResolvedValue({
+        ...mockUser,
+        phone: '11999999999',
+        documentValue: '12345678900',
+      });
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.order.findUnique.mockResolvedValue(null);
@@ -936,7 +956,7 @@ describe('OrderService', () => {
       });
       prismaService.$transaction.mockRejectedValue(new Error('Database error'));
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         'Database error',
       );
     });
@@ -1016,6 +1036,21 @@ describe('OrderService', () => {
               totalSales: 17.99,
             }),
           },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
         };
         return await callback(tx);
       });
@@ -1034,7 +1069,7 @@ describe('OrderService', () => {
         pix_code: 'pix-code',
       });
 
-      const result = await service.create(createOrderWithCouponDto, userId);
+      const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
       expect(result).toEqual(mockOrder);
     });
@@ -1118,6 +1153,21 @@ describe('OrderService', () => {
               totalSales: 67.99, // 50.00 + 17.99
             }),
           },
+          storeDailySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySales: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
+          storeMonthlySalesByProduct: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
+          },
         };
         return await callback(tx);
       });
@@ -1136,7 +1186,7 @@ describe('OrderService', () => {
         pix_code: 'pix-code',
       });
 
-      const result = await service.create(createOrderWithCouponDto, userId);
+      const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
       expect(result).toEqual(mockOrder);
     });
@@ -1151,7 +1201,7 @@ describe('OrderService', () => {
         new BadRequestException('Failed to validate bigoId: Invalid bigoId'),
       );
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         BadRequestException,
       );
       expect(bigoService.rechargePrecheck).toHaveBeenCalled();
@@ -1164,7 +1214,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue({
         ...mockUser,
-        phone: '123456789',
+        phone: '11999999999',
         documentValue: '12345678900',
       });
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
@@ -1175,8 +1225,8 @@ describe('OrderService', () => {
         new Error('Bravive API error'),
       );
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
-        new BadRequestException('Payment processing failed'),
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
+        new BadRequestException('Payment processing failed: Bravive API error'),
       );
       expect(braviveService.createPayment).toHaveBeenCalled();
       expect(prismaService.$transaction).not.toHaveBeenCalled();
@@ -1188,7 +1238,7 @@ describe('OrderService', () => {
 
       prismaService.user.findFirst.mockResolvedValue({
         ...mockUser,
-        phone: '123456789',
+        phone: '11999999999',
         documentValue: '12345678900',
       });
       prismaService.package.findUnique.mockResolvedValue(mockPackage);
@@ -1196,7 +1246,7 @@ describe('OrderService', () => {
       prismaService.order.findUnique.mockResolvedValue(null);
       storeService.getBraviveToken.mockResolvedValue(null);
 
-      await expect(service.create(createOrderDto, userId)).rejects.toThrow(
+      await expect(service.create(createOrderDto, storeId, userId)).rejects.toThrow(
         new BadRequestException(
           'Payment processing failed: Bravive token not configured',
         ),

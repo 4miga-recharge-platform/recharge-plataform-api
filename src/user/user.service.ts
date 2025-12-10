@@ -10,6 +10,7 @@ import { getEmailConfirmationTemplate } from '../email/templates/email-confirmat
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -28,9 +29,10 @@ export class UserService {
     documentValue: true,
     emailVerified: true,
     password: false,
+    storeId: true,
+    rechargeBigoId: true,
     createdAt: false,
     updatedAt: false,
-    storeId: true,
   };
 
   async findAll(storeId: string): Promise<User[]> {
@@ -295,6 +297,23 @@ export class UserService {
     }
   }
 
+  async updateRechargeBigoId(
+    userId: string,
+    rechargeBigoId: string | null,
+  ): Promise<void> {
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { rechargeBigoId },
+      });
+    } catch(error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new BadRequestException('User not found');
+      }
+      throw new BadRequestException('Failed to update recharge bigo id');
+    }
+  }
+
   async promoteToAdmin(
     userId: string,
     adminStoreId: string,
@@ -320,6 +339,22 @@ export class UserService {
       // Check if user is already an admin
       if (user.role !== 'USER') {
         throw new BadRequestException('User is already an admin');
+      }
+
+      // Check if this email is already RESELLER_ADMIN in another store
+      // MASTER_ADMIN_4MIGA_USER is excluded as it can access all stores
+      const existingAdminInOtherStore = await this.prisma.user.findFirst({
+        where: {
+          email: user.email,
+          role: 'RESELLER_ADMIN_4MIGA_USER',
+          storeId: { not: adminStoreId },
+        },
+      });
+
+      if (existingAdminInOtherStore) {
+        throw new BadRequestException(
+          'This email is already an administrator in another store',
+        );
       }
 
       // Promote user with audit fields

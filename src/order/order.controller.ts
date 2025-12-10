@@ -149,8 +149,8 @@ export class OrderController {
     status: 404,
     description: 'Package not found or payment method not available.',
   })
-  create(@Body() createOrderDto: CreateOrderDto, @Request() req) {
-    return this.orderService.create(createOrderDto, req.user.id);
+  create(@Body() createOrderDto: CreateOrderDto, @LoggedUser() user: User) {
+    return this.orderService.create(createOrderDto, user.storeId, user.id);
   }
 
   @Post('validate-coupon-by-package')

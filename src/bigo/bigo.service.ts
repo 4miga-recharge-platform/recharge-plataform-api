@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { randomUUID } from 'crypto';
 import { env } from '../env';
 import { RechargePrecheckDto } from './dto/recharge-precheck.dto';
 import { DiamondRechargeDto } from './dto/diamond-recharge.dto';
@@ -23,19 +24,12 @@ export class BigoService {
     this.baseUrl = env.BIGO_HOST_DOMAIN || 'https://oauth.bigolive.tv';
   }
 
-  async rechargePrecheck(dto: RechargePrecheckDto) {
+  async rechargePrecheck(dto: RechargePrecheckDto, seqid?: string) {
     this.logger.log(`Recharge precheck for bigoid: ${dto.recharge_bigoid}`);
 
-    // Business validation: check if seqid is already used
-    const existingRecharge = await this.prisma.bigoRecharge.findFirst({
-      where: { seqid: dto.seqid },
-    });
+    let finalSeqid = seqid || this.generateSeqIdForPrecheck();
 
-    if (existingRecharge) {
-      throw new BadRequestException(
-        `seqid '${dto.seqid}' has already been used`,
-      );
-    }
+    (dto as any).seqid = finalSeqid;
 
     try {
       const response = await this.makeSignedRequest(
@@ -43,24 +37,24 @@ export class BigoService {
         dto,
       );
 
-      // Create log entry ONLY on success
-      await this.prisma.bigoRecharge.create({
-        data: {
-          seqid: dto.seqid,
-          endpoint: '/sign/agent/recharge_pre_check',
-          status: 'SUCCESS',
-          rescode: response.rescode ?? null,
-          message: response.message ?? null,
-          requestBody: dto as any,
-          responseBody: response,
-        },
-      });
+      if (!seqid) {
+        await this.prisma.bigoRecharge.create({
+          data: {
+            seqid: finalSeqid,
+            endpoint: '/sign/agent/recharge_pre_check',
+            status: 'SUCCESS',
+            rescode: response.rescode ?? null,
+            message: response.message ?? null,
+            requestBody: dto as any,
+            responseBody: response,
+          },
+        });
+      }
 
       return response;
     } catch (error) {
       this.logger.error(`Recharge precheck failed: ${error.message}`);
 
-      // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -68,43 +62,37 @@ export class BigoService {
     }
   }
 
-  async diamondRecharge(dto: DiamondRechargeDto) {
+  async diamondRecharge(dto: DiamondRechargeDto, seqid?: string) {
     this.logger.log(
       `Diamond recharge for bigoid: ${dto.recharge_bigoid}, value: ${dto.value}`,
     );
 
-    // Business validation: check if seqid is already used
-    const existingRecharge = await this.prisma.bigoRecharge.findFirst({
-      where: { seqid: dto.seqid },
-    });
+    let finalSeqid = seqid || this.generateSeqIdForRecharge();
 
-    if (existingRecharge) {
-      throw new BadRequestException(
-        `seqid '${dto.seqid}' has already been used`,
-      );
+    (dto as any).seqid = finalSeqid;
+
+    let logEntry;
+    if (!seqid) {
+      const existingOrder = await this.prisma.bigoRecharge.findFirst({
+        where: { buOrderId: dto.bu_orderid },
+      });
+
+      if (existingOrder) {
+        throw new BadRequestException(
+          `bu_orderid '${dto.bu_orderid}' has already been used`,
+        );
+      }
+
+      logEntry = await this.prisma.bigoRecharge.create({
+        data: {
+          seqid: finalSeqid,
+          buOrderId: dto.bu_orderid,
+          endpoint: '/sign/agent/rs_recharge',
+          status: 'REQUESTED',
+          requestBody: dto as any,
+        },
+      });
     }
-
-    // Business validation: check if bu_orderid is already used
-    const existingOrder = await this.prisma.bigoRecharge.findFirst({
-      where: { buOrderId: dto.bu_orderid },
-    });
-
-    if (existingOrder) {
-      throw new BadRequestException(
-        `bu_orderid '${dto.bu_orderid}' has already been used`,
-      );
-    }
-
-    // Create log entry
-    const logEntry = await this.prisma.bigoRecharge.create({
-      data: {
-        seqid: dto.seqid,
-        buOrderId: dto.bu_orderid,
-        endpoint: '/sign/agent/rs_recharge',
-        status: 'REQUESTED',
-        requestBody: dto as any,
-      },
-    });
 
     try {
       const response = await this.makeSignedRequest(
@@ -112,36 +100,35 @@ export class BigoService {
         dto,
       );
 
-      // Update log with success
-      await this.prisma.bigoRecharge.update({
-        where: { id: logEntry.id },
-        data: {
-          status: 'SUCCESS',
-          rescode: response.rescode ?? null,
-          message: response.message ?? null,
-          responseBody: response,
-        },
-      });
+      if (!seqid && logEntry) {
+        await this.prisma.bigoRecharge.update({
+          where: { id: logEntry.id },
+          data: {
+            status: 'SUCCESS',
+            rescode: response.rescode ?? null,
+            message: response.message ?? null,
+            responseBody: response,
+          },
+        });
+      }
 
       return response;
     } catch (error) {
       this.logger.error(`Diamond recharge failed: ${error.message}`);
 
-      // Add to retry queue with error code and message
-      const rescode = this.extractRescodeFromError(error);
-      await this.retryService.addToRetryQueue(
-        logEntry.id,
-        rescode,
-        error.message,
-      );
+      if (!seqid && logEntry) {
+        const rescode = this.extractRescodeFromError(error);
+        await this.retryService.addToRetryQueue(
+          logEntry.id,
+          rescode,
+          error.message,
+        );
+      }
 
-      // Re-throw as BadRequestException to follow app pattern
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(
-        `Diamond recharge failed: ${error.message}`,
-      );
+      throw new BadRequestException(`Failed to recharge diamonds`);
     }
   }
 
@@ -440,5 +427,34 @@ export class BigoService {
     }
 
     return `Bigo API Error (${rescode}): ${originalMessage || 'Unknown error'}`;
+  }
+
+  private generateSeqIdForPrecheck(): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 15);
+    let seqid = `precheck${timestamp}${random}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (seqid.length > 32) {
+      seqid = seqid.substring(0, 32);
+    } else if (seqid.length < 13) {
+      seqid = seqid.padEnd(13, '0');
+    }
+
+    return seqid;
+  }
+
+  private generateSeqIdForRecharge(): string {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 9);
+    const uuid = randomUUID().replace(/-/g, '').substring(0, 8);
+    let seqid = `${timestamp}${random}${uuid}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (seqid.length > 32) {
+      seqid = seqid.substring(0, 32);
+    } else if (seqid.length < 13) {
+      seqid = seqid.padEnd(13, '0');
+    }
+
+    return seqid;
   }
 }

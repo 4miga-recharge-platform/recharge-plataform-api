@@ -6,7 +6,6 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
-import { randomUUID } from 'crypto';
 import { BigoService } from '../bigo/bigo.service';
 import { OrderService } from '../order/order.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,10 +33,6 @@ export class BraviveService {
     dto: CreatePaymentDto,
     token: string,
   ): Promise<PaymentResponseDto> {
-    this.logger.log(
-      `Creating payment: ${dto.description} - Amount: ${dto.amount}`,
-    );
-
     try {
       const response = await this.httpService.post<PaymentResponseDto>(
         '/payments',
@@ -45,7 +40,6 @@ export class BraviveService {
         token,
       );
 
-      this.logger.log(`Payment created successfully: ${response.id}`);
       return response;
     } catch (error) {
       this.logger.error(`Failed to create payment: ${error.message}`);
@@ -250,13 +244,8 @@ export class BraviveService {
     // Trigger Bigo recharge if all required data is available
     if (rechargeId && amountCredits && bigoId) {
       try {
-        // Generate unique seqid (13-32 chars, lowercase letters, numbers, underscore)
-        const seqid = this.generateSeqId();
-
-        // Prepare Bigo recharge DTO
         const bigoRechargeDto = {
           recharge_bigoid: bigoId,
-          seqid: seqid,
           bu_orderid: orderNumber, // Use orderNumber as business order ID
           value: amountCredits,
           total_cost: Number(orderPrice),
@@ -296,10 +285,7 @@ export class BraviveService {
 
           // Confirm coupon usage (this also updates influencer metrics if coupon exists)
           await this.orderService.confirmCouponUsage(orderId);
-
-          this.logger.log(
-            `Sales metrics updated for order ${orderNumber}`,
-          );
+          this.logger.log(`Sales metrics updated for order ${orderNumber}`);
         } catch (metricsError) {
           this.logger.error(
             `Failed to update metrics for order ${orderNumber}: ${metricsError.message}`,
@@ -476,26 +462,5 @@ export class BraviveService {
     this.logger.warn(
       `Payment dispute registered for order ${orderId} - Awaiting resolution`,
     );
-  }
-
-  /**
-   * Generates a unique seqid for Bigo recharge (13-32 chars, lowercase, numbers, underscore)
-   */
-  private generateSeqId(): string {
-    const timestamp = Date.now().toString(36); // Base36 timestamp
-    const random = Math.random().toString(36).substring(2, 9); // Random part
-    const uuid = randomUUID().replace(/-/g, '').substring(0, 8); // UUID part without dashes
-
-    // Combine and ensure length between 13-32
-    let seqid = `${timestamp}_${random}_${uuid}`.toLowerCase();
-
-    // Ensure it's within valid length
-    if (seqid.length > 32) {
-      seqid = seqid.substring(0, 32);
-    } else if (seqid.length < 13) {
-      seqid = seqid.padEnd(13, '0');
-    }
-
-    return seqid;
   }
 }

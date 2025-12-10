@@ -88,10 +88,15 @@ export class BraviveHttpService {
         data,
       );
 
-      // Re-throw with clearer message
-      throw new Error(
+      const errorWithDetails = new Error(
         `Bravive API Error (${status}): ${statusText || error.message}`,
       );
+
+      (errorWithDetails as any).responseData = data;
+      (errorWithDetails as any).status = status;
+      (errorWithDetails as any).statusText = statusText;
+
+      throw errorWithDetails;
     }
 
     this.logger.error(`${method} ${url} failed:`, error.message);

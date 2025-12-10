@@ -84,6 +84,7 @@ model User {
   emailConfirmationExpires DateTime?
   roleChangedAt            DateTime?
   roleChangedBy            String?
+  rechargeBigoId           String?
   orders                   Order[]
   store                    Store          @relation(fields: [storeId], references: [id])
 

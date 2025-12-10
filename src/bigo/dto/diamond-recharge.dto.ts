@@ -23,19 +23,6 @@ export class DiamondRechargeDto {
 
   @ApiProperty({
     description:
-      'Request serial number, should be unique, easier to track request. Only contain numbers and lowercase letters. The length must be between 13 and 32',
-    example: '83jyhm2784089j',
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Length(13, 32)
-  @Matches(/^[a-z0-9]+$/, {
-    message: 'seqid must contain only lowercase letters and numbers',
-  })
-  seqid: string;
-
-  @ApiProperty({
-    description:
       '3rd business recharge orderid, should be unique. Only contain numbers, uppercase and lowercase letters, and underscores. The length must be no more than 40',
     example: 'order_123456789',
   })

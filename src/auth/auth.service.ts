@@ -38,6 +38,7 @@ export class AuthService {
     documentType: true,
     documentValue: true,
     emailVerified: true,
+    rechargeBigoId: true,
     password: true,
     createdAt: false,
     updatedAt: false,
@@ -53,6 +54,7 @@ export class AuthService {
     documentValue: true,
     emailVerified: true,
     password: true,
+    rechargeBigoId: false,
     createdAt: false,
     updatedAt: false,
     store: {
@@ -100,6 +102,7 @@ export class AuthService {
       phone: user.phone,
       documentType: user.documentType,
       documentValue: user.documentValue,
+      rechargeBigoId: user.rechargeBigoId,
       name: user.name,
     };
 
@@ -125,19 +128,19 @@ export class AuthService {
   async adminLogin(adminLoginDto: AdminLoginDto) {
     const { email, password } = adminLoginDto;
 
-    // Find user by email (without storeId) with store data
+    // Find admin user by email and role (unique partial index ensures only one admin per email)
     const user = await this.prisma.user.findFirst({
-      where: { email },
+      where: {
+        email,
+        role: {
+          in: ['RESELLER_ADMIN_4MIGA_USER', 'MASTER_ADMIN_4MIGA_USER'],
+        },
+      },
       select: this.adminAuthUser,
     });
 
     if (!user) {
       throw new UnauthorizedException('User or password invalid');
-    }
-
-    // Validate if user is admin
-    if (user.role !== 'RESELLER_ADMIN_4MIGA_USER') {
-      throw new UnauthorizedException('Access denied - Admin role required');
     }
 
     if (user.emailVerified === false) {
@@ -395,6 +398,7 @@ export class AuthService {
       storeId: updatedUser.storeId,
       email: updatedUser.email,
       phone: updatedUser.phone,
+      rechargeBigoId: updatedUser.rechargeBigoId,
       documentType: updatedUser.documentType,
       documentValue: updatedUser.documentValue,
       name: updatedUser.name,
@@ -435,6 +439,7 @@ export class AuthService {
         documentValue: true,
         emailVerified: true,
         emailConfirmationCode: true,
+        rechargeBigoId: true,
       },
     });
 
@@ -507,6 +512,7 @@ export class AuthService {
       storeId: user.storeId,
       email: user.email,
       phone: user.phone,
+      rechargeBigoId: user?.rechargeBigoId,
       documentType: user.documentType,
       documentValue: user.documentValue,
       name: user.name,

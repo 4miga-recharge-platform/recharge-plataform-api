@@ -34,12 +34,10 @@ describe('BigoService', () => {
 
   const mockRechargePrecheckDto: RechargePrecheckDto = {
     recharge_bigoid: '52900149',
-    seqid: '83jyhm2784_089j',
   };
 
   const mockDiamondRechargeDto: DiamondRechargeDto = {
     recharge_bigoid: '52900149',
-    seqid: '83jyhm2784_089j',
     bu_orderid: 'order_123456789',
     value: 712,
     total_cost: 711.9,
@@ -133,53 +131,28 @@ describe('BigoService', () => {
       // Mock successful response
       (firstValueFrom as jest.Mock).mockResolvedValue(mockBigoResponse);
 
-      // Mock no existing recharge
-      prismaService.bigoRecharge.findFirst.mockResolvedValue(null);
-
       // Mock log entry creation
+      const generatedSeqid = 'precheck1234567890abc';
       prismaService.bigoRecharge.create.mockResolvedValue({
         id: 'log-123',
-        seqid: mockRechargePrecheckDto.seqid,
+        seqid: generatedSeqid,
       });
 
       const result = await service.rechargePrecheck(mockRechargePrecheckDto);
 
-      expect(prismaService.bigoRecharge.findFirst).toHaveBeenCalledWith({
-        where: { seqid: mockRechargePrecheckDto.seqid },
-      });
-      expect(prismaService.bigoRecharge.create).toHaveBeenCalledWith({
-        data: {
-          seqid: mockRechargePrecheckDto.seqid,
-          endpoint: '/sign/agent/recharge_pre_check',
-          status: 'SUCCESS',
-          rescode: mockBigoResponse.data.rescode,
-          message: mockBigoResponse.data.message,
-          requestBody: mockRechargePrecheckDto,
-          responseBody: mockBigoResponse.data,
-        },
-      });
+      // Verify log entry was created with generated seqid
+      expect(prismaService.bigoRecharge.create).toHaveBeenCalled();
+      const createCall = prismaService.bigoRecharge.create.mock.calls[0][0];
+      expect(createCall.data.seqid).toBeDefined();
+      expect(createCall.data.endpoint).toBe('/sign/agent/recharge_pre_check');
+      expect(createCall.data.status).toBe('SUCCESS');
+      expect(createCall.data.requestBody.recharge_bigoid).toBe(mockRechargePrecheckDto.recharge_bigoid);
+      expect(createCall.data.requestBody.seqid).toBeDefined();
+      
       expect(result).toEqual(mockBigoResponse.data);
     });
 
-    it('should throw error if seqid already exists', async () => {
-      // Mock existing recharge
-      prismaService.bigoRecharge.findFirst.mockResolvedValue({
-        id: 'existing-123',
-        seqid: mockRechargePrecheckDto.seqid,
-      });
-
-      await expect(
-        service.rechargePrecheck(mockRechargePrecheckDto),
-      ).rejects.toThrow(BadRequestException);
-
-      expect(prismaService.bigoRecharge.findFirst).toHaveBeenCalledWith({
-        where: { seqid: mockRechargePrecheckDto.seqid },
-      });
-    });
-
     it('should handle API failure without adding to retry queue', async () => {
-      // Mock no existing recharge
-      prismaService.bigoRecharge.findFirst.mockResolvedValue(null);
 
       // Mock API failure
       (firstValueFrom as jest.Mock).mockRejectedValue(
@@ -203,15 +176,14 @@ describe('BigoService', () => {
       // Mock successful response
       (firstValueFrom as jest.Mock).mockResolvedValue(mockBigoResponse);
 
-      // Mock no existing recharge or order
-      prismaService.bigoRecharge.findFirst
-        .mockResolvedValueOnce(null) // seqid check
-        .mockResolvedValueOnce(null); // bu_orderid check
+      // Mock no existing order (bu_orderid check)
+      prismaService.bigoRecharge.findFirst.mockResolvedValue(null);
 
       // Mock log entry creation
+      const generatedSeqid = 'recharge1234567890abc';
       prismaService.bigoRecharge.create.mockResolvedValue({
         id: 'log-123',
-        seqid: mockDiamondRechargeDto.seqid,
+        seqid: generatedSeqid,
         buOrderId: mockDiamondRechargeDto.bu_orderid,
       });
 
@@ -220,31 +192,24 @@ describe('BigoService', () => {
 
       const result = await service.diamondRecharge(mockDiamondRechargeDto);
 
-      expect(prismaService.bigoRecharge.findFirst).toHaveBeenCalledTimes(2);
+      // Verify bu_orderid check was performed
+      expect(prismaService.bigoRecharge.findFirst).toHaveBeenCalledTimes(1);
+      
+      // Verify log entry was created with generated seqid
+      expect(prismaService.bigoRecharge.create).toHaveBeenCalled();
+      const createCall = prismaService.bigoRecharge.create.mock.calls[0][0];
+      expect(createCall.data.seqid).toBeDefined();
+      expect(createCall.data.buOrderId).toBe(mockDiamondRechargeDto.bu_orderid);
+      
       expect(result).toEqual(mockBigoResponse.data);
     });
 
-    it('should throw error if seqid already exists', async () => {
-      // Mock existing recharge
+    it('should throw error if bu_orderid already exists', async () => {
+      // Mock existing bu_orderid
       prismaService.bigoRecharge.findFirst.mockResolvedValue({
         id: 'existing-123',
-        seqid: mockDiamondRechargeDto.seqid,
+        buOrderId: mockDiamondRechargeDto.bu_orderid,
       });
-
-      await expect(
-        service.diamondRecharge(mockDiamondRechargeDto),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw error if bu_orderid already exists', async () => {
-      // Mock no existing seqid but existing bu_orderid
-      prismaService.bigoRecharge.findFirst
-        .mockResolvedValueOnce(null) // seqid check
-        .mockResolvedValueOnce({
-          // bu_orderid check
-          id: 'existing-123',
-          buOrderId: mockDiamondRechargeDto.bu_orderid,
-        });
 
       await expect(
         service.diamondRecharge(mockDiamondRechargeDto),
