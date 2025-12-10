@@ -443,9 +443,10 @@ export class OrderService {
       'packageId',
       'paymentMethodId',
       'userIdForRecharge',
+      'price',
     ]);
 
-    const { packageId, paymentMethodId, userIdForRecharge, couponTitle } =
+    const { packageId, paymentMethodId, userIdForRecharge, couponTitle, price } =
       createOrderDto;
 
     try {
@@ -488,11 +489,16 @@ export class OrderService {
 
       const paymentMethod = packageData.paymentMethods[0];
 
-      await this.bigoService.rechargePrecheck({
-        recharge_bigoid: userIdForRecharge,
-      });
+      try {
+        await this.bigoService.rechargePrecheck({
+          recharge_bigoid: userIdForRecharge,
+        });
+      } catch (precheckError) {
+        this.logger.error(`Precheck failed: ${precheckError.message}`);
+        throw new BadRequestException('Invalid userId for recharge');
+      }
 
-      let finalPrice = paymentMethod.price;
+      let finalPrice: number | any = paymentMethod.price;
       let couponValidation: any = null;
 
       if (couponTitle) {
@@ -507,6 +513,17 @@ export class OrderService {
         }
 
         finalPrice = couponValidation.finalAmount;
+      }
+
+      const finalPriceNumber = Number(Number(finalPrice).toFixed(2));
+
+      const calculatedPrice = finalPriceNumber;
+      const receivedPrice = Number(price);
+
+      if (Math.abs(calculatedPrice - receivedPrice) > 0.01) {
+        throw new BadRequestException(
+          `Price mismatch: calculated price (${calculatedPrice}) does not match provided price (${receivedPrice})`,
+        );
       }
 
       let orderNumber: string;
@@ -551,7 +568,7 @@ export class OrderService {
         }
 
         const bravivePaymentDto: CreatePaymentDto = {
-          amount: Math.round(Number(finalPrice) * 100),
+          amount: Math.round(finalPriceNumber * 100),
           currency: 'BRL',
           description: `Pedido ${orderNumber} - ${packageData.name}`,
           payer_name: user.name,
@@ -618,7 +635,7 @@ export class OrderService {
         const order = await tx.order.create({
           data: {
             orderNumber,
-            price: finalPrice,
+            price: finalPriceNumber,
             orderStatus: OrderStatus.CREATED,
             storeId,
             userId,
@@ -665,7 +682,10 @@ export class OrderService {
         throw new NotFoundException('Order not found after creation');
       }
 
-      return createdOrder;
+      return {
+        ...createdOrder,
+        price: Number(Number(createdOrder.price).toFixed(2)),
+      };
     } catch (error) {
       if (
         error instanceof ForbiddenException ||
@@ -958,18 +978,21 @@ export class OrderService {
       // Calculate discount
       let discountAmount = 0;
       if (coupon.discountPercentage) {
-        discountAmount =
-          (orderAmount * Number(coupon.discountPercentage)) / 100;
+        discountAmount = Number(
+          ((orderAmount * Number(coupon.discountPercentage)) / 100).toFixed(2),
+        );
       } else if (coupon.discountAmount) {
-        discountAmount = Math.min(Number(coupon.discountAmount), orderAmount);
+        discountAmount = Number(
+          Math.min(Number(coupon.discountAmount), orderAmount).toFixed(2),
+        );
       }
 
-      const finalAmount = orderAmount - discountAmount;
+      const finalAmount = Number((orderAmount - discountAmount).toFixed(2));
 
       return {
         valid: true,
         discountAmount,
-        finalAmount: Math.max(0, finalAmount),
+        finalAmount: Number(Math.max(0, finalAmount).toFixed(2)),
         coupon: {
           id: coupon.id,
           title: coupon.title,

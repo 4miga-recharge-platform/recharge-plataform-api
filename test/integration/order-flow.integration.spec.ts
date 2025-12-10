@@ -55,6 +55,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
+        price: 19.99,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -126,6 +127,7 @@ describe('Order Flow Integration', () => {
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
         couponTitle: 'TEST10',
+        price: 45.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -168,6 +170,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'invalid-bigo-id',
+        price: 19.99,
       };
 
       // Should throw error
@@ -204,6 +207,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
+        price: 19.99,
       };
 
       // Should throw error
@@ -242,6 +246,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
+        price: 19.99,
       };
 
       // Should throw error
@@ -271,6 +276,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
+        price: 19.99,
       };
 
       // Should throw error
@@ -295,6 +301,7 @@ describe('Order Flow Integration', () => {
         packageId: otherPackage.id,
         paymentMethodId: otherPackage.paymentMethods[0].id,
         userIdForRecharge: 'player123456',
+        price: 19.99,
       };
 
       // Should throw error
@@ -339,6 +346,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player789012',
+        price: 29.99,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -437,6 +445,7 @@ describe('Order Flow Integration', () => {
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player789012',
         couponTitle: 'DISCOUNT15',
+        price: 85.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -492,6 +501,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player999888',
+        price: 25.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -556,6 +566,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player888777',
+        price: 30.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -625,6 +636,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player777666',
+        price: 40.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -694,6 +706,7 @@ describe('Order Flow Integration', () => {
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player888999',
         couponTitle: 'TEST20',
+        price: 24.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -757,6 +770,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player666555',
+        price: 50.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -838,6 +852,7 @@ describe('Order Flow Integration', () => {
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player111222',
         couponTitle: 'TEST15',
+        price: 29.75,
       };
 
       await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -892,6 +907,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player555444',
+        price: 35.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -949,6 +965,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player444333',
+        price: 35.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -1042,6 +1059,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player333222',
+        price: 40.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -1111,6 +1129,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player111222',
+        price: 50.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -1173,6 +1192,7 @@ describe('Order Flow Integration', () => {
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player222333',
         couponTitle: 'METRICS20',
+        price: 80.0,
       };
 
       const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -1226,6 +1246,7 @@ describe('Order Flow Integration', () => {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player333444',
+        price: 30.0,
       };
 
       await baseTest.orderService.create(createOrderDto1, store.id, user.id);
@@ -1295,6 +1316,7 @@ describe('Order Flow Integration', () => {
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player444555',
         couponTitle: 'INFLUENCER30',
+        price: 42.0,
       };
 
       await baseTest.orderService.create(createOrderDto, store.id, user.id);
@@ -1363,6 +1385,7 @@ describe('Order Flow Integration', () => {
         paymentMethodId: pkg.paymentMethods[0].id,
         userIdForRecharge: 'player555666',
         couponTitle: 'ACCUMULATE10',
+        price: 22.5,
       };
 
       await baseTest.orderService.create(createOrderDto, store.id, user.id);

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateOrderDto {
   @IsUUID()
@@ -34,4 +34,13 @@ export class CreateOrderDto {
     required: false,
   })
   couponTitle?: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsNotEmpty()
+  @ApiProperty({
+    description: 'Final order price with coupon discount applied (for validation)',
+    example: 17.99,
+    type: Number,
+  })
+  price: number;
 }

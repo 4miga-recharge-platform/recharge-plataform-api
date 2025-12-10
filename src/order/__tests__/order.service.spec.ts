@@ -759,6 +759,7 @@ describe('OrderService', () => {
       paymentMethodId: 'payment-method-123',
       userIdForRecharge: 'player123456',
       couponTitle: undefined,
+      price: 19.99,
     };
     const storeId = 'store-123';
     const userId = 'user-123';
@@ -849,6 +850,7 @@ describe('OrderService', () => {
         'packageId',
         'paymentMethodId',
         'userIdForRecharge',
+        'price',
       ]);
 
       expect(prismaService.user.findFirst).toHaveBeenCalledWith({
@@ -968,6 +970,7 @@ describe('OrderService', () => {
       const createOrderWithCouponDto = {
         ...createOrderDto,
         couponTitle: 'WELCOME10',
+        price: 17.99,
       };
 
       // Mock the validateCoupon method
@@ -1081,6 +1084,7 @@ describe('OrderService', () => {
       const createOrderWithCouponDto = {
         ...createOrderDto,
         couponTitle: 'WELCOME10',
+        price: 17.99,
       };
       // Mock the validateCoupon method
       jest.spyOn(service, 'validateCoupon').mockResolvedValue({
