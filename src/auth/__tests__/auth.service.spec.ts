@@ -172,9 +172,7 @@ describe('AuthService', () => {
       sendEmail: jest.fn(),
     };
 
-    const mockOrderService = {
-      updateNewCustomerMetric: jest.fn(),
-    };
+    const mockOrderService = {};
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

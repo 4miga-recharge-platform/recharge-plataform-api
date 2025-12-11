@@ -8,6 +8,7 @@ import { BraviveModule } from './bravive/bravive.module';
 import { CouponModule } from './coupon/coupon.module';
 import { EmailModule } from './email/email.module';
 import { InfluencerModule } from './influencer/influencer.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { OrderModule } from './order/order.module';
 import { PackageModule } from './package/package.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -36,6 +37,7 @@ import { WebhookModule } from './webhook/webhook.module';
     CouponModule,
     StorageModule,
     WebhookModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

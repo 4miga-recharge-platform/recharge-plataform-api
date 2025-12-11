@@ -280,6 +280,7 @@ describe('OrderController', () => {
       packageId: 'package-123',
       paymentMethodId: 'payment-method-123',
       userIdForRecharge: 'player123456',
+      price: 19.99,
     };
 
     it('should create an order successfully', async () => {

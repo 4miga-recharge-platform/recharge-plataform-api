@@ -443,9 +443,10 @@ export class OrderService {
       'packageId',
       'paymentMethodId',
       'userIdForRecharge',
+      'price',
     ]);
 
-    const { packageId, paymentMethodId, userIdForRecharge, couponTitle } =
+    const { packageId, paymentMethodId, userIdForRecharge, couponTitle, price } =
       createOrderDto;
 
     try {
@@ -488,11 +489,16 @@ export class OrderService {
 
       const paymentMethod = packageData.paymentMethods[0];
 
-      await this.bigoService.rechargePrecheck({
-        recharge_bigoid: userIdForRecharge,
-      });
+      try {
+        await this.bigoService.rechargePrecheck({
+          recharge_bigoid: userIdForRecharge,
+        });
+      } catch (precheckError) {
+        this.logger.error(`Precheck failed: ${precheckError.message}`);
+        throw new BadRequestException('Invalid userId for recharge');
+      }
 
-      let finalPrice = paymentMethod.price;
+      let finalPrice: number | any = paymentMethod.price;
       let couponValidation: any = null;
 
       if (couponTitle) {
@@ -507,6 +513,17 @@ export class OrderService {
         }
 
         finalPrice = couponValidation.finalAmount;
+      }
+
+      const finalPriceNumber = Number(Number(finalPrice).toFixed(2));
+
+      const calculatedPrice = finalPriceNumber;
+      const receivedPrice = Number(price);
+
+      if (Math.abs(calculatedPrice - receivedPrice) > 0.01) {
+        throw new BadRequestException(
+          `Price mismatch: calculated price (${calculatedPrice}) does not match provided price (${receivedPrice})`,
+        );
       }
 
       let orderNumber: string;
@@ -551,7 +568,7 @@ export class OrderService {
         }
 
         const bravivePaymentDto: CreatePaymentDto = {
-          amount: Math.round(Number(finalPrice) * 100),
+          amount: Math.round(finalPriceNumber * 100),
           currency: 'BRL',
           description: `Pedido ${orderNumber} - ${packageData.name}`,
           payer_name: user.name,
@@ -618,7 +635,7 @@ export class OrderService {
         const order = await tx.order.create({
           data: {
             orderNumber,
-            price: finalPrice,
+            price: finalPriceNumber,
             orderStatus: OrderStatus.CREATED,
             storeId,
             userId,
@@ -645,9 +662,6 @@ export class OrderService {
           });
         }
 
-        // Increment totalOrders immediately when order is created
-        await this.incrementTotalOrdersOnCreation(tx, storeId, order.createdAt, order.orderItem.productId);
-
         return order;
       });
 
@@ -668,7 +682,10 @@ export class OrderService {
         throw new NotFoundException('Order not found after creation');
       }
 
-      return createdOrder;
+      return {
+        ...createdOrder,
+        price: Number(Number(createdOrder.price).toFixed(2)),
+      };
     } catch (error) {
       if (
         error instanceof ForbiddenException ||
@@ -688,84 +705,6 @@ export class OrderService {
       }
 
       throw error;
-    }
-  }
-
-  /**
-   * Increment totalOrders when an order is created
-   * This ensures totalOrders is updated immediately, not waiting for status changes
-   */
-  private async incrementTotalOrdersOnCreation(
-    tx: any,
-    storeId: string,
-    orderDate: Date,
-    productId: string,
-  ): Promise<void> {
-    const month = orderDate.getMonth() + 1;
-    const year = orderDate.getFullYear();
-    const dateOnly = new Date(
-      orderDate.getFullYear(),
-      orderDate.getMonth(),
-      orderDate.getDate(),
-    );
-
-    // Update daily sales - increment totalOrders
-    const existingDaily = await tx.storeDailySales.findFirst({
-      where: { storeId, date: dateOnly },
-    });
-
-    if (existingDaily) {
-      await tx.storeDailySales.update({
-        where: { id: existingDaily.id },
-        data: { totalOrders: { increment: 1 }, updatedAt: new Date() },
-      });
-    } else {
-      await tx.storeDailySales.create({
-        data: { storeId, date: dateOnly, totalSales: 0, totalOrders: 1 },
-      });
-    }
-
-    // Update monthly sales - increment totalOrders
-    const existingMonthly = await tx.storeMonthlySales.findFirst({
-      where: { storeId, month, year },
-    });
-
-    if (existingMonthly) {
-      await tx.storeMonthlySales.update({
-        where: { id: existingMonthly.id },
-        data: { totalOrders: { increment: 1 }, updatedAt: new Date() },
-      });
-    } else {
-      await tx.storeMonthlySales.create({
-        data: {
-          storeId,
-          month,
-          year,
-          totalSales: 0,
-          totalOrders: 1,
-          totalCompletedOrders: 0,
-          totalExpiredOrders: 0,
-          totalRefundedOrders: 0,
-          ordersWithCoupon: 0,
-          ordersWithoutCoupon: 0,
-        },
-      });
-    }
-
-    // Update monthly sales by product - increment totalOrders
-    const existingByProduct = await tx.storeMonthlySalesByProduct.findFirst({
-      where: { storeId, productId, month, year },
-    });
-
-    if (existingByProduct) {
-      await tx.storeMonthlySalesByProduct.update({
-        where: { id: existingByProduct.id },
-        data: { totalOrders: { increment: 1 }, updatedAt: new Date() },
-      });
-    } else {
-      await tx.storeMonthlySalesByProduct.create({
-        data: { storeId, productId, month, year, totalSales: 0, totalOrders: 1 },
-      });
     }
   }
 
@@ -819,329 +758,6 @@ export class OrderService {
     }
   }
 
-  private async updateStoreDailySales(
-    tx: any,
-    storeId: string,
-    saleAmount: number,
-    saleDate: Date,
-    orderStatus: OrderStatus,
-    wasAlreadyCounted: boolean = false,
-  ): Promise<void> {
-    const dateOnly = new Date(
-      saleDate.getFullYear(),
-      saleDate.getMonth(),
-      saleDate.getDate(),
-    );
-
-    const existing = await tx.storeDailySales.findFirst({
-      where: { storeId, date: dateOnly },
-    });
-
-    if (existing) {
-      const updateData: any = {
-        totalSales: { increment: saleAmount },
-        updatedAt: new Date(),
-      };
-
-      // totalOrders is already incremented when order is created
-      // Only update totalSales here (for COMPLETED orders with saleAmount > 0)
-
-      await tx.storeDailySales.update({
-        where: { id: existing.id },
-        data: updateData,
-      });
-    } else {
-      // This should rarely happen as totalOrders should be created on order creation
-      await tx.storeDailySales.create({
-        data: {
-          storeId,
-          date: dateOnly,
-          totalSales: saleAmount,
-          totalOrders: 0,
-        },
-      });
-    }
-  }
-
-  private async updateStoreMonthlySales(
-    tx: any,
-    storeId: string,
-    saleAmount: number,
-    saleDate: Date,
-    orderStatus: OrderStatus,
-    hasCoupon: boolean,
-    wasAlreadyCounted: boolean = false,
-  ): Promise<void> {
-    const month = saleDate.getMonth() + 1;
-    const year = saleDate.getFullYear();
-
-    const existingRecord = await tx.storeMonthlySales.findFirst({
-      where: { storeId, month, year },
-    });
-
-    const updateData: any = {
-      totalSales: { increment: saleAmount },
-      updatedAt: new Date(),
-    };
-
-    // totalOrders is already incremented when order is created
-    // Only update status-specific counters here
-
-    if (orderStatus === 'COMPLETED') {
-      updateData.totalCompletedOrders = { increment: 1 };
-    } else if (orderStatus === 'EXPIRED') {
-      updateData.totalExpiredOrders = { increment: 1 };
-    } else if (orderStatus === 'REFOUNDED') {
-      if (wasAlreadyCounted) {
-        updateData.totalCompletedOrders = { decrement: 1 };
-        updateData.totalRefundedOrders = { increment: 1 };
-      } else {
-        updateData.totalRefundedOrders = { increment: 1 };
-      }
-    }
-
-    // Only update ordersWithCoupon/ordersWithoutCoupon for COMPLETED orders
-    if (orderStatus === 'COMPLETED' && !wasAlreadyCounted) {
-      if (hasCoupon) {
-        updateData.ordersWithCoupon = { increment: 1 };
-      } else {
-        updateData.ordersWithoutCoupon = { increment: 1 };
-      }
-    }
-
-    // Decrement ordersWithCoupon/ordersWithoutCoupon when REFOUNDED (was COMPLETED before)
-    if (orderStatus === 'REFOUNDED' && wasAlreadyCounted) {
-      if (hasCoupon) {
-        updateData.ordersWithCoupon = { decrement: 1 };
-      } else {
-        updateData.ordersWithoutCoupon = { decrement: 1 };
-      }
-    }
-
-    if (existingRecord) {
-      await tx.storeMonthlySales.update({
-        where: { id: existingRecord.id },
-        data: updateData,
-      });
-    } else {
-      // This should rarely happen as totalOrders should be created on order creation
-      const initialData: any = {
-        storeId,
-        month,
-        year,
-        totalSales: saleAmount,
-        totalOrders: 0,
-        totalCompletedOrders: orderStatus === 'COMPLETED' ? 1 : 0,
-        totalExpiredOrders: orderStatus === 'EXPIRED' ? 1 : 0,
-        totalRefundedOrders: orderStatus === 'REFOUNDED' ? 1 : 0,
-        ordersWithCoupon:
-          orderStatus === 'COMPLETED' && !wasAlreadyCounted && hasCoupon ? 1 : 0,
-        ordersWithoutCoupon:
-          orderStatus === 'COMPLETED' && !wasAlreadyCounted && !hasCoupon ? 1 : 0,
-      };
-      await tx.storeMonthlySales.create({ data: initialData });
-    }
-  }
-
-  private async updateStoreMonthlySalesByProduct(
-    tx: any,
-    storeId: string,
-    productId: string,
-    saleAmount: number,
-    saleDate: Date,
-    orderStatus: OrderStatus,
-    wasAlreadyCounted: boolean = false,
-  ): Promise<void> {
-    const month = saleDate.getMonth() + 1;
-    const year = saleDate.getFullYear();
-
-    const existing = await tx.storeMonthlySalesByProduct.findFirst({
-      where: { storeId, productId, month, year },
-    });
-
-    if (existing) {
-      const updateData: any = {
-        totalSales: { increment: saleAmount },
-        updatedAt: new Date(),
-      };
-
-      // totalOrders is already incremented when order is created
-      // Only update totalSales here (for COMPLETED orders with saleAmount > 0)
-
-      await tx.storeMonthlySalesByProduct.update({
-        where: { id: existing.id },
-        data: updateData,
-      });
-    } else {
-      // This should rarely happen as totalOrders should be created on order creation
-      await tx.storeMonthlySalesByProduct.create({
-        data: {
-          storeId,
-          productId,
-          month,
-          year,
-          totalSales: saleAmount,
-          totalOrders: 0,
-        },
-      });
-    }
-  }
-
-  /**
-   * Update store sales metrics when an order is completed
-   *
-   * This method should be called whenever an order status changes to COMPLETED.
-   * It updates all store metrics: daily sales, monthly sales (detailed), and monthly sales by product.
-   *
-   * IMPORTANT: Call this method in the following scenarios:
-   * 1. When payment webhook confirms payment approval (PAYMENT_APPROVED)
-   * 2. When order status is manually updated to COMPLETED
-   * 3. When recharge is successfully processed
-   * 4. Inside confirmCouponUsage (already implemented)
-   *
-   * Future implementations to consider:
-   * - Payment webhook handler (Mercado Pago, PicPay, PayPal, etc.)
-   * - Automatic order completion after payment approval
-   * - Manual order status update endpoint
-   *
-   * @param orderId - The order ID to update metrics for
-   * @param tx - Optional transaction object (if already in a transaction)
-   *
-   * @example
-   * // When payment webhook is received:
-   * await this.updateStoreSalesMetrics(orderId);
-   *
-   * // Inside an existing transaction:
-   * await this.updateStoreSalesMetrics(orderId, tx);
-   */
-  async updateStoreSalesMetrics(orderId: string, tx?: any): Promise<void> {
-    try {
-      const executeUpdate = async (transaction: any) => {
-        // Find the order with all necessary data
-        const order = await transaction.order.findUnique({
-          where: { id: orderId },
-          include: {
-            orderItem: {
-              select: {
-                productId: true,
-              },
-            },
-            couponUsages: {
-              select: {
-                id: true,
-              },
-            },
-            user: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        });
-
-        // Only update metrics for completed, expired, or refunded orders
-        if (
-          !order ||
-          !['COMPLETED', 'EXPIRED', 'REFOUNDED'].includes(order.orderStatus)
-        ) {
-          return;
-        }
-
-        const storeId = order.storeId;
-        const productId = order.orderItem?.productId;
-        const saleDate = order.createdAt;
-        const hasCoupon = order.couponUsages.length > 0;
-
-        let wasAlreadyCounted = false;
-        if (order.orderStatus === 'REFOUNDED') {
-          const orderWithRecharge = await transaction.order.findUnique({
-            where: { id: orderId },
-            include: {
-              orderItem: {
-                include: {
-                  recharge: {
-                    select: {
-                      status: true,
-                    },
-                  },
-                },
-              },
-            },
-          });
-
-          if (
-            orderWithRecharge?.orderItem?.recharge?.status ===
-            RechargeStatus.RECHARGE_APPROVED
-          ) {
-            wasAlreadyCounted = true;
-          }
-        }
-
-        let saleAmount = 0;
-        if (order.orderStatus === 'COMPLETED') {
-          saleAmount = Number(order.price);
-        } else if (order.orderStatus === 'REFOUNDED' && wasAlreadyCounted) {
-          saleAmount = -Number(order.price);
-        }
-
-        // Update daily sales
-        await this.updateStoreDailySales(
-          transaction,
-          storeId,
-          saleAmount,
-          saleDate,
-          order.orderStatus,
-          wasAlreadyCounted,
-        );
-
-        // Update monthly sales (detailed metrics)
-        await this.updateStoreMonthlySales(
-          transaction,
-          storeId,
-          saleAmount,
-          saleDate,
-          order.orderStatus,
-          hasCoupon,
-          wasAlreadyCounted,
-        );
-
-        // Update monthly sales by product (if productId exists)
-        if (productId) {
-          await this.updateStoreMonthlySalesByProduct(
-            transaction,
-            storeId,
-            productId,
-            saleAmount,
-            saleDate,
-            order.orderStatus,
-            wasAlreadyCounted,
-          );
-        }
-
-        // TODO: Future implementation - Add payment method metrics here
-        // Example:
-        // await this.updateStoreMonthlySalesByPaymentMethod(
-        //   transaction,
-        //   storeId,
-        //   order.payment.name,
-        //   saleAmount,
-        //   saleDate,
-        // );
-      };
-
-      if (tx) {
-        // If already in a transaction, use it
-        await executeUpdate(tx);
-      } else {
-        // Otherwise, create a new transaction
-        await this.prisma.$transaction(executeUpdate);
-      }
-    } catch (error) {
-      // Log error but don't throw to avoid breaking payment flow
-      console.error('Error updating store sales metrics:', error);
-    }
-  }
-
   /**
    * Confirm coupon usage after payment is confirmed
    * This method should be called when payment status changes to PAYMENT_APPROVED
@@ -1189,8 +805,6 @@ export class OrderService {
             new Date(),
           );
         }
-        // Note: Store sales metrics are updated separately in bravive.service.ts
-        // to ensure they're always updated, even when there's no coupon
       });
     } catch (error) {
       // Log error but don't throw to avoid breaking payment flow
@@ -1246,58 +860,6 @@ export class OrderService {
       }
     } catch (error) {
       console.error('Error reverting coupon usage:', error);
-    }
-  }
-
-  /**
-   * Update newCustomers metric when a user confirms their email
-   * This should be called when a user's email is verified for the first time
-   */
-  async updateNewCustomerMetric(
-    storeId: string,
-    userCreatedAt: Date,
-  ): Promise<void> {
-    try {
-      const month = userCreatedAt.getMonth() + 1;
-      const year = userCreatedAt.getFullYear();
-
-      const existingRecord = await this.prisma.storeMonthlySales.findFirst({
-        where: {
-          storeId,
-          month,
-          year,
-        },
-      });
-
-      if (existingRecord) {
-        await this.prisma.storeMonthlySales.update({
-          where: {
-            id: existingRecord.id,
-          },
-          data: {
-            newCustomers: { increment: 1 },
-            updatedAt: new Date(),
-          },
-        });
-      } else {
-        await this.prisma.storeMonthlySales.create({
-          data: {
-            storeId,
-            month,
-            year,
-            totalSales: 0,
-            totalOrders: 0,
-            totalCompletedOrders: 0,
-            totalExpiredOrders: 0,
-            totalRefundedOrders: 0,
-            newCustomers: 1,
-            ordersWithCoupon: 0,
-            ordersWithoutCoupon: 0,
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error updating new customer metric:', error);
     }
   }
 
@@ -1416,18 +978,21 @@ export class OrderService {
       // Calculate discount
       let discountAmount = 0;
       if (coupon.discountPercentage) {
-        discountAmount =
-          (orderAmount * Number(coupon.discountPercentage)) / 100;
+        discountAmount = Number(
+          ((orderAmount * Number(coupon.discountPercentage)) / 100).toFixed(2),
+        );
       } else if (coupon.discountAmount) {
-        discountAmount = Math.min(Number(coupon.discountAmount), orderAmount);
+        discountAmount = Number(
+          Math.min(Number(coupon.discountAmount), orderAmount).toFixed(2),
+        );
       }
 
-      const finalAmount = orderAmount - discountAmount;
+      const finalAmount = Number((orderAmount - discountAmount).toFixed(2));
 
       return {
         valid: true,
         discountAmount,
-        finalAmount: Math.max(0, finalAmount),
+        finalAmount: Number(Math.max(0, finalAmount).toFixed(2)),
         coupon: {
           id: coupon.id,
           title: coupon.title,
