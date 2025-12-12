@@ -160,6 +160,7 @@ model Order {
   updatedAt     DateTime       @updatedAt
   storeId       String
   userId        String
+  basePrice     Decimal        @db.Decimal(10, 2)
   bigoRecharges BigoRecharge[]
   couponUsages  CouponUsage[]
   orderItem     OrderItem      @relation(fields: [orderItemId], references: [id])

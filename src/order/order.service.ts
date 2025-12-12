@@ -498,6 +498,7 @@ export class OrderService {
         throw new BadRequestException('Invalid userId for recharge');
       }
 
+      const basePriceNumber = Number(Number(paymentMethod.price).toFixed(2));
       let finalPrice: number | any = paymentMethod.price;
       let couponValidation: any = null;
 
@@ -636,6 +637,7 @@ export class OrderService {
           data: {
             orderNumber,
             price: finalPriceNumber,
+            basePrice: basePriceNumber,
             orderStatus: OrderStatus.CREATED,
             storeId,
             userId,
@@ -675,6 +677,19 @@ export class OrderService {
               package: true,
             },
           },
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  title: true,
+                  discountPercentage: true,
+                  discountAmount: true,
+                  isFirstPurchase: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -685,6 +700,7 @@ export class OrderService {
       return {
         ...createdOrder,
         price: Number(Number(createdOrder.price).toFixed(2)),
+        basePrice: Number(Number(createdOrder.basePrice).toFixed(2)),
       };
     } catch (error) {
       if (
