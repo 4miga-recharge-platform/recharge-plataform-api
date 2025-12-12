@@ -54,7 +54,7 @@ export class AuthService {
     documentValue: true,
     emailVerified: true,
     password: true,
-    rechargeBigoId: false,
+    rechargeBigoId: true,
     createdAt: false,
     updatedAt: false,
     store: {
@@ -162,6 +162,7 @@ export class AuthService {
       name: user.name,
       role: user.role,
       storeId: user.store.id,
+      rechargeBigoId: user.rechargeBigoId,
     };
 
     // Complete data for response (including store details)
@@ -173,6 +174,7 @@ export class AuthService {
       documentValue: user.documentValue,
       name: user.name,
       store: user.store,
+      rechargeBigoId: user.rechargeBigoId,
     };
 
     const accessToken = await this.jwtService.signAsync(jwtData, {
@@ -221,6 +223,7 @@ export class AuthService {
             documentValue: adminUser.documentValue,
             name: adminUser.name,
             store: adminUser.store,
+            rechargeBigoId: adminUser.rechargeBigoId,
           };
 
           const accessToken = await this.jwtService.signAsync(userData, {
@@ -252,6 +255,7 @@ export class AuthService {
         documentType: userData.documentType,
         documentValue: userData.documentValue,
         name: userData.name,
+        rechargeBigoId: userData.rechargeBigoId,
       };
 
       return {

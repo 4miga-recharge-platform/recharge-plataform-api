@@ -54,6 +54,7 @@ describe('AuthService', () => {
     documentValue: '123.456.789-00',
     emailVerified: true,
     password: 'hashedPassword123',
+    rechargeBigoId: 'recharge-bigo-id-456',
   };
 
   const mockAdminUser = {
@@ -67,6 +68,7 @@ describe('AuthService', () => {
     documentValue: '123.456.789-00',
     emailVerified: true,
     password: 'hashedPassword123',
+    rechargeBigoId: 'recharge-bigo-id-123',
     store: {
       id: 'store-123',
       name: 'Admin Store',
@@ -91,6 +93,7 @@ describe('AuthService', () => {
     documentType: mockUser.documentType,
     documentValue: mockUser.documentValue,
     name: mockUser.name,
+    rechargeBigoId: mockUser.rechargeBigoId,
   };
 
   const mockAdminUserData = {
@@ -101,6 +104,7 @@ describe('AuthService', () => {
     documentValue: mockAdminUser.documentValue,
     name: mockAdminUser.name,
     store: mockAdminUser.store,
+    rechargeBigoId: mockAdminUser.rechargeBigoId,
   };
 
   const mockAuthUser = {
@@ -129,7 +133,7 @@ describe('AuthService', () => {
     documentValue: true,
     emailVerified: true,
     password: true,
-    rechargeBigoId: false,
+    rechargeBigoId: true,
     createdAt: false,
     updatedAt: false,
     store: {
@@ -336,6 +340,7 @@ describe('AuthService', () => {
         name: mockAdminUser.name,
         role: mockAdminUser.role,
         storeId: mockAdminUser.store.id,
+        rechargeBigoId: mockAdminUser.rechargeBigoId,
       };
 
       expect(jwtService.signAsync).toHaveBeenCalledWith(expectedJwtData, {
