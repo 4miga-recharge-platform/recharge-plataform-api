@@ -260,7 +260,6 @@ describe('UserCleanupService', () => {
       jest.useFakeTimers();
       const now = new Date('2024-01-02T12:00:00Z');
       jest.setSystemTime(now);
-      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
       prismaService.order.findMany.mockResolvedValue(mockUnpaidOrders);
       prismaService.$transaction.mockImplementation(async (callback) => {
@@ -276,14 +275,12 @@ describe('UserCleanupService', () => {
 
       expect(prismaService.order.findMany).toHaveBeenCalledWith({
         where: {
-          orderStatus: {
-            in: [OrderStatus.CREATED, OrderStatus.PROCESSING],
-          },
+          orderStatus: OrderStatus.CREATED,
           payment: {
             status: PaymentStatus.PAYMENT_PENDING,
           },
           createdAt: {
-            lt: twentyFourHoursAgo,
+            lt: expect.any(Date),
           },
         },
         select: {

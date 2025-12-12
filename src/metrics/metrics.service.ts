@@ -1,12 +1,23 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
+import { OrderService } from '../order/order.service';
 
 @Injectable()
 export class MetricsService {
   private readonly logger = new Logger(MetricsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => OrderService))
+    private readonly orderService: OrderService,
+  ) {}
 
   /**
    * Recalculates all metrics for a store for a specific date
@@ -24,6 +35,10 @@ export class MetricsService {
 
     const month = dateOnly.getMonth() + 1;
     const year = dateOnly.getFullYear();
+
+    // Expire unpaid orders for this store before calculating metrics
+    // This ensures metrics are calculated with correct order statuses
+    await this.orderService.checkAndExpireOrders(storeId, undefined, dateOnly);
 
     // Recalculate daily metrics
     await this.recalculateDailyMetrics(storeId, dateOnly);

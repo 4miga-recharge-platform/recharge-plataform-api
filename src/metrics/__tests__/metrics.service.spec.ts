@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { MetricsService } from '../metrics.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { OrderService } from '../../order/order.service';
 import { OrderStatus } from '@prisma/client';
 
 describe('MetricsService', () => {
@@ -76,6 +77,10 @@ describe('MetricsService', () => {
     },
   };
 
+  const mockOrderService = {
+    checkAndExpireOrders: jest.fn().mockResolvedValue(0),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -83,6 +88,10 @@ describe('MetricsService', () => {
         {
           provide: PrismaService,
           useValue: mockPrismaService,
+        },
+        {
+          provide: OrderService,
+          useValue: mockOrderService,
         },
       ],
     }).compile();
@@ -359,6 +368,11 @@ describe('MetricsService', () => {
 
       await service.recalculateStoreMetrics(storeId, targetDate);
 
+      expect(mockOrderService.checkAndExpireOrders).toHaveBeenCalledWith(
+        storeId,
+        undefined,
+        expect.any(Date),
+      );
       expect(mockPrismaService.order.findMany).toHaveBeenCalledTimes(3);
       expect(mockPrismaService.storeDailySales.upsert).toHaveBeenCalled();
       expect(mockPrismaService.storeMonthlySales.upsert).toHaveBeenCalled();

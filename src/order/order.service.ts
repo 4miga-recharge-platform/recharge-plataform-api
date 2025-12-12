@@ -15,6 +15,7 @@ import {
 } from '@prisma/client';
 import { createHash } from 'crypto';
 import { validateRequiredFields } from 'src/utils/validation.util';
+import { getHoursAgoInBrazil } from 'src/utils/date.util';
 import { BigoService } from '../bigo/bigo.service';
 import { BraviveService } from '../bravive/bravive.service';
 import {
@@ -103,9 +104,63 @@ export class OrderService {
         }),
       ]);
 
+      // Check and expire orders before returning
+      const orderIds = data.map((order) => order.id);
+      const expiredCount = await this.checkAndExpireOrders(
+        user.storeId,
+        orderIds,
+      );
+
+      // If orders were expired, fetch again with same filters to get updated statuses
+      let finalData = data;
+      if (expiredCount > 0) {
+        finalData = await this.prisma.order.findMany({
+          where: {
+            storeId: user.storeId,
+            userId,
+          },
+          include: {
+            payment: true,
+            orderItem: {
+              include: {
+                recharge: true,
+                package: true,
+              },
+            },
+            couponUsages: {
+              include: {
+                coupon: {
+                  select: {
+                    id: true,
+                    title: true,
+                    discountPercentage: true,
+                    discountAmount: true,
+                    isFirstPurchase: true,
+                  },
+                },
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+      }
+
       const totalPages = Math.ceil(totalOrders / limit);
 
-      const dataWithCustomizedImages = await this.applyStoreProductImages(data);
+      const dataWithCustomizedImages =
+        await this.applyStoreProductImages(finalData);
       const products = await this.getStoreProducts(user.storeId);
 
       return {
@@ -220,9 +275,57 @@ export class OrderService {
         }),
       ]);
 
+      // Check and expire orders before returning
+      const orderIds = data.map((order) => order.id);
+      const expiredCount = await this.checkAndExpireOrders(storeId, orderIds);
+
+      // If orders were expired, fetch again with same filters to get updated statuses
+      let finalData = data;
+      if (expiredCount > 0) {
+        finalData = await this.prisma.order.findMany({
+          where,
+          include: {
+            payment: true,
+            orderItem: {
+              include: {
+                recharge: true,
+                package: true,
+              },
+            },
+            couponUsages: {
+              include: {
+                coupon: {
+                  select: {
+                    id: true,
+                    title: true,
+                    discountPercentage: true,
+                    discountAmount: true,
+                    isFirstPurchase: true,
+                  },
+                },
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+      }
+
       const totalPages = Math.ceil(totalOrders / limit);
 
-      const dataWithCustomizedImages = await this.applyStoreProductImages(data);
+      const dataWithCustomizedImages =
+        await this.applyStoreProductImages(finalData);
       const products = await this.getStoreProducts(storeId);
 
       return {
@@ -420,7 +523,55 @@ export class OrderService {
         throw new NotFoundException('Order not found');
       }
 
-      const [customizedOrder] = await this.applyStoreProductImages([order]);
+      const expiredCount = await this.checkAndExpireOrders(undefined, [id]);
+
+      let finalOrder = order;
+      if (expiredCount > 0) {
+        const refreshedOrder = await this.prisma.order.findFirst({
+          where: {
+            id,
+            userId,
+          },
+          include: {
+            payment: true,
+            orderItem: {
+              include: {
+                recharge: true,
+                package: true,
+              },
+            },
+            couponUsages: {
+              include: {
+                coupon: {
+                  select: {
+                    id: true,
+                    title: true,
+                    discountPercentage: true,
+                    discountAmount: true,
+                    isFirstPurchase: true,
+                  },
+                },
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        if (!refreshedOrder) {
+          throw new NotFoundException('Order not found');
+        }
+        finalOrder = refreshedOrder;
+      }
+
+      const [customizedOrder] =
+        await this.applyStoreProductImages([finalOrder]);
       return customizedOrder;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -1065,5 +1216,68 @@ export class OrderService {
       storeId,
       userId,
     );
+  }
+
+  /**
+   * Checks and expires orders that have been unpaid for more than 24 hours
+   * Only updates order status, does NOT modify metrics
+   * @param storeId Optional - filter by specific store
+   * @param orderIds Optional - check only specific order IDs
+   * @param maxDate Optional - limit check to orders created up to this date
+   * @returns Number of orders updated to EXPIRED status
+   */
+  async checkAndExpireOrders(
+    storeId?: string,
+    orderIds?: string[],
+    maxDate?: Date,
+  ): Promise<number> {
+    try {
+      const twentyFourHoursAgo = getHoursAgoInBrazil(24);
+
+      const createdAtFilter: Prisma.DateTimeFilter = {
+        lt: twentyFourHoursAgo,
+      };
+
+      if (maxDate) {
+        const maxDateEndOfDay = new Date(maxDate);
+        maxDateEndOfDay.setHours(23, 59, 59, 999);
+        createdAtFilter.lte = maxDateEndOfDay;
+      }
+
+      const where: Prisma.OrderWhereInput = {
+        orderStatus: OrderStatus.CREATED,
+        payment: {
+          status: PaymentStatus.PAYMENT_PENDING,
+        },
+        createdAt: createdAtFilter,
+      };
+
+      if (storeId) {
+        where.storeId = storeId;
+      }
+
+      if (orderIds && orderIds.length > 0) {
+        where.id = { in: orderIds };
+      }
+
+      const result = await this.prisma.order.updateMany({
+        where,
+        data: {
+          orderStatus: OrderStatus.EXPIRED,
+          updatedAt: new Date(),
+        },
+      });
+
+      if (result.count > 0) {
+        this.logger.log(
+          `Expired ${result.count} order(s)${storeId ? ` for store ${storeId}` : ''}${maxDate ? ` up to ${maxDate.toISOString().split('T')[0]}` : ''}`,
+        );
+      }
+
+      return result.count;
+    } catch (error) {
+      this.logger.error('Error checking and expiring orders:', error);
+      return 0;
+    }
   }
 }
