@@ -4,6 +4,7 @@ export interface OrderType {
   id: string;
   orderNumber: string;
   price: number;
+  basePrice: number;
   orderStatus: OrderStatus;
   storeId: string;
   payment: {

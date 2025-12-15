@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { getHoursAgoInBrazil } from '../utils/date.util';
 
 @Injectable()
 export class UserCleanupService {
@@ -9,7 +10,7 @@ export class UserCleanupService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron('0 0 */2 * *')
   async cleanupUnverifiedUsers() {
     this.logger.log('Starting cleanup of unverified users...');
 
@@ -63,31 +64,27 @@ export class UserCleanupService {
     } catch (error) {
       this.logger.error('Error during cleanup of unverified users:', error);
     }
-
-    // Also expire unpaid orders
-    await this.expireUnpaidOrders();
   }
 
   /**
    * Expire orders that have been unpaid for more than 24 hours
-   * Metrics will be recalculated by the daily cron job
+   * Manual method for testing or immediate execution
+   * Note: Order expiration is now handled by OrderService.checkAndExpireOrders()
+   * and the metrics cron job
    */
   async expireUnpaidOrders(): Promise<void> {
     this.logger.log('Starting expiration of unpaid orders...');
 
     try {
-      const now = new Date();
-      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const twentyFourHoursAgo = getHoursAgoInBrazil(24);
 
       // Find orders that:
-      // 1. Are in CREATED or PROCESSING status
+      // 1. Are in CREATED status (not PROCESSING - payment already approved)
       // 2. Have PAYMENT_PENDING status
       // 3. Were created more than 24 hours ago
       const unpaidOrders = await this.prisma.order.findMany({
         where: {
-          orderStatus: {
-            in: [OrderStatus.CREATED, OrderStatus.PROCESSING],
-          },
+          orderStatus: OrderStatus.CREATED, // Only CREATED, not PROCESSING
           payment: {
             status: PaymentStatus.PAYMENT_PENDING,
           },

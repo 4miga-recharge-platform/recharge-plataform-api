@@ -17,9 +17,11 @@ export function getAdminPromotionTemplate(
     : `https://${storeDomain}`;
 
   return `
-<html>
+<html style="color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
     <title>Promoção a Administrador</title>
   </head>
   <body style="margin: 0; padding: 50px; font-family: Arial, sans-serif; background-color: #ffffff;">
@@ -43,8 +45,8 @@ export function getAdminPromotionTemplate(
               </td>
             </tr>
             <tr>
-              <td style="padding: 30px 20px; background-color: #0a1a20; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0; font-size: 16px; color: #ffffff; line-height: 1.6; text-align: center;">
+              <td style="padding: 30px 20px; background-color: #0a1a20 !important; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 16px; color: #ffffff !important; line-height: 1.6; text-align: justify;">
                   Como administrador, você agora possui permissões avançadas para gerenciar a loja e seus usuários.
                 </p>
               </td>
@@ -60,7 +62,7 @@ export function getAdminPromotionTemplate(
               </td>
             </tr>
             <tr>
-              <td align="center" style="padding-top: 30px; font-size: 14px; color: #ff6b6b; background-color: #1a0a0a; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
+              <td style="padding-top: 30px; font-size: 14px; color: #ff6b6b !important; background-color: #1a0a0a !important; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b !important; text-align: justify;">
                 ⚠️ <strong>Importante:</strong> Se você não esperava essa promoção ou não reconhece esta ação, entre em contato com os administradores da loja imediatamente.
               </td>
             </tr>

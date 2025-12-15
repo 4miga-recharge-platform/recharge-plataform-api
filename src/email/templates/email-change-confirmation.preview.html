@@ -1,8 +1,8 @@
-export function getEmailChangeConfirmationTemplate(code: string): string {
-  return `
+<!DOCTYPE html>
 <html style="color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <meta name="supported-color-schemes" content="dark" />
     <title>Confirmação de alteração de e-mail</title>
@@ -25,7 +25,7 @@ export function getEmailChangeConfirmationTemplate(code: string): string {
             <tr>
               <td align="center" style="padding: 20px 0;">
                 <div style="font-size: 24px; font-weight: bold; color: #ffffff !important; letter-spacing: 7px; padding: 10px 0;">
-                  ${code}
+                  456789
                 </div>
               </td>
             </tr>
@@ -40,5 +40,4 @@ export function getEmailChangeConfirmationTemplate(code: string): string {
     </table>
   </body>
 </html>
-`;
-}
+

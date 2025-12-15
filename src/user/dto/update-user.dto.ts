@@ -2,12 +2,14 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MinLength,
 } from 'class-validator';
 
 export class UpdateUserDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'Name is required' })
   @ApiPropertyOptional({
@@ -16,6 +18,7 @@ export class UpdateUserDto {
   })
   name?: string;
 
+  @IsOptional()
   @IsEmail({}, { message: 'Email must be a valid email address' })
   @IsNotEmpty({ message: 'Email is required' })
   @ApiPropertyOptional({
@@ -24,6 +27,7 @@ export class UpdateUserDto {
   })
   email?: string;
 
+  @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'Phone is required' })
   @ApiPropertyOptional({
@@ -32,6 +36,7 @@ export class UpdateUserDto {
   })
   phone?: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(8, { message: 'Password must be at least 8 characters long' })
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
@@ -46,6 +51,7 @@ export class UpdateUserDto {
   })
   password?: string;
 
+  @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'Document value is required' })
   @ApiPropertyOptional({

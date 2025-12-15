@@ -58,6 +58,7 @@ describe('OrderService', () => {
     id: 'order-123',
     orderNumber: '123456789012',
     price: 19.99,
+    basePrice: 19.99,
     orderStatus: OrderStatus.CREATED,
     storeId: 'store-123',
     userId: 'user-123',
@@ -873,6 +874,7 @@ describe('OrderService', () => {
       });
 
       expect(result).toEqual(mockOrder);
+      expect(result.couponUsages).toEqual([]);
     });
 
     it('should throw ForbiddenException when user does not belong to store', async () => {
@@ -973,6 +975,27 @@ describe('OrderService', () => {
         price: 17.99,
       };
 
+      const mockOrderWithCoupon = {
+        ...mockOrder,
+        price: 17.99,
+        basePrice: 19.99,
+        couponUsages: [
+          {
+            id: 'coupon-usage-123',
+            couponId: 'coupon-123',
+            orderId: 'order-123',
+            usedAt: new Date(),
+            coupon: {
+              id: 'coupon-123',
+              title: 'WELCOME10',
+              discountPercentage: 10.0,
+              discountAmount: null,
+              isFirstPurchase: false,
+            },
+          },
+        ],
+      };
+
       // Mock the validateCoupon method
       jest.spyOn(service, 'validateCoupon').mockResolvedValue({
         valid: true,
@@ -1020,7 +1043,7 @@ describe('OrderService', () => {
           },
           order: {
             findUnique: jest.fn().mockResolvedValue(null),
-            create: jest.fn().mockResolvedValue(mockOrder),
+            create: jest.fn().mockResolvedValue(mockOrderWithCoupon),
           },
           couponUsage: {
             create: jest.fn().mockResolvedValue({ id: 'coupon-usage-123' }),
@@ -1063,7 +1086,7 @@ describe('OrderService', () => {
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.order.findUnique
         .mockResolvedValueOnce(null) // For orderNumber uniqueness check
-        .mockResolvedValueOnce(mockOrder); // For final order fetch
+        .mockResolvedValueOnce(mockOrderWithCoupon); // For final order fetch
       prismaService.$transaction.mockImplementation(mockTransaction);
       storeService.getBraviveToken.mockResolvedValue('bravive-token-123');
       braviveService.createPayment.mockResolvedValue({
@@ -1074,7 +1097,19 @@ describe('OrderService', () => {
 
       const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual(mockOrderWithCoupon);
+      expect(result.couponUsages).toHaveLength(1);
+      expect(result.couponUsages[0]).toMatchObject({
+        couponId: 'coupon-123',
+        orderId: 'order-123',
+        coupon: {
+          id: 'coupon-123',
+          title: 'WELCOME10',
+          discountPercentage: 10.0,
+          discountAmount: null,
+          isFirstPurchase: false,
+        },
+      });
     });
 
     it('should update existing influencer monthly sales when record exists', async () => {
@@ -1086,6 +1121,28 @@ describe('OrderService', () => {
         couponTitle: 'WELCOME10',
         price: 17.99,
       };
+
+      const mockOrderWithCoupon = {
+        ...mockOrder,
+        price: 17.99,
+        basePrice: 19.99,
+        couponUsages: [
+          {
+            id: 'coupon-usage-123',
+            couponId: 'coupon-123',
+            orderId: 'order-123',
+            usedAt: new Date(),
+            coupon: {
+              id: 'coupon-123',
+              title: 'WELCOME10',
+              discountPercentage: 10.0,
+              discountAmount: null,
+              isFirstPurchase: false,
+            },
+          },
+        ],
+      };
+
       // Mock the validateCoupon method
       jest.spyOn(service, 'validateCoupon').mockResolvedValue({
         valid: true,
@@ -1141,7 +1198,7 @@ describe('OrderService', () => {
           },
           order: {
             findUnique: jest.fn().mockResolvedValue(null),
-            create: jest.fn().mockResolvedValue(mockOrder),
+            create: jest.fn().mockResolvedValue(mockOrderWithCoupon),
           },
           couponUsage: {
             create: jest.fn().mockResolvedValue({ id: 'coupon-usage-123' }),
@@ -1181,7 +1238,7 @@ describe('OrderService', () => {
       bigoService.rechargePrecheck.mockResolvedValue({ rescode: 0 });
       prismaService.order.findUnique
         .mockResolvedValueOnce(null) // For orderNumber uniqueness check
-        .mockResolvedValueOnce(mockOrder); // For final order fetch
+        .mockResolvedValueOnce(mockOrderWithCoupon); // For final order fetch
       prismaService.$transaction.mockImplementation(mockTransaction);
       storeService.getBraviveToken.mockResolvedValue('bravive-token-123');
       braviveService.createPayment.mockResolvedValue({
@@ -1192,7 +1249,19 @@ describe('OrderService', () => {
 
       const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual(mockOrderWithCoupon);
+      expect(result.couponUsages).toHaveLength(1);
+      expect(result.couponUsages[0]).toMatchObject({
+        couponId: 'coupon-123',
+        orderId: 'order-123',
+        coupon: {
+          id: 'coupon-123',
+          title: 'WELCOME10',
+          discountPercentage: 10.0,
+          discountAmount: null,
+          isFirstPurchase: false,
+        },
+      });
     });
 
     it('should throw BadRequestException when rechargePrecheck fails', async () => {

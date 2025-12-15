@@ -178,19 +178,17 @@ describe('UserController', () => {
 
   describe('update', () => {
     it('should update a user', async () => {
-      const userId = 'user-123';
       const updatedUser = { ...mockUser, ...updateUserDto };
 
       userService.update.mockResolvedValue(updatedUser);
 
-      const result = await controller.update(userId, updateUserDto);
+      const result = await controller.update(mockUser, updateUserDto);
 
-      expect(userService.update).toHaveBeenCalledWith(userId, updateUserDto);
+      expect(userService.update).toHaveBeenCalledWith(mockUser.id, updateUserDto);
       expect(result).toEqual(updatedUser);
     });
 
     it('should handle partial update', async () => {
-      const userId = 'user-123';
       const partialUpdateDto: UpdateUserDto = {
         name: 'Updated Name',
       };
@@ -198,14 +196,13 @@ describe('UserController', () => {
 
       userService.update.mockResolvedValue(updatedUser);
 
-      const result = await controller.update(userId, partialUpdateDto);
+      const result = await controller.update(mockUser, partialUpdateDto);
 
-      expect(userService.update).toHaveBeenCalledWith(userId, partialUpdateDto);
+      expect(userService.update).toHaveBeenCalledWith(mockUser.id, partialUpdateDto);
       expect(result).toEqual(updatedUser);
     });
 
     it('should handle update with password', async () => {
-      const userId = 'user-123';
       const updateWithPassword: UpdateUserDto = {
         name: 'Jane Doe',
         password: 'newPassword123',
@@ -214,25 +211,23 @@ describe('UserController', () => {
 
       userService.update.mockResolvedValue(updatedUser);
 
-      const result = await controller.update(userId, updateWithPassword);
+      const result = await controller.update(mockUser, updateWithPassword);
 
       expect(userService.update).toHaveBeenCalledWith(
-        userId,
+        mockUser.id,
         updateWithPassword,
       );
       expect(result).toEqual(updatedUser);
     });
 
     it('should handle update error', async () => {
-      const userId = 'user-123';
-
       userService.update.mockRejectedValue(new Error('Update failed'));
 
-      await expect(controller.update(userId, updateUserDto)).rejects.toThrow(
+      await expect(controller.update(mockUser, updateUserDto)).rejects.toThrow(
         'Update failed',
       );
 
-      expect(userService.update).toHaveBeenCalledWith(userId, updateUserDto);
+      expect(userService.update).toHaveBeenCalledWith(mockUser.id, updateUserDto);
     });
   });
 

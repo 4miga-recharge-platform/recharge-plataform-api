@@ -19,11 +19,11 @@ import { LoggedUser } from '../auth/logged-user.decorator';
 import { ValidationInterceptor } from '../common/interceptors/validation.interceptor';
 import { ConfirmRoleChangeDto } from './dto/confirm-role-change.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateBigoIdDto } from './dto/update-recharge-bigo-id.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UserCleanupService } from './user-cleanup.service';
 import { UserService } from './user.service';
-import { UpdateBigoIdDto } from './dto/update-recharge-bigo-id.dto';
 
 @ApiTags('user')
 @Controller('user')
@@ -75,13 +75,18 @@ export class UserController {
   }
 
   @Patch('recharge-bigo-id')
-  @UseGuards(AuthGuard('jwt'),)
+  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update the recharge bigo id of the logged user' })
-  updateRechargeBigoId(@LoggedUser() user: User, @Body() updateBigoIdDto: UpdateBigoIdDto) {
-    return this.userService.updateRechargeBigoId(user.id, updateBigoIdDto.rechargeBigoId ?? null);
+  updateRechargeBigoId(
+    @LoggedUser() user: User,
+    @Body() updateBigoIdDto: UpdateBigoIdDto,
+  ) {
+    return this.userService.updateRechargeBigoId(
+      user.id,
+      updateBigoIdDto.rechargeBigoId ?? null,
+    );
   }
-
 
   @Patch(':id/promote')
   @UseGuards(AuthGuard('jwt'), RoleGuard)
@@ -139,10 +144,12 @@ export class UserController {
     return this.userService.findOne(id);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update a user by id' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(id, updateUserDto);
+  @Patch()
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update the logged user' })
+  update(@LoggedUser() user: User, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(user.id, updateUserDto);
   }
 
   @Delete(':id')
@@ -150,5 +157,4 @@ export class UserController {
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
-
 }

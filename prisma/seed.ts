@@ -520,6 +520,7 @@ async function main() {
         data: {
           orderNumber: `ORDER-${userIndex + 1}-${i + 1}`,
           price: randomPackage.basePrice,
+          basePrice: randomPackage.basePrice,
           orderStatus: 'COMPLETED',
           paymentId: payment.id,
           orderItemId: orderItem.id,
