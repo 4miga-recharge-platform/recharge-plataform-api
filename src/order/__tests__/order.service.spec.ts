@@ -65,6 +65,7 @@ describe('OrderService', () => {
     paymentId: 'payment-123',
     orderItemId: 'order-item-123',
     createdAt: new Date(),
+    couponUsages: [],
     payment: {
       id: 'payment-123',
       name: 'pix',
@@ -92,7 +93,6 @@ describe('OrderService', () => {
         imgCardUrl: 'https://example.com/package-card.png',
       },
     },
-    couponUsages: [],
   };
 
   const mockCoupon = {
@@ -874,7 +874,7 @@ describe('OrderService', () => {
       });
 
       expect(result).toEqual(mockOrder);
-      expect(result.couponUsages).toEqual([]);
+      expect((result as any).couponUsages).toEqual([]);
     });
 
     it('should throw ForbiddenException when user does not belong to store', async () => {
@@ -1098,8 +1098,8 @@ describe('OrderService', () => {
       const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
       expect(result).toEqual(mockOrderWithCoupon);
-      expect(result.couponUsages).toHaveLength(1);
-      expect(result.couponUsages[0]).toMatchObject({
+      expect((result as any).couponUsages).toHaveLength(1);
+      expect((result as any).couponUsages[0]).toMatchObject({
         couponId: 'coupon-123',
         orderId: 'order-123',
         coupon: {
@@ -1250,8 +1250,8 @@ describe('OrderService', () => {
       const result = await service.create(createOrderWithCouponDto, storeId, userId);
 
       expect(result).toEqual(mockOrderWithCoupon);
-      expect(result.couponUsages).toHaveLength(1);
-      expect(result.couponUsages[0]).toMatchObject({
+      expect((result as any).couponUsages).toHaveLength(1);
+      expect((result as any).couponUsages[0]).toMatchObject({
         couponId: 'coupon-123',
         orderId: 'order-123',
         coupon: {

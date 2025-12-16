@@ -5,26 +5,26 @@ import {
   Param,
   Post,
   Query,
-  UseGuards,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 
+import { AuthGuard } from '@nestjs/passport';
 import {
+  ApiBearerAuth,
   ApiOperation,
   ApiQuery,
   ApiResponse,
   ApiTags,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
-import { CreateOrderDto } from './dto/create-order.dto';
-import { ValidateCouponByPackageDto } from './dto/validate-coupon-by-package.dto';
-import { CouponValidationResponseDto } from './dto/coupon-validation-response.dto';
-import { AuthGuard } from '@nestjs/passport';
 import { OrderStatus } from '@prisma/client';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { LoggedUser } from '../auth/logged-user.decorator';
 import { User } from '../user/entities/user.entity';
+import { CouponValidationResponseDto } from './dto/coupon-validation-response.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { ValidateCouponByPackageDto } from './dto/validate-coupon-by-package.dto';
 import { OrderService } from './order.service';
 
 @ApiTags('orders')
@@ -139,20 +139,6 @@ export class OrderController {
     return this.orderService.findOne(id, req.user.id);
   }
 
-  @Post()
-  @ApiOperation({ summary: 'Create a new order' })
-  @ApiResponse({
-    status: 201,
-    description: 'Order created successfully.',
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Package not found or payment method not available.',
-  })
-  create(@Body() createOrderDto: CreateOrderDto, @LoggedUser() user: User) {
-    return this.orderService.create(createOrderDto, user.storeId, user.id);
-  }
-
   @Post('validate-coupon-by-package')
   @ApiOperation({ summary: 'Validate a coupon for a specific package' })
   @ApiResponse({
@@ -179,5 +165,19 @@ export class OrderController {
       req.user.storeId,
       req.user.id,
     );
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new order' })
+  @ApiResponse({
+    status: 201,
+    description: 'Order created successfully.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Package not found or payment method not available.',
+  })
+  create(@Body() createOrderDto: CreateOrderDto, @LoggedUser() user: User) {
+    return this.orderService.create(createOrderDto, user.storeId, user.id);
   }
 }
