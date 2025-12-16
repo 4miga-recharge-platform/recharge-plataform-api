@@ -51,6 +51,73 @@ export class MetricsService {
   }
 
   /**
+   * Updates metrics for a specific order when its status changes to COMPLETED
+   * This ensures metrics are updated in real-time, even if order completes on a different day
+   */
+  async updateMetricsForOrder(orderId: string): Promise<void> {
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          orderItem: {
+            select: {
+              productId: true,
+            },
+          },
+          couponUsages: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        this.logger.warn(`Order ${orderId} not found for metrics update`);
+        return;
+      }
+
+      // Only update metrics if order is COMPLETED
+      if (order.orderStatus !== OrderStatus.COMPLETED) {
+        return;
+      }
+
+      const orderDate = new Date(order.createdAt);
+      const dateOnly = new Date(
+        orderDate.getFullYear(),
+        orderDate.getMonth(),
+        orderDate.getDate(),
+      );
+      const month = dateOnly.getMonth() + 1;
+      const year = dateOnly.getFullYear();
+
+      // Update daily metrics for the order's creation date
+      await this.recalculateDailyMetrics(order.storeId, dateOnly);
+
+      // Update monthly metrics for the order's creation month
+      await this.recalculateMonthlyMetrics(order.storeId, month, year);
+
+      // Update monthly metrics by product
+      if (order.orderItem?.productId) {
+        await this.recalculateMonthlyByProductMetrics(
+          order.storeId,
+          month,
+          year,
+        );
+      }
+
+      this.logger.log(
+        `Metrics updated for order ${orderId} (created on ${dateOnly.toISOString().split('T')[0]})`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to update metrics for order ${orderId}: ${error.message}`,
+      );
+      // Don't throw - metrics update failure shouldn't break order processing
+    }
+  }
+
+  /**
    * Recalculates daily metrics for a specific date
    */
   private async recalculateDailyMetrics(
