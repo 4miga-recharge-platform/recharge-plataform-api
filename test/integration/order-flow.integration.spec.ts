@@ -74,7 +74,7 @@ describe('Order Flow Integration', () => {
       expect(order.payment.qrCode).toBe(paymentResponse.pix_qr_code);
       expect(order.payment.qrCodetextCopyPaste).toBe(paymentResponse.pix_code);
       expect(order.payment.paymentProvider).toBe('bravive');
-      expect(order.payment.externalId).toBe(paymentResponse.id);
+      expect(order.payment.braviveId).toBe(paymentResponse.id);
 
       // Verify recharge was created
       expect(order.orderItem.recharge).toBeDefined();
@@ -355,11 +355,11 @@ describe('Order Flow Integration', () => {
       expect(order.payment.status).toBe(PaymentStatus.PAYMENT_PENDING);
       expect(order.orderStatus).toBe(OrderStatus.CREATED);
       expect(order.orderItem.recharge.status).toBe(RechargeStatus.RECHARGE_PENDING);
-      expect(order.payment.externalId).toBe(paymentResponse.id); // Verify externalId was saved
+      expect(order.payment.braviveId).toBe(paymentResponse.id); // Verify braviveId was saved
 
       // Simulate webhook APPROVED
       const webhookDto = BraviveMock.createApprovedWebhook(
-        paymentResponse.id, // This is the Bravive payment ID that should match externalId
+        paymentResponse.id, // This is the Bravive payment ID that should match braviveId
       );
 
       // Use real BraviveService (now it's not mocked, only HTTP service is mocked)

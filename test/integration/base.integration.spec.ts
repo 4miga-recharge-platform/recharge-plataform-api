@@ -5,6 +5,7 @@ import { BraviveService } from '../../src/bravive/bravive.service';
 import { BraviveHttpService } from '../../src/bravive/http/bravive-http.service';
 import { BigoService } from '../../src/bigo/bigo.service';
 import { EmailService } from '../../src/email/email.service';
+import { MetricsService } from '../../src/metrics/metrics.service';
 import { OrderService } from '../../src/order/order.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { StoreService } from '../../src/store/store.service';
@@ -49,6 +50,12 @@ export class BaseIntegrationTest {
     // Create mock for EmailService
     const mockEmailService = EmailMock.createMockService();
 
+    // Create mock for MetricsService
+    const mockMetricsService = {
+      updateMetricsForOrder: jest.fn().mockResolvedValue(undefined),
+      recalculateStoreMetrics: jest.fn().mockResolvedValue(undefined),
+    };
+
     // Create testing module
     this.moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
@@ -61,6 +68,8 @@ export class BaseIntegrationTest {
       .useValue(mockBigoService)
       .overrideProvider(EmailService)
       .useValue(mockEmailService)
+      .overrideProvider(MetricsService)
+      .useValue(mockMetricsService)
       .compile();
 
     // Create NestJS application
