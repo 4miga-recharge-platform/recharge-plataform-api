@@ -72,13 +72,4 @@ export class CreatePaymentDto {
   })
   @IsEnum(PaymentMethod)
   method: PaymentMethod;
-
-  @ApiProperty({
-    description: 'Webhook URL for payment status updates',
-    example: 'https://api.exemplo.com/bravive/webhook',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  webhook_url?: string;
 }

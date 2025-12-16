@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StoreService } from '../../store/store.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { User } from '../../user/entities/user.entity';
 import { BraviveController } from '../bravive.controller';
 import { BraviveService } from '../bravive.service';
@@ -66,6 +67,12 @@ describe('BraviveController', () => {
       getBraviveToken: jest.fn(),
     };
 
+    const mockPrismaService = {
+      order: {
+        findFirst: jest.fn(),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BraviveController],
       providers: [
@@ -76,6 +83,10 @@ describe('BraviveController', () => {
         {
           provide: StoreService,
           useValue: mockStoreService,
+        },
+        {
+          provide: PrismaService,
+          useValue: mockPrismaService,
         },
       ],
     }).compile();
@@ -105,9 +116,13 @@ describe('BraviveController', () => {
       const error = new Error('Processing error');
       braviveService.handleWebhook.mockRejectedValue(error);
 
-      await expect(controller.handleWebhook(mockWebhookDto)).rejects.toThrow(
-        'Processing error',
-      );
+      const result = await controller.handleWebhook(mockWebhookDto);
+
+      expect(braviveService.handleWebhook).toHaveBeenCalledWith(mockWebhookDto);
+      expect(result).toEqual({
+        message: 'Webhook received but error occurred',
+        error: 'Processing error',
+      });
     });
   });
 
@@ -121,7 +136,6 @@ describe('BraviveController', () => {
       payer_phone: '+5511999999999',
       payer_document: '12345678900',
       method: PaymentMethod.PIX,
-      webhook_url: 'https://api.example.com/bravive/webhook',
     };
 
     it('should create a payment successfully', async () => {
