@@ -176,11 +176,11 @@ model Payment {
   statusUpdatedAt     DateTime?
   qrCode              String?
   qrCodetextCopyPaste String?
-  externalId          String?
+  braviveId           String?
   paymentProvider     String?
   order               Order?
 
-  @@index([externalId])
+  @@index([braviveId])
 }
 
 model OrderItem {
