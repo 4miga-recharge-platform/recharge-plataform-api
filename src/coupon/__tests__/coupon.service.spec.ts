@@ -64,6 +64,7 @@ describe('CouponService', () => {
     storeId: true,
     createdAt: true,
     updatedAt: true,
+    deletedAt: true,
   };
 
   beforeEach(async () => {
@@ -117,6 +118,7 @@ describe('CouponService', () => {
 
       expect(result).toEqual(mockCoupons);
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
+        where: { deletedAt: null },
         select: expect.any(Object),
       });
     });
@@ -172,7 +174,7 @@ describe('CouponService', () => {
       const result = await service.findByStore('store-123');
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
-        where: { storeId: 'store-123' },
+        where: { storeId: 'store-123', deletedAt: null },
         select: {
           ...mockCouponSelect,
           influencer: {
@@ -190,7 +192,7 @@ describe('CouponService', () => {
         take: 10,
       });
       expect(prismaService.coupon.count).toHaveBeenCalledWith({
-        where: { storeId: 'store-123' },
+        where: { storeId: 'store-123', deletedAt: null },
       });
       expect(result).toEqual({
         data: coupons,
@@ -210,7 +212,7 @@ describe('CouponService', () => {
       const result = await service.findByStore('store-123', 2, 5);
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
-        where: { storeId: 'store-123' },
+        where: { storeId: 'store-123', deletedAt: null },
         select: {
           ...mockCouponSelect,
           influencer: {
@@ -228,7 +230,7 @@ describe('CouponService', () => {
         take: 5,
       });
       expect(prismaService.coupon.count).toHaveBeenCalledWith({
-        where: { storeId: 'store-123' },
+        where: { storeId: 'store-123', deletedAt: null },
       });
       expect(result).toEqual({
         data: coupons,
@@ -250,6 +252,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           OR: [
             { title: { contains: 'desconto', mode: 'insensitive' } },
             {
@@ -278,6 +281,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.count).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           OR: [
             { title: { contains: 'desconto', mode: 'insensitive' } },
             {
@@ -308,6 +312,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           OR: [
             { title: { contains: 'joão', mode: 'insensitive' } },
             { influencer: { name: { contains: 'joão', mode: 'insensitive' } } },
@@ -355,6 +360,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           discountPercentage: { not: null },
           discountAmount: null,
         },
@@ -400,6 +406,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           discountAmount: { not: null },
           discountPercentage: null,
         },
@@ -445,6 +452,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           isFirstPurchase: true,
         },
         select: {
@@ -487,7 +495,7 @@ describe('CouponService', () => {
       );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
-        where: { storeId: 'store-123' },
+        where: { storeId: 'store-123', deletedAt: null },
         select: {
           ...mockCouponSelect,
           influencer: {
@@ -531,6 +539,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           isActive: true,
         },
         select: {
@@ -552,6 +561,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.count).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           isActive: true,
         },
       });
@@ -582,6 +592,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           isActive: false,
         },
         select: {
@@ -603,6 +614,7 @@ describe('CouponService', () => {
       expect(prismaService.coupon.count).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          deletedAt: null,
           isActive: false,
         },
       });
@@ -631,7 +643,7 @@ describe('CouponService', () => {
       );
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
-        where: { storeId: 'store-123' },
+        where: { storeId: 'store-123', deletedAt: null },
         select: {
           ...mockCouponSelect,
           influencer: {
@@ -676,7 +688,7 @@ describe('CouponService', () => {
 
       expect(result).toEqual(mockCoupons);
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
-        where: { influencerId: 'influencer-123' },
+        where: { influencerId: 'influencer-123', deletedAt: null },
         select: expect.any(Object),
       });
     });
@@ -694,6 +706,7 @@ describe('CouponService', () => {
         where: {
           storeId: 'store-123',
           isActive: true,
+          deletedAt: null,
           OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }],
         },
         select: expect.any(Object),
@@ -714,6 +727,7 @@ describe('CouponService', () => {
           storeId: 'store-123',
           isFirstPurchase: true,
           isActive: true,
+          deletedAt: null,
           OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }],
         },
         select: expect.any(Object),
@@ -1060,25 +1074,30 @@ describe('CouponService', () => {
   describe('remove', () => {
     it('should remove a coupon successfully', async () => {
       prismaService.coupon.findUnique.mockResolvedValue(mockCoupon);
-      prismaService.couponUsage.findMany.mockResolvedValue([]);
-      prismaService.coupon.delete.mockResolvedValue(mockCoupon);
+      prismaService.coupon.update.mockResolvedValue(mockCoupon);
 
       const result = await service.remove('coupon-123');
 
       expect(result).toEqual(mockCoupon);
-      expect(prismaService.coupon.delete).toHaveBeenCalledWith({
+      expect(prismaService.coupon.update).toHaveBeenCalledWith({
         where: { id: 'coupon-123' },
+        data: { deletedAt: expect.any(Date) },
         select: expect.any(Object),
       });
     });
 
-    it('should throw BadRequestException when coupon has associated usages', async () => {
+    it('should remove a coupon even with associated usages', async () => {
       prismaService.coupon.findUnique.mockResolvedValue(mockCoupon);
-      prismaService.couponUsage.findMany.mockResolvedValue([{ id: 'usage-1' }]);
+      prismaService.coupon.update.mockResolvedValue(mockCoupon);
 
-      await expect(service.remove('coupon-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      const result = await service.remove('coupon-123');
+
+      expect(result).toEqual(mockCoupon);
+      expect(prismaService.coupon.update).toHaveBeenCalledWith({
+        where: { id: 'coupon-123' },
+        data: { deletedAt: expect.any(Date) },
+        select: expect.any(Object),
+      });
     });
   });
 });

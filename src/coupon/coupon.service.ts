@@ -24,6 +24,7 @@ export class CouponService {
     storeId: true,
     createdAt: true,
     updatedAt: true,
+    deletedAt: true,
     // store: false,
     // influencer: false,
     // couponUsages: false,
@@ -32,6 +33,7 @@ export class CouponService {
   async findAll(): Promise<any[]> {
     try {
       const data = await this.prisma.coupon.findMany({
+        where: { deletedAt: null },
         select: this.couponSelect,
       });
       return data;
@@ -55,7 +57,7 @@ export class CouponService {
           },
         },
       });
-      if (!data) {
+      if (!data || data.deletedAt) {
         throw new BadRequestException('Coupon not found');
       }
       return data;
@@ -78,7 +80,10 @@ export class CouponService {
     totalPages: number;
   }> {
     try {
-      const where: any = { storeId };
+      const where: any = {
+        storeId,
+        deletedAt: null,
+      };
 
       // Add search filter (title OR influencer name)
       if (search) {
@@ -146,7 +151,10 @@ export class CouponService {
   async findByInfluencer(influencerId: string): Promise<any[]> {
     try {
       const data = await this.prisma.coupon.findMany({
-        where: { influencerId },
+        where: {
+          influencerId,
+          deletedAt: null,
+        },
         select: this.couponSelect,
       });
       return data;
@@ -191,6 +199,7 @@ export class CouponService {
       const where: any = {
         influencerId,
         storeId,
+        deletedAt: null,
       };
 
       // Add search filter (title)
@@ -245,6 +254,7 @@ export class CouponService {
         where: {
           storeId,
           isActive: true,
+          deletedAt: null,
           OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         select: this.couponSelect,
@@ -262,6 +272,7 @@ export class CouponService {
           storeId,
           isFirstPurchase: true,
           isActive: true,
+          deletedAt: null,
           OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         select: this.couponSelect,
@@ -323,11 +334,11 @@ export class CouponService {
         );
       }
 
-      // Check if coupon title already exists for this store
       const existingCoupon = await this.prisma.coupon.findFirst({
         where: {
           title: dto.title,
           storeId: storeId,
+          deletedAt: null,
         },
       });
       if (existingCoupon) {
@@ -473,7 +484,6 @@ export class CouponService {
         }
       }
 
-      // If updating title, check if new title already exists for the store
       if (dto.title) {
         const currentCoupon = await this.findOne(id);
         const existingCoupon = await this.prisma.coupon.findFirst({
@@ -481,6 +491,7 @@ export class CouponService {
             title: dto.title,
             storeId: currentCoupon.storeId,
             id: { not: id },
+            deletedAt: null,
           },
         });
         if (existingCoupon) {
@@ -513,18 +524,9 @@ export class CouponService {
     try {
       await this.findOne(id);
 
-      // Check if coupon has associated usages
-      const couponUsages = await this.prisma.couponUsage.findMany({
-        where: { couponId: id },
-      });
-      if (couponUsages.length > 0) {
-        throw new BadRequestException(
-          'Cannot delete coupon with associated usages',
-        );
-      }
-
-      return await this.prisma.coupon.delete({
+      return await this.prisma.coupon.update({
         where: { id },
+        data: { deletedAt: new Date() },
         select: this.couponSelect,
       });
     } catch (error) {

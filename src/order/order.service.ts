@@ -1162,11 +1162,11 @@ export class OrderService {
     try {
       const { couponTitle, orderAmount } = validateCouponDto;
 
-      // Find the coupon by title and store
       const coupon = await this.prisma.coupon.findFirst({
         where: {
           title: couponTitle,
           storeId,
+          deletedAt: null,
         },
         select: {
           id: true,

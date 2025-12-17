@@ -246,6 +246,7 @@ model Coupon {
   updatedAt          DateTime      @updatedAt
   influencerId       String
   isFirstPurchase    Boolean       @default(false)
+  deletedAt          DateTime?     @db.Timestamp(6)
   influencer         Influencer    @relation(fields: [influencerId], references: [id], onDelete: Cascade)
   store              Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   couponUsages       CouponUsage[]
