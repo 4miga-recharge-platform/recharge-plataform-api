@@ -515,6 +515,7 @@ export class BraviveService {
             const html = getOrderCompletedTemplate(
               completedOrder.user.name,
               completedOrder.orderNumber,
+              completedOrder.orderItem.rechargeId,
               completedOrder.orderItem.package.name,
               completedOrder.orderItem.recharge.amountCredits,
               Number(completedOrder.price),

@@ -1,6 +1,7 @@
 export function getOrderCompletedTemplate(
   userName: string,
   orderNumber: string,
+  rechargeId: string,
   packageName: string,
   amountCredits: number,
   orderPrice: number,
@@ -59,6 +60,12 @@ export function getOrderCompletedTemplate(
                     <td style="padding-bottom: 15px;">
                       <div style="font-size: 14px; color: #888888; margin-bottom: 5px;">Número do Pedido:</div>
                       <div style="font-size: 18px; color: #ffffff !important; font-weight: bold;">${orderNumber}</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-bottom: 15px;">
+                      <div style="font-size: 14px; color: #888888; margin-bottom: 5px;">ID da recarga:</div>
+                      <div style="font-size: 16px; color: #ffffff !important; font-weight: bold;">${rechargeId}</div>
                     </td>
                   </tr>
                   <tr>
