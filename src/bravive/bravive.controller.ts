@@ -20,6 +20,7 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { LoggedUser } from '../auth/logged-user.decorator';
+import { OrderService } from '../order/order.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StoreService } from '../store/store.service';
 import { User } from '../user/entities/user.entity';
@@ -34,6 +35,7 @@ export class BraviveController {
     private readonly braviveService: BraviveService,
     private readonly storeService: StoreService,
     private readonly prisma: PrismaService,
+    private readonly orderService: OrderService,
   ) {}
 
   @Post('webhook')
@@ -177,7 +179,7 @@ export class BraviveController {
   @ApiOperation({
     summary: 'Manually check payment status for an order',
     description:
-      'Checks the payment status from Bravive and updates the order if the status has changed. Useful for manual verification when the user clicks "Confirm Payment" button.',
+      'Checks the payment status from Bravive and updates the order if the status has changed. Returns the order in the same format as GET /orders/{id}. Useful for manual verification when the user clicks "Confirm Payment" button.',
   })
   @ApiParam({
     name: 'orderId',
@@ -186,21 +188,8 @@ export class BraviveController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Payment status checked successfully.',
-    schema: {
-      example: {
-        status: 'APPROVED',
-        updated: true,
-        order: {
-          id: 'order-123',
-          orderNumber: 'ABC123',
-          orderStatus: 'PROCESSING',
-          payment: {
-            status: 'PAYMENT_APPROVED',
-          },
-        },
-      },
-    },
+    description:
+      'Payment status checked and order returned successfully. Returns the same format as GET /orders/{id}.',
   })
   @ApiResponse({
     status: 400,
@@ -253,55 +242,14 @@ export class BraviveController {
       );
     }
 
-    const result = await this.braviveService.checkAndUpdatePaymentStatus(
+    // Atualiza os status se necessário (pagamento, pedido, recarga, Bigo)
+    await this.braviveService.checkAndUpdatePaymentStatus(
       order.payment.braviveId,
       token,
     );
 
-    const updatedOrder = await this.prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        payment: true,
-        orderItem: {
-          include: {
-            recharge: true,
-            package: true,
-          },
-        },
-        couponUsages: {
-          include: {
-            coupon: {
-              select: {
-                id: true,
-                title: true,
-                discountPercentage: true,
-                discountAmount: true,
-                isFirstPurchase: true,
-              },
-            },
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-      },
-    });
-
-    return {
-      status: result.status,
-      updated: result.updated,
-      order: updatedOrder
-        ? {
-            ...updatedOrder,
-            price: Number(Number(updatedOrder.price).toFixed(2)),
-            basePrice: Number(Number(updatedOrder.basePrice).toFixed(2)),
-          }
-        : null,
-    };
+    // Retorna no mesmo formato que /orders/{id}
+    // Isso já aplica applyStoreProductImages e retorna formatado
+    return this.orderService.findOne(orderId, user.id);
   }
 }
