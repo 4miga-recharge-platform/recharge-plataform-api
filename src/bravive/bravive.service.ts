@@ -7,11 +7,14 @@ import {
 } from '@nestjs/common';
 import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
 import { BigoService } from '../bigo/bigo.service';
+import { EmailService } from '../email/email.service';
+import { getOrderCompletedTemplate } from '../email/templates/order-completed.template';
+import { MetricsService } from '../metrics/metrics.service';
 import { OrderService } from '../order/order.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentResponseDto } from './dto/payment-response.dto';
-import { WebhookPaymentDto, WebhookStatus } from './dto/webhook-payment.dto';
+import { WebhookStatus } from './dto/webhook-payment.dto';
 import { BraviveHttpService } from './http/bravive-http.service';
 
 @Injectable()
@@ -24,6 +27,8 @@ export class BraviveService {
     private readonly bigoService: BigoService,
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
+    private readonly metricsService: MetricsService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -71,6 +76,145 @@ export class BraviveService {
   }
 
   /**
+   * Checks payment status from Bravive and updates if changed
+   * Used for manual payment verification
+   */
+  async checkAndUpdatePaymentStatus(
+    bravivePaymentId: string,
+    token: string,
+  ): Promise<{ status: string; updated: boolean }> {
+    try {
+      // Fetch current status from Bravive
+      const bravivePayment = await this.getPayment(bravivePaymentId, token);
+
+      // Map Bravive status to our internal status
+      const braviveStatus = bravivePayment.status?.toUpperCase();
+      let internalStatus: PaymentStatus | null = null;
+
+      if (braviveStatus === 'APPROVED') {
+        internalStatus = PaymentStatus.PAYMENT_APPROVED;
+      } else if (braviveStatus === 'REJECTED' || braviveStatus === 'CANCELED') {
+        internalStatus = PaymentStatus.PAYMENT_REJECTED;
+      } else if (braviveStatus === 'PENDING') {
+        internalStatus = PaymentStatus.PAYMENT_PENDING;
+      }
+
+      // Find payment in our database
+      const payment = await this.prisma.payment.findFirst({
+        where: {
+          braviveId: bravivePaymentId,
+          paymentProvider: 'bravive',
+        },
+        include: {
+          order: {
+            include: {
+              orderItem: {
+                include: {
+                  recharge: true,
+                  package: true,
+                },
+              },
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  documentValue: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!payment || !payment.order) {
+        this.logger.warn({
+          message: 'Payment not found for manual check',
+          bravivePaymentId,
+        });
+        return {
+          status: bravivePayment.status || 'UNKNOWN',
+          updated: false,
+        };
+      }
+
+      // Check if status changed
+      const currentStatus = payment.status;
+      const statusChanged = internalStatus && currentStatus !== internalStatus;
+
+      if (!statusChanged) {
+        this.logger.log({
+          message: 'Payment status unchanged',
+          bravivePaymentId,
+          currentStatus,
+          braviveStatus,
+        });
+        return {
+          status: bravivePayment.status || 'UNKNOWN',
+          updated: false,
+        };
+      }
+
+      // Status changed - process the update
+      this.logger.log({
+        message: 'Payment status changed, processing update',
+        bravivePaymentId,
+        oldStatus: currentStatus,
+        newStatus: internalStatus,
+        braviveStatus,
+      });
+
+      const order = payment.order;
+      const recharge = order.orderItem?.recharge;
+
+      // Process based on new status
+      if (internalStatus === PaymentStatus.PAYMENT_APPROVED) {
+        await this.handleApprovedPayment(
+          payment.id,
+          order.id,
+          recharge?.id,
+          order.orderNumber,
+          Number(order.price),
+          recharge?.amountCredits,
+          recharge?.userIdForRecharge,
+        );
+      } else if (internalStatus === PaymentStatus.PAYMENT_REJECTED) {
+        // Map Bravive status to WebhookStatus enum
+        let webhookStatus: WebhookStatus;
+        if (braviveStatus === 'REJECTED') {
+          webhookStatus = WebhookStatus.REJECTED;
+        } else if (braviveStatus === 'CANCELED') {
+          webhookStatus = WebhookStatus.CANCELED;
+        } else {
+          webhookStatus = WebhookStatus.REJECTED; // Default to REJECTED
+        }
+
+        await this.handleRejectedOrCanceledPayment(
+          payment.id,
+          order.id,
+          webhookStatus,
+        );
+      }
+
+      return {
+        status: bravivePayment.status || 'UNKNOWN',
+        updated: true,
+      };
+    } catch (error) {
+      this.logger.error({
+        message: 'Error checking payment status',
+        bravivePaymentId,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw new BadRequestException(
+        `Failed to check payment status: ${error.message}`,
+      );
+    }
+  }
+
+  /**
    * Lists payments (optional, for admin)
    */
   async listPayments(
@@ -103,98 +247,149 @@ export class BraviveService {
   /**
    * Processes payment webhook from Bravive
    */
-  async handleWebhook(webhookDto: WebhookPaymentDto): Promise<void> {
-    this.logger.log(
-      `Processing webhook for payment ${webhookDto.id} - Status: ${webhookDto.status}`,
-    );
+  async handleWebhook(webhookDto: any): Promise<void> {
+    this.logger.log({
+      message: 'Webhook received',
+      braviveId: webhookDto?.id,
+      status: webhookDto?.status,
+      type: webhookDto?.type,
+    });
 
-    try {
-      // Find payment by externalId (Bravive payment ID)
-      const payment = await this.prisma.payment.findFirst({
-        where: {
-          externalId: webhookDto.id,
-          paymentProvider: 'bravive',
-        },
-        include: {
-          order: {
-            include: {
-              orderItem: {
-                include: {
-                  recharge: true,
-                  package: true,
-                },
+    const braviveId = webhookDto?.id;
+    if (!braviveId) {
+      this.logger.warn({
+        message: 'Webhook without id',
+        payload: webhookDto,
+      });
+      return;
+    }
+
+    const payment = await this.prisma.payment.findFirst({
+      where: {
+        braviveId: braviveId,
+        paymentProvider: 'bravive',
+      },
+      include: {
+        order: {
+          include: {
+            orderItem: {
+              include: {
+                recharge: true,
+                package: true,
               },
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  phone: true,
-                  documentValue: true,
-                },
+            },
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                documentValue: true,
               },
             },
           },
         },
+      },
+    });
+
+    if (!payment || !payment.order) {
+      this.logger.warn({
+        message: 'Payment not found',
+        braviveId,
       });
+      return;
+    }
 
-      if (!payment || !payment.order) {
-        this.logger.warn(`Payment not found for externalId: ${webhookDto.id}`);
-        return;
-      }
+    const webhookStatus = webhookDto?.status?.toUpperCase();
+    if (!webhookStatus) {
+      this.logger.warn({
+        message: 'Webhook without status',
+        braviveId,
+      });
+      return;
+    }
 
-      const order = payment.order;
-      const recharge = order.orderItem?.recharge;
+    const targetPaymentStatus = this.mapWebhookStatusToPaymentStatus(
+      webhookStatus,
+    );
 
-      // Process based on status
-      switch (webhookDto.status) {
-        case WebhookStatus.APPROVED:
-          await this.handleApprovedPayment(
-            payment.id,
-            order.id,
-            recharge?.id,
-            order.orderNumber,
-            Number(order.price), // Convert Decimal to number
-            recharge?.amountCredits,
-            recharge?.userIdForRecharge, // bigoId is the userIdForRecharge
-          );
-          break;
+    if (targetPaymentStatus && payment.status === targetPaymentStatus) {
+      this.logger.log({
+        message: 'Payment already in target status (idempotency)',
+        braviveId,
+        currentStatus: payment.status,
+        webhookStatus,
+      });
+      return;
+    }
 
-        case WebhookStatus.REJECTED:
-        case WebhookStatus.CANCELED:
-          await this.handleRejectedOrCanceledPayment(
-            payment.id,
-            order.id,
-            webhookDto.status,
-          );
-          break;
+    const order = payment.order;
+    const recharge = order.orderItem?.recharge;
 
-        case WebhookStatus.REFUNDED:
-          await this.handleRefundedPayment(payment.id, order.id);
-          break;
+    switch (webhookStatus) {
+      case WebhookStatus.APPROVED:
+        await this.handleApprovedPayment(
+          payment.id,
+          order.id,
+          recharge?.id,
+          order.orderNumber,
+          Number(order.price),
+          recharge?.amountCredits,
+          recharge?.userIdForRecharge,
+        );
+        break;
 
-        case WebhookStatus.CHARGEBACK:
-          await this.handleChargebackPayment(
-            payment.id,
-            order.id,
-            recharge?.id,
-          );
-          break;
+      case WebhookStatus.REJECTED:
+      case WebhookStatus.CANCELED:
+        await this.handleRejectedOrCanceledPayment(
+          payment.id,
+          order.id,
+          webhookStatus as WebhookStatus,
+        );
+        break;
 
-        case WebhookStatus.IN_DISPUTE:
-          await this.handleDisputedPayment(payment.id, order.id);
-          break;
+      case WebhookStatus.REFUNDED:
+        await this.handleRefundedPayment(payment.id, order.id);
+        break;
 
-        default:
-          this.logger.warn(
-            `Unhandled webhook status: ${webhookDto.status} for payment ${webhookDto.id}`,
-          );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error processing webhook for payment ${webhookDto.id}: ${error.message}`,
-      );
-      throw error;
+      case WebhookStatus.CHARGEBACK:
+        await this.handleChargebackPayment(
+          payment.id,
+          order.id,
+          recharge?.id,
+        );
+        break;
+
+      case WebhookStatus.IN_DISPUTE:
+        await this.handleDisputedPayment(payment.id, order.id);
+        break;
+
+      default:
+        this.logger.warn({
+          message: 'Unhandled webhook status',
+          status: webhookStatus,
+          braviveId,
+        });
+    }
+  }
+
+  /**
+   * Maps webhook status to internal payment status
+   */
+  private mapWebhookStatusToPaymentStatus(
+    webhookStatus: string,
+  ): PaymentStatus | null {
+    switch (webhookStatus) {
+      case WebhookStatus.APPROVED:
+        return PaymentStatus.PAYMENT_APPROVED;
+      case WebhookStatus.REJECTED:
+      case WebhookStatus.CANCELED:
+        return PaymentStatus.PAYMENT_REJECTED;
+      case WebhookStatus.REFUNDED:
+      case WebhookStatus.CHARGEBACK:
+        return PaymentStatus.PAYMENT_REJECTED;
+      default:
+        return null;
     }
   }
 
@@ -219,6 +414,8 @@ export class BraviveService {
         data: {
           status: PaymentStatus.PAYMENT_APPROVED,
           statusUpdatedAt: new Date(),
+          qrCode: null,
+          qrCodetextCopyPaste: null,
         },
       });
 
@@ -236,6 +433,7 @@ export class BraviveService {
           where: { id: rechargeId },
           data: {
             status: RechargeStatus.RECHARGE_PENDING,
+            statusUpdatedAt: new Date(),
           },
         });
       }
@@ -272,11 +470,72 @@ export class BraviveService {
             where: { id: rechargeId },
             data: {
               status: RechargeStatus.RECHARGE_APPROVED,
+              statusUpdatedAt: new Date(),
             },
           });
         });
 
         this.logger.log(`Bigo recharge completed for order ${orderNumber}`);
+
+        // Send completion email to user
+        try {
+          // Fetch complete order data for email
+          const completedOrder = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+              orderItem: {
+                include: {
+                  package: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                  recharge: {
+                    select: {
+                      amountCredits: true,
+                    },
+                  },
+                },
+              },
+              store: {
+                select: {
+                  domain: true,
+                },
+              },
+            },
+          });
+
+          if (completedOrder?.user?.email && completedOrder.orderItem) {
+            const html = getOrderCompletedTemplate(
+              completedOrder.user.name,
+              completedOrder.orderNumber,
+              completedOrder.orderItem.package.name,
+              completedOrder.orderItem.recharge.amountCredits,
+              Number(completedOrder.price),
+              new Date(),
+              completedOrder.store?.domain || undefined,
+            );
+
+            await this.emailService.sendEmail(
+              completedOrder.user.email,
+              `Pedido ${completedOrder.orderNumber} - Concluído com Sucesso! ✅`,
+              html,
+            );
+
+            this.logger.log(`Completion email sent for order ${orderNumber}`);
+          }
+        } catch (emailError) {
+          this.logger.error(
+            `Failed to send completion email for order ${orderNumber}: ${emailError.message}`,
+          );
+          // Don't throw - order is already completed, email failure shouldn't affect order status
+        }
 
         // Confirm coupon usage (this also updates influencer metrics if coupon exists)
         try {
@@ -285,6 +544,17 @@ export class BraviveService {
         } catch (metricsError) {
           this.logger.error(
             `Failed to confirm coupon usage for order ${orderNumber}: ${metricsError.message}`,
+          );
+          // Don't throw - order is already completed
+        }
+
+        // Update store metrics for the order (updates daily and monthly metrics)
+        try {
+          await this.metricsService.updateMetricsForOrder(orderId);
+          this.logger.log(`Metrics updated for order ${orderNumber}`);
+        } catch (metricsError) {
+          this.logger.error(
+            `Failed to update metrics for order ${orderNumber}: ${metricsError.message}`,
           );
           // Don't throw - order is already completed
         }
@@ -346,6 +616,7 @@ export class BraviveService {
           where: { id: order.orderItem.recharge.id },
           data: {
             status: RechargeStatus.RECHARGE_REJECTED,
+            statusUpdatedAt: new Date(),
           },
         });
       }
@@ -416,6 +687,7 @@ export class BraviveService {
             where: { id: order.orderItem.recharge.id },
             data: {
               status: RechargeStatus.RECHARGE_REJECTED,
+              statusUpdatedAt: new Date(),
             },
           });
         }

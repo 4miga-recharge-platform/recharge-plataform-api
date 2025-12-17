@@ -7,6 +7,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { BigoModule } from '../bigo/bigo.module';
 import { OrderModule } from '../order/order.module';
 import { StoreModule } from '../store/store.module';
+import { MetricsModule } from '../metrics/metrics.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { StoreModule } from '../store/store.module';
     BigoModule,
     forwardRef(() => OrderModule), // Use forwardRef to avoid circular dependency
     StoreModule,
+    MetricsModule,
+    EmailModule,
   ],
   controllers: [BraviveController],
   providers: [BraviveService, BraviveHttpService],

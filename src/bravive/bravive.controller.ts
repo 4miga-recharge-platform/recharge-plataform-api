@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -6,24 +7,26 @@ import {
   Post,
   Query,
   UseGuards,
-  BadRequestException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { RoleGuard } from '../auth/guards/role.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RoleGuard } from '../auth/guards/role.guard';
 import { LoggedUser } from '../auth/logged-user.decorator';
-import { User } from '../user/entities/user.entity';
+import { OrderService } from '../order/order.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { StoreService } from '../store/store.service';
+import { User } from '../user/entities/user.entity';
 import { BraviveService } from './bravive.service';
-import { PaymentResponseDto } from './dto/payment-response.dto';
-import { WebhookPaymentDto } from './dto/webhook-payment.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { PaymentResponseDto } from './dto/payment-response.dto';
 
 @ApiTags('bravive')
 @Controller('bravive')
@@ -31,6 +34,8 @@ export class BraviveController {
   constructor(
     private readonly braviveService: BraviveService,
     private readonly storeService: StoreService,
+    private readonly prisma: PrismaService,
+    private readonly orderService: OrderService,
   ) {}
 
   @Post('webhook')
@@ -39,9 +44,16 @@ export class BraviveController {
     status: 200,
     description: 'Webhook processed successfully',
   })
-  async handleWebhook(@Body() webhookDto: WebhookPaymentDto) {
-    await this.braviveService.handleWebhook(webhookDto);
-    return { message: 'Webhook received' };
+  async handleWebhook(@Body() webhookDto: any) {
+    try {
+      await this.braviveService.handleWebhook(webhookDto);
+      return { message: 'Webhook received' };
+    } catch (error) {
+      return {
+        message: 'Webhook received but error occurred',
+        error: error.message,
+      };
+    }
   }
 
   @Post('payment')
@@ -113,6 +125,20 @@ export class BraviveController {
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List payments (admin only)' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1, description: 'Page number for pagination' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10, description: 'Number of items per page' })
+  @ApiQuery({
+    name: 'method',
+    required: false,
+    type: String,
+    description: 'Filter by payment method (e.g., PIX, credit_card, etc.)',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description: 'Filter by payment status (e.g., APPROVED, PENDING, REJECTED, CANCELED)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Payments listed',
@@ -145,5 +171,85 @@ export class BraviveController {
       method,
       status,
     });
+  }
+
+  @Get('check-payment/:orderId')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Manually check payment status for an order',
+    description:
+      'Checks the payment status from Bravive and updates the order if the status has changed. Returns the order in the same format as GET /orders/{id}. Useful for manual verification when the user clicks "Confirm Payment" button.',
+  })
+  @ApiParam({
+    name: 'orderId',
+    description: 'Order ID',
+    example: 'order-123',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Payment status checked and order returned successfully. Returns the same format as GET /orders/{id}.',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Payment not found, does not have Bravive ID, or is not a Bravive payment.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Order not found.',
+  })
+  async checkPaymentStatus(
+    @Param('orderId') orderId: string,
+    @LoggedUser() user: User,
+  ) {
+    if (!user.storeId) {
+      throw new BadRequestException('Store ID not found in user data');
+    }
+
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId: user.id,
+        storeId: user.storeId,
+      },
+      include: {
+        payment: true,
+      },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Order not found');
+    }
+
+    if (!order.payment || !order.payment.braviveId) {
+      throw new BadRequestException(
+        'Payment not found or does not have Bravive ID',
+      );
+    }
+
+    if (order.payment.paymentProvider !== 'bravive') {
+      throw new BadRequestException(
+        'Payment provider is not Bravive. Manual check only available for Bravive payments.',
+      );
+    }
+
+    const token = await this.storeService.getBraviveToken(user.storeId);
+    if (!token) {
+      throw new BadRequestException(
+        'Bravive token not configured for this store',
+      );
+    }
+
+    // Atualiza os status se necessário (pagamento, pedido, recarga, Bigo)
+    await this.braviveService.checkAndUpdatePaymentStatus(
+      order.payment.braviveId,
+      token,
+    );
+
+    // Retorna no mesmo formato que /orders/{id}
+    // Isso já aplica applyStoreProductImages e retorna formatado
+    return this.orderService.findOne(orderId, user.id);
   }
 }

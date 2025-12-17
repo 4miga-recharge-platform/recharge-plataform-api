@@ -5,6 +5,8 @@ import { BraviveHttpService } from '../http/bravive-http.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BigoService } from '../../bigo/bigo.service';
 import { OrderService } from '../../order/order.service';
+import { MetricsService } from '../../metrics/metrics.service';
+import { EmailService } from '../../email/email.service';
 import { CreatePaymentDto, PaymentMethod } from '../dto/create-payment.dto';
 import { PaymentResponseDto } from '../dto/payment-response.dto';
 import { WebhookPaymentDto, WebhookStatus } from '../dto/webhook-payment.dto';
@@ -16,6 +18,7 @@ describe('BraviveService', () => {
   let prismaService: any;
   let bigoService: any;
   let orderService: any;
+  let emailService: any;
 
   const mockToken = 'test-bravive-token';
 
@@ -28,7 +31,6 @@ describe('BraviveService', () => {
     payer_phone: '+5511999999999',
     payer_document: '12345678900',
     method: PaymentMethod.PIX,
-    webhook_url: 'https://api.example.com/bravive/webhook',
   };
 
   const mockPaymentResponse: PaymentResponseDto = {
@@ -89,6 +91,14 @@ describe('BraviveService', () => {
       revertCouponUsage: jest.fn(),
     };
 
+    const mockMetricsService = {
+      updateMetricsForOrder: jest.fn(),
+    };
+
+    const mockEmailService = {
+      sendEmail: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BraviveService,
@@ -108,6 +118,14 @@ describe('BraviveService', () => {
           provide: OrderService,
           useValue: mockOrderService,
         },
+        {
+          provide: MetricsService,
+          useValue: mockMetricsService,
+        },
+        {
+          provide: EmailService,
+          useValue: mockEmailService,
+        },
       ],
     }).compile();
 
@@ -116,6 +134,7 @@ describe('BraviveService', () => {
     prismaService = module.get(PrismaService);
     bigoService = module.get(BigoService);
     orderService = module.get(OrderService);
+    emailService = module.get(EmailService);
 
     jest.clearAllMocks();
   });
@@ -223,7 +242,7 @@ describe('BraviveService', () => {
   describe('handleWebhook', () => {
     const mockPayment = {
       id: 'payment-db-123',
-      externalId: 'payment-123',
+      braviveId: 'payment-123',
       paymentProvider: 'bravive',
       order: {
         id: 'order-123',
@@ -268,18 +287,49 @@ describe('BraviveService', () => {
       });
       bigoService.diamondRecharge.mockResolvedValue({ rescode: 0 });
       prismaService.recharge.update.mockResolvedValue({});
+      prismaService.order.findUnique.mockResolvedValue({
+        id: 'order-123',
+        orderNumber: 'ORD123',
+        price: '100.00',
+        user: {
+          name: 'John Doe',
+          email: 'john@example.com',
+        },
+        orderItem: {
+          package: {
+            name: 'Premium Package',
+          },
+          recharge: {
+            amountCredits: 100,
+          },
+        },
+        store: {
+          domain: 'exemplo.com',
+        },
+      });
+      emailService.sendEmail.mockResolvedValue({});
       orderService.confirmCouponUsage.mockResolvedValue(undefined);
+      prismaService.metricsService = { updateMetricsForOrder: jest.fn() };
 
       await service.handleWebhook(mockWebhookDto);
 
       expect(prismaService.payment.findFirst).toHaveBeenCalledWith({
         where: {
-          externalId: 'payment-123',
+          braviveId: 'payment-123',
           paymentProvider: 'bravive',
         },
         include: expect.any(Object),
       });
       expect(bigoService.diamondRecharge).toHaveBeenCalled();
+      expect(prismaService.order.findUnique).toHaveBeenCalledWith({
+        where: { id: 'order-123' },
+        include: expect.any(Object),
+      });
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        'john@example.com',
+        'Pedido ORD123 - Concluído com Sucesso! ✅',
+        expect.any(String),
+      );
       expect(orderService.confirmCouponUsage).toHaveBeenCalledWith('order-123');
     });
 

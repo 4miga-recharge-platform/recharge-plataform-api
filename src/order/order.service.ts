@@ -22,7 +22,6 @@ import {
   CreatePaymentDto,
   PaymentMethod,
 } from '../bravive/dto/create-payment.dto';
-import { env } from '../env';
 import { PrismaService } from '../prisma/prisma.service';
 import { StoreService } from '../store/store.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -697,6 +696,101 @@ export class OrderService {
         }
       } while (existingOrder);
 
+      // Check for recent order with same characteristics
+      // Note: We check price separately after fetching because Prisma Decimal comparison is complex
+      const recentOrder = await this.prisma.order.findFirst({
+        where: {
+          userId,
+          storeId,
+          orderItem: {
+            package: {
+              packageId: packageData.id,
+            },
+            recharge: {
+              userIdForRecharge, // Must have same userIdForRecharge
+            },
+          },
+          createdAt: {
+            gte: new Date(Date.now() - 5000),
+          },
+        },
+        include: {
+          payment: true,
+          orderItem: {
+            include: {
+              recharge: true,
+              package: true,
+            },
+          },
+          couponUsages: {
+            include: {
+              coupon: {
+                select: {
+                  id: true,
+                  title: true,
+                  discountPercentage: true,
+                  discountAmount: true,
+                  isFirstPurchase: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Only return recent order if it matches the current request characteristics
+      if (recentOrder) {
+        // Don't return recent order if it's already been processed
+        // (payment approved or order completed/processing)
+        // This prevents issues where the webhook tries to process with a different braviveId
+        if (
+          recentOrder.payment.status !== PaymentStatus.PAYMENT_PENDING ||
+          (recentOrder.orderStatus !== OrderStatus.CREATED &&
+            recentOrder.orderStatus !== OrderStatus.EXPIRED)
+        ) {
+          // Recent order already processed, continue to create new order
+        } else {
+          // Check if price matches (with tolerance for decimal precision)
+          const recentOrderPrice = Number(recentOrder.price);
+          const priceMatches =
+            Math.abs(recentOrderPrice - finalPriceNumber) < 0.01;
+
+          if (!priceMatches) {
+            // Price doesn't match, continue to create new order
+          } else {
+            // Price matches, check coupon
+            // If current request has a coupon, recent order must have the same coupon
+            if (couponValidation) {
+              const recentOrderCoupon = recentOrder.couponUsages?.[0]?.coupon;
+              if (
+                !recentOrderCoupon ||
+                recentOrderCoupon.id !== couponValidation.coupon.id
+              ) {
+                // Recent order doesn't match coupon, continue to create new order
+              } else {
+                // Recent order matches all criteria (price, coupon, userIdForRecharge, not processed), return it
+                return {
+                  ...recentOrder,
+                  price: Number(Number(recentOrder.price).toFixed(2)),
+                  basePrice: Number(Number(recentOrder.basePrice).toFixed(2)),
+                };
+              }
+            } else {
+              // Current request has no coupon, recent order must also have no coupon
+              if (recentOrder.couponUsages?.length === 0) {
+                // Recent order matches all criteria (price, no coupon, userIdForRecharge, not processed), return it
+                return {
+                  ...recentOrder,
+                  price: Number(Number(recentOrder.price).toFixed(2)),
+                  basePrice: Number(Number(recentOrder.basePrice).toFixed(2)),
+                };
+              }
+              // Recent order has coupon but current request doesn't, continue to create new order
+            }
+          }
+        }
+      }
+
       let braviveResponse: any = null;
       if (paymentMethod.name.toLowerCase() === 'pix') {
         const braviveToken = await this.storeService.getBraviveToken(storeId);
@@ -728,7 +822,6 @@ export class OrderService {
           payer_phone: this.sanitizeValuesToGetNumbersOnly(user.phone),
           payer_document: this.sanitizeValuesToGetNumbersOnly(user.documentValue),
           method: PaymentMethod.PIX,
-          webhook_url: `${env.BASE_URL}/bravive/webhook`,
         };
 
         try {
@@ -780,7 +873,7 @@ export class OrderService {
             qrCode: braviveResponse?.pix_qr_code || null,
             qrCodetextCopyPaste: braviveResponse?.pix_code || null,
             paymentProvider: braviveResponse ? 'bravive' : null,
-            externalId: braviveResponse?.id || null,
+            braviveId: braviveResponse?.id || null,
           },
         });
 
@@ -974,8 +1067,7 @@ export class OrderService {
         }
       });
     } catch (error) {
-      // Log error but don't throw to avoid breaking payment flow
-      console.error('Error confirming coupon usage:', error);
+      this.logger.error('Error confirming coupon usage:', error);
     }
   }
 
@@ -1026,7 +1118,7 @@ export class OrderService {
         await this.prisma.$transaction(executeRevert);
       }
     } catch (error) {
-      console.error('Error reverting coupon usage:', error);
+      this.logger.error('Error reverting coupon usage:', error);
     }
   }
 
