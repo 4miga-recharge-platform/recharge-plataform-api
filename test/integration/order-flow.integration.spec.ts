@@ -398,6 +398,14 @@ describe('Order Flow Integration', () => {
           currency: 'BRL',
         }),
       );
+
+      // Verify completion email was sent
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalled();
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalledWith(
+        user.email,
+        expect.stringContaining('Concluído com Sucesso'),
+        expect.stringContaining(order.orderNumber),
+      );
     });
 
     it('should process APPROVED webhook with coupon and confirm coupon usage', async () => {
@@ -468,6 +476,14 @@ describe('Order Flow Integration', () => {
       });
       expect(updatedCoupon!.timesUsed).toBe(1);
       expect(Number(updatedCoupon!.totalSalesAmount)).toBe(85.0);
+
+      // Verify completion email was sent
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalled();
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalledWith(
+        user.email,
+        expect.stringContaining('Concluído com Sucesso'),
+        expect.stringContaining(order.orderNumber),
+      );
     });
   });
 
@@ -1144,6 +1160,14 @@ describe('Order Flow Integration', () => {
       });
       expect(completedOrder!.orderStatus).toBe(OrderStatus.COMPLETED);
 
+      // Verify completion email was sent
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalled();
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalledWith(
+        user.email,
+        expect.stringContaining('Concluído com Sucesso'),
+        expect.stringContaining(order.orderNumber),
+      );
+
       // Note: Metrics are now updated via daily cron job, not in real-time
     });
 
@@ -1203,6 +1227,14 @@ describe('Order Flow Integration', () => {
       // Simulate webhook APPROVED to complete the order
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
       await baseTest.braviveService.handleWebhook(webhookDto);
+
+      // Verify completion email was sent
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalled();
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalledWith(
+        user.email,
+        expect.stringContaining('Concluído com Sucesso'),
+        expect.stringContaining(order.orderNumber),
+      );
 
       // Note: Metrics are now updated via daily cron job, not in real-time
     });
@@ -1319,7 +1351,7 @@ describe('Order Flow Integration', () => {
         price: 42.0,
       };
 
-      await baseTest.orderService.create(createOrderDto, store.id, user.id);
+      const order = await baseTest.orderService.create(createOrderDto, store.id, user.id);
 
       // Simulate webhook APPROVED to complete the order and confirm coupon
       const webhookDto = BraviveMock.createApprovedWebhook(paymentResponse.id);
@@ -1331,6 +1363,14 @@ describe('Order Flow Integration', () => {
       });
       expect(updatedCoupon!.timesUsed).toBe(1);
       expect(Number(updatedCoupon!.totalSalesAmount)).toBe(42.0);
+
+      // Verify completion email was sent
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalled();
+      expect(baseTest.emailService.sendEmail).toHaveBeenCalledWith(
+        user.email,
+        expect.stringContaining('Concluído com Sucesso'),
+        expect.stringContaining(order.orderNumber),
+      );
 
       // Note: Metrics (influencerMonthlySales) are now updated via daily cron job, not in real-time
     });

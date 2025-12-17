@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
 import { BigoService } from '../bigo/bigo.service';
+import { EmailService } from '../email/email.service';
+import { getOrderCompletedTemplate } from '../email/templates/order-completed.template';
 import { MetricsService } from '../metrics/metrics.service';
 import { OrderService } from '../order/order.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +28,7 @@ export class BraviveService {
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
     private readonly metricsService: MetricsService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -473,6 +476,66 @@ export class BraviveService {
         });
 
         this.logger.log(`Bigo recharge completed for order ${orderNumber}`);
+
+        // Send completion email to user
+        try {
+          // Fetch complete order data for email
+          const completedOrder = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+              orderItem: {
+                include: {
+                  package: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                  recharge: {
+                    select: {
+                      amountCredits: true,
+                    },
+                  },
+                },
+              },
+              store: {
+                select: {
+                  domain: true,
+                },
+              },
+            },
+          });
+
+          if (completedOrder?.user?.email && completedOrder.orderItem) {
+            const html = getOrderCompletedTemplate(
+              completedOrder.user.name,
+              completedOrder.orderNumber,
+              completedOrder.orderItem.package.name,
+              completedOrder.orderItem.recharge.amountCredits,
+              Number(completedOrder.price),
+              new Date(),
+              completedOrder.store?.domain || undefined,
+            );
+
+            await this.emailService.sendEmail(
+              completedOrder.user.email,
+              `Pedido ${completedOrder.orderNumber} - Concluído com Sucesso! ✅`,
+              html,
+            );
+
+            this.logger.log(`Completion email sent for order ${orderNumber}`);
+          }
+        } catch (emailError) {
+          this.logger.error(
+            `Failed to send completion email for order ${orderNumber}: ${emailError.message}`,
+          );
+          // Don't throw - order is already completed, email failure shouldn't affect order status
+        }
 
         // Confirm coupon usage (this also updates influencer metrics if coupon exists)
         try {
