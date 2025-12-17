@@ -20,13 +20,13 @@ export function getEmailConfirmationTemplate(
     <meta name="supported-color-schemes" content="dark" />
     <title>Confirmação de Cadastro</title>
   </head>
-  <body style="margin: 0; padding: 50px; font-family: Arial, sans-serif; background-color: #ffffff;">
+  <body style="margin: 0; padding: 12px; font-family: Arial, sans-serif; background-color: #ffffff;">
     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto;">
       <tr>
         <td align="center">
           <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 30px; border-radius: 12px; color: #ffffff;">
             <tr>
-              <td align="center" style="color: #00c8ff; font-size: 24px; padding-bottom: 20px;">
+              <td align="center" style="color: #00c8ff; font-size: 18px; padding-bottom: 20px;">
                 <h2 style="margin: 0;">Bem-vindo, ${userName}! 🎉</h2>
               </td>
             </tr>
