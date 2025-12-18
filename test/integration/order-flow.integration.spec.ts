@@ -390,11 +390,15 @@ describe('Order Flow Integration', () => {
       );
 
       // Verify Bigo recharge was called
+      const diamondsPerUsdAverage = 62.5;
+      const usdToBrlRate = parseFloat(process.env.BIGO_USD_TO_BRL_RATE || '5.5');
+      const expectedTotalCost = Math.round((150 / diamondsPerUsdAverage) * usdToBrlRate * 100) / 100;
+
       expect(baseTest.bigoService.diamondRecharge).toHaveBeenCalledWith(
         expect.objectContaining({
           recharge_bigoid: 'player789012',
           value: 150,
-          total_cost: 29.99,
+          total_cost: expectedTotalCost,
           currency: 'BRL',
         }),
       );

@@ -3,12 +3,16 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { getHoursAgoInBrazil } from '../utils/date.util';
+import { env } from '../env';
 
 @Injectable()
 export class UserCleanupService {
   private readonly logger = new Logger(UserCleanupService.name);
+  private readonly orderExpirationHours: number;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    this.orderExpirationHours = env.ORDER_EXPIRATION_HOURS;
+  }
 
   @Cron('0 0 */2 * *')
   async cleanupUnverifiedUsers() {
@@ -67,7 +71,8 @@ export class UserCleanupService {
   }
 
   /**
-   * Expire orders that have been unpaid for more than 24 hours
+   * Expire orders that have been unpaid for more than the configured hours
+   * (default: 24 hours, configurable via ORDER_EXPIRATION_HOURS env variable)
    * Manual method for testing or immediate execution
    * Note: Order expiration is now handled by OrderService.checkAndExpireOrders()
    * and the metrics cron job
@@ -76,12 +81,12 @@ export class UserCleanupService {
     this.logger.log('Starting expiration of unpaid orders...');
 
     try {
-      const twentyFourHoursAgo = getHoursAgoInBrazil(24);
+      const expirationTimeAgo = getHoursAgoInBrazil(this.orderExpirationHours);
 
       // Find orders that:
       // 1. Are in CREATED status (not PROCESSING - payment already approved)
       // 2. Have PAYMENT_PENDING status
-      // 3. Were created more than 24 hours ago
+      // 3. Were created more than the configured hours ago
       const unpaidOrders = await this.prisma.order.findMany({
         where: {
           orderStatus: OrderStatus.CREATED, // Only CREATED, not PROCESSING
@@ -89,7 +94,7 @@ export class UserCleanupService {
             status: PaymentStatus.PAYMENT_PENDING,
           },
           createdAt: {
-            lt: twentyFourHoursAgo,
+            lt: expirationTimeAgo,
           },
         },
         select: {

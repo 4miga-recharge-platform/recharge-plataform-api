@@ -16,6 +16,7 @@ import {
 import { createHash } from 'crypto';
 import { validateRequiredFields } from 'src/utils/validation.util';
 import { getHoursAgoInBrazil } from 'src/utils/date.util';
+import { env } from '../env';
 import { BigoService } from '../bigo/bigo.service';
 import { BraviveService } from '../bravive/bravive.service';
 import {
@@ -30,6 +31,7 @@ import { ValidateCouponDto } from './dto/validate-coupon.dto';
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
+  private readonly orderExpirationHours: number;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -37,7 +39,9 @@ export class OrderService {
     private readonly braviveService: BraviveService,
     private readonly storeService: StoreService,
     private readonly bigoService: BigoService,
-  ) {}
+  ) {
+    this.orderExpirationHours = env.ORDER_EXPIRATION_HOURS;
+  }
 
   async findAll(storeId: string, userId: string, page = 1, limit = 6) {
     try {
@@ -1311,7 +1315,8 @@ export class OrderService {
   }
 
   /**
-   * Checks and expires orders that have been unpaid for more than 24 hours
+   * Checks and expires orders that have been unpaid for more than the configured hours
+   * (default: 24 hours, configurable via ORDER_EXPIRATION_HOURS env variable)
    * Only updates order status, does NOT modify metrics
    * @param storeId Optional - filter by specific store
    * @param orderIds Optional - check only specific order IDs
@@ -1324,10 +1329,10 @@ export class OrderService {
     maxDate?: Date,
   ): Promise<number> {
     try {
-      const twentyFourHoursAgo = getHoursAgoInBrazil(24);
+      const expirationTimeAgo = getHoursAgoInBrazil(this.orderExpirationHours);
 
       const createdAtFilter: Prisma.DateTimeFilter = {
-        lt: twentyFourHoursAgo,
+        lt: expirationTimeAgo,
       };
 
       if (maxDate) {
