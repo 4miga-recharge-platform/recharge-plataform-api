@@ -14,15 +14,15 @@ import {
   RechargeStatus,
 } from '@prisma/client';
 import { createHash } from 'crypto';
-import { validateRequiredFields } from 'src/utils/validation.util';
 import { getHoursAgoInBrazil } from 'src/utils/date.util';
-import { env } from '../env';
+import { validateRequiredFields } from 'src/utils/validation.util';
 import { BigoService } from '../bigo/bigo.service';
 import { BraviveService } from '../bravive/bravive.service';
 import {
   CreatePaymentDto,
   PaymentMethod,
 } from '../bravive/dto/create-payment.dto';
+import { env } from '../env';
 import { PrismaService } from '../prisma/prisma.service';
 import { StoreService } from '../store/store.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -573,8 +573,9 @@ export class OrderService {
         finalOrder = refreshedOrder;
       }
 
-      const [customizedOrder] =
-        await this.applyStoreProductImages([finalOrder]);
+      const [customizedOrder] = await this.applyStoreProductImages([
+        finalOrder,
+      ]);
       return customizedOrder;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -600,8 +601,13 @@ export class OrderService {
       'price',
     ]);
 
-    const { packageId, paymentMethodId, userIdForRecharge, couponTitle, price } =
-      createOrderDto;
+    const {
+      packageId,
+      paymentMethodId,
+      userIdForRecharge,
+      couponTitle,
+      price,
+    } = createOrderDto;
 
     try {
       const user = await this.prisma.user.findFirst({
@@ -824,7 +830,9 @@ export class OrderService {
           payer_name: user.name,
           payer_email: user.email,
           payer_phone: this.sanitizeValuesToGetNumbersOnly(user.phone),
-          payer_document: this.sanitizeValuesToGetNumbersOnly(user.documentValue),
+          payer_document: this.sanitizeValuesToGetNumbersOnly(
+            user.documentValue,
+          ),
           method: PaymentMethod.PIX,
         };
 

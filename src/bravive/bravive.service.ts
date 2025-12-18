@@ -9,10 +9,10 @@ import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
 import { BigoService } from '../bigo/bigo.service';
 import { EmailService } from '../email/email.service';
 import { getOrderCompletedTemplate } from '../email/templates/order-completed.template';
+import { env } from '../env';
 import { MetricsService } from '../metrics/metrics.service';
 import { OrderService } from '../order/order.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { env } from '../env';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { PaymentResponseDto } from './dto/payment-response.dto';
 import { WebhookStatus } from './dto/webhook-payment.dto';
@@ -311,9 +311,8 @@ export class BraviveService {
       return;
     }
 
-    const targetPaymentStatus = this.mapWebhookStatusToPaymentStatus(
-      webhookStatus,
-    );
+    const targetPaymentStatus =
+      this.mapWebhookStatusToPaymentStatus(webhookStatus);
 
     if (targetPaymentStatus && payment.status === targetPaymentStatus) {
       this.logger.log({
@@ -355,11 +354,7 @@ export class BraviveService {
         break;
 
       case WebhookStatus.CHARGEBACK:
-        await this.handleChargebackPayment(
-          payment.id,
-          order.id,
-          recharge?.id,
-        );
+        await this.handleChargebackPayment(payment.id, order.id, recharge?.id);
         break;
 
       case WebhookStatus.IN_DISPUTE:
@@ -627,7 +622,6 @@ export class BraviveService {
           },
         });
       }
-
     });
   }
 
