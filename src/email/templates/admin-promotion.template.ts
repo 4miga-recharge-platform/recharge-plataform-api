@@ -68,8 +68,8 @@ export function getAdminPromotionTemplate(
             </tr>
             <tr>
               <td align="center" style="padding-top: 30px;">
-                <a href="${fullDomain}" 
-                   target="_blank" 
+                <a href="${fullDomain}"
+                   target="_blank"
                    rel="noopener noreferrer"
                    style="color: #00c8ff; text-decoration: none; font-size: 14px;">
                   ${storeDomain}
