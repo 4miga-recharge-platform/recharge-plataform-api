@@ -1,4 +1,13 @@
-export function getEmailChangeConfirmationTemplate(code: string): string {
+export function getEmailChangeConfirmationTemplate(
+  code: string,
+  storeDomain?: string,
+): string {
+  const fullDomain = storeDomain?.startsWith('http')
+    ? storeDomain
+    : storeDomain
+      ? `https://${storeDomain}`
+      : null;
+
   return `
 <html style="color-scheme: dark;">
   <head>
@@ -34,6 +43,18 @@ export function getEmailChangeConfirmationTemplate(code: string): string {
                 Se você não solicitou esta alteração, ignore este <span style="white-space: nowrap;">e-mail</span>.
               </td>
             </tr>
+            ${fullDomain ? `
+            <tr>
+              <td align="center" style="padding-top: 10px;">
+                <a href="${fullDomain}" 
+                   target="_blank" 
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff; text-decoration: none; font-size: 14px;">
+                  ${storeDomain}
+                </a>
+              </td>
+            </tr>
+            ` : ''}
           </table>
         </td>
       </tr>

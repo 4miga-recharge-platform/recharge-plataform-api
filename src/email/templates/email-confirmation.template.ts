@@ -47,7 +47,10 @@ export function getEmailConfirmationTemplate(
                 <p style="margin: 0; font-size: 14px; color: #cccccc; margin-bottom: 20px;">
                   ou clique no botão abaixo para confirmar automaticamente:
                 </p>
-                <a href="${confirmationLink}" style="display: inline-block; background-color: #00c8ff !important; color: #000000 !important; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+                <a href="${confirmationLink}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="display: inline-block; background-color: #00c8ff !important; color: #000000 !important; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
                   Confirmar E-mail
                 </a>
               </td>
@@ -59,7 +62,10 @@ export function getEmailConfirmationTemplate(
             </tr>
             <tr>
               <td align="center" style="padding-top: 20px;">
-                <a href="${fullDomain}" style="color: #00c8ff; text-decoration: none; font-size: 14px;">
+                <a href="${fullDomain}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff; text-decoration: none; font-size: 14px;">
                   ${domain}
                 </a>
               </td>

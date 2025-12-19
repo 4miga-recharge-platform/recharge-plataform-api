@@ -299,9 +299,16 @@ export class AuthService {
         resetPasswordExpires: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
-    const html = getPasswordResetTemplate(code);
 
-    await this.emailService.sendEmail(email, 'Confirmação de E-mail', html);
+    // Get store domain
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { domain: true },
+    });
+
+    const html = getPasswordResetTemplate(code, store?.domain);
+
+    await this.emailService.sendEmail(email, 'Redefinição de Senha', html);
     return { message: 'Password reset code sent to email' };
   }
 
@@ -654,8 +661,14 @@ export class AuthService {
       },
     });
 
+    // Get store domain
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { domain: true },
+    });
+
     // Send code to NEW email
-    const html = getEmailChangeConfirmationTemplate(code);
+    const html = getEmailChangeConfirmationTemplate(code, store?.domain);
     await this.emailService.sendEmail(
       newEmail,
       'Confirme a alteração de e-mail',
