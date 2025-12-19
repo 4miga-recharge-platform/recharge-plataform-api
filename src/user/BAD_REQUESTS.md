@@ -15,11 +15,12 @@
 
 ### Validation Errors (POST /user)
 - Name is required
+- Name must contain at least two words (e.g., "João Pedro")
 - Email must be a valid email address
 - Email is required
 - Phone is required
-- Password must be at least 8 characters long
-- Password must contain at least one uppercase letter, one lowercase letter, one number and one special character (@$!%*?&)
+- Password must be at least 6 characters long
+- Password must contain at least one uppercase letter, one lowercase letter and one special character
 - Password is required
 - Document type must be cpf or cnpj
 - Document value is required
@@ -32,6 +33,9 @@
 ## PATCH /user/:id
 - Failed to update user
 - Field '{key}' cannot be empty
+
+### Validation Errors (PATCH /user/:id)
+- Name must contain at least two words (e.g., "João Pedro") (when name is provided)
 
 ## DELETE /user/:id
 - Failed to remove user

@@ -12,8 +12,11 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'Name is required' })
+  @Matches(/^\S+\s+\S+/, {
+    message: 'Name must contain at least two words (e.g., "João Pedro")',
+  })
   @ApiPropertyOptional({
-    description: 'Full name of the user',
+    description: 'Full name of the user (must contain at least two words)',
     example: 'John Doe',
   })
   name?: string;
@@ -38,16 +41,16 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[^a-zA-Z0-9\s])/, {
     message:
-      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character (@$!%*?&)',
+      'Password must contain at least one uppercase letter, one lowercase letter and one special character',
   })
   @IsNotEmpty({ message: 'Password is required' })
   @ApiPropertyOptional({
     description:
-      'User password (min 8 characters, must contain uppercase, lowercase, number and special character)',
-    example: 'StrongPass123!',
+      'User password (min 6 characters, must contain uppercase, lowercase and special character)',
+    example: 'StrongPass!',
   })
   password?: string;
 
