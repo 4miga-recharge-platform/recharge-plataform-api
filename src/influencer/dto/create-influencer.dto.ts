@@ -8,6 +8,7 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class CreateInfluencerDto {
   @IsString()
@@ -18,11 +19,14 @@ export class CreateInfluencerDto {
   })
   name: string;
 
+  @Transform(({ value }) => {
+    if (!value || value.trim() === '') return undefined;
+    return normalizeEmail(value);
+  })
   @IsString()
   @ValidateIf((o) => o.email && o.email.trim() !== '')
   @IsEmail()
   @IsOptional()
-  @Transform(({ value }) => (value === '' ? undefined : value))
   @ApiProperty({
     description: 'Influencer email',
     example: 'joao@exemplo.com',

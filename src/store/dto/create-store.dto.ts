@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
@@ -6,6 +7,7 @@ import {
   IsOptional,
   IsArray,
 } from 'class-validator';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class CreateStoreDto {
   @IsString()
@@ -16,6 +18,7 @@ export class CreateStoreDto {
   })
   name: string;
 
+  @Transform(({ value }) => value ? normalizeEmail(value) : value)
   @IsString()
   @IsEmail()
   @IsOptional()

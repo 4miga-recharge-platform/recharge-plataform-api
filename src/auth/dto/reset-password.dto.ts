@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsString,
@@ -7,8 +8,10 @@ import {
   IsUUID,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class ResetPasswordDto {
+  @Transform(({ value }) => normalizeEmail(value))
   @IsEmail()
   @ApiProperty({
     description: 'User email address',

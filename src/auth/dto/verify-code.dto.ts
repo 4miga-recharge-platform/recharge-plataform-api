@@ -1,7 +1,10 @@
+import { Transform } from 'class-transformer';
 import { IsEmail, IsString, Length, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class VerifyCodeDto {
+  @Transform(({ value }) => normalizeEmail(value))
   @IsEmail()
   @ApiProperty({
     description: 'User email address',

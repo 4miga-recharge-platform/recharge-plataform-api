@@ -11,6 +11,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { Prisma } from '@prisma/client';
+import { normalizeEmail } from '../utils/email.util';
 
 @Injectable()
 export class UserService {
@@ -250,8 +251,9 @@ export class UserService {
       };
 
       if (search) {
+        const normalizedSearch = normalizeEmail(search);
         where.email = {
-          contains: search,
+          contains: normalizedSearch,
           mode: 'insensitive',
         };
       }

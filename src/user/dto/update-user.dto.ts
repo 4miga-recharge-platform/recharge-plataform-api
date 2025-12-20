@@ -1,4 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
@@ -7,6 +8,7 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class UpdateUserDto {
   @IsOptional()
@@ -21,6 +23,7 @@ export class UpdateUserDto {
   })
   name?: string;
 
+  @Transform(({ value }) => value ? normalizeEmail(value) : value)
   @IsOptional()
   @IsEmail({}, { message: 'Email must be a valid email address' })
   @IsNotEmpty({ message: 'Email is required' })

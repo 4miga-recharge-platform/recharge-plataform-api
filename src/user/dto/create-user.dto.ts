@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsEnum,
@@ -7,6 +8,7 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class CreateUserDto {
   @IsString()
@@ -20,6 +22,7 @@ export class CreateUserDto {
   })
   name: string;
 
+  @Transform(({ value }) => normalizeEmail(value))
   @IsEmail({}, { message: 'Email must be a valid email address' })
   @IsNotEmpty({ message: 'Email is required' })
   @ApiProperty({
