@@ -24,6 +24,7 @@ model Store {
   secondaryBannerUrl    String?
   braviveApiToken       String?
   coupons               Coupon[]
+  featuredCoupons       FeaturedCoupon[]
   influencers           Influencer[]
   orders                Order[]
   packages              Package[]
@@ -231,27 +232,26 @@ model BigoRecharge {
 }
 
 model Coupon {
-  id                 String        @id @default(uuid())
+  id                 String           @id @default(uuid())
   title              String
-  discountPercentage Decimal?      @db.Decimal(5, 2)
-  discountAmount     Decimal?      @db.Decimal(10, 2)
+  discountPercentage Decimal?         @db.Decimal(5, 2)
+  discountAmount     Decimal?         @db.Decimal(10, 2)
   expiresAt          DateTime?
-  timesUsed          Int           @default(0)
-  totalSalesAmount   Decimal       @default(0) @db.Decimal(10, 2)
+  timesUsed          Int              @default(0)
+  totalSalesAmount   Decimal          @default(0) @db.Decimal(10, 2)
   maxUses            Int?
-  minOrderAmount     Decimal?      @db.Decimal(10, 2)
-  isActive           Boolean       @default(true)
+  minOrderAmount     Decimal?         @db.Decimal(10, 2)
+  isActive           Boolean          @default(true)
   storeId            String
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
   influencerId       String
-  isFirstPurchase    Boolean       @default(false)
-  deletedAt          DateTime?     @db.Timestamp(6)
-  influencer         Influencer    @relation(fields: [influencerId], references: [id], onDelete: Cascade)
-  store              Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  isFirstPurchase    Boolean          @default(false)
+  deletedAt          DateTime?        @db.Timestamp(6)
+  influencer         Influencer       @relation(fields: [influencerId], references: [id], onDelete: Cascade)
+  store              Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   couponUsages       CouponUsage[]
-
-  @@unique([title, storeId])
+  featuredCoupons    FeaturedCoupon[]
 }
 
 model CouponUsage {
@@ -263,6 +263,19 @@ model CouponUsage {
   order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([couponId, orderId])
+}
+
+model FeaturedCoupon {
+  id        String   @id @default(uuid())
+  storeId   String
+  couponId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, couponId])
+  @@index([storeId])
 }
 
 model StoreDailySales {
@@ -331,6 +344,16 @@ model MetricsCronExecution {
   updatedAt       DateTime  @updatedAt
 
   @@index([executionDate])
+}
+
+model EmailDuplicatesReport {
+  id               Int      @id @default(autoincrement())
+  table_name       String
+  normalized_email String
+  duplicate_count  Int
+  affected_ids     String[]
+  affected_emails  String[]
+  created_at       DateTime @default(now())
 }
 
 enum BigoRechargeStatus {

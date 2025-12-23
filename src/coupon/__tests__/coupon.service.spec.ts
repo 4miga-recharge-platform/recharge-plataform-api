@@ -87,6 +87,12 @@ describe('CouponService', () => {
       couponUsage: {
         findMany: jest.fn(),
       },
+      featuredCoupon: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        delete: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -1098,6 +1104,302 @@ describe('CouponService', () => {
         data: { deletedAt: expect.any(Date) },
         select: expect.any(Object),
       });
+    });
+  });
+
+  describe('getFeaturedCoupons', () => {
+    it('should return featured coupons by store successfully', async () => {
+      const mockFeaturedCoupons = [
+        {
+          id: 'featured-1',
+          storeId: 'store-123',
+          couponId: 'coupon-123',
+          createdAt: new Date('2024-12-20'),
+          coupon: {
+            ...mockCoupon,
+            influencer: {
+              id: 'influencer-123',
+              name: 'João Silva',
+              email: 'joao@exemplo.com',
+            },
+          },
+        },
+      ];
+
+      prismaService.featuredCoupon.findMany.mockResolvedValue(
+        mockFeaturedCoupons,
+      );
+
+      const result = await service.getFeaturedCoupons('store-123');
+
+      expect(prismaService.featuredCoupon.findMany).toHaveBeenCalledWith({
+        where: {
+          storeId: 'store-123',
+        },
+        include: {
+          coupon: {
+            select: {
+              ...mockCouponSelect,
+              influencer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      expect(result).toEqual([
+        {
+          ...mockCoupon,
+          influencer: {
+            id: 'influencer-123',
+            name: 'João Silva',
+            email: 'joao@exemplo.com',
+          },
+          featuredAt: mockFeaturedCoupons[0].createdAt,
+        },
+      ]);
+    });
+
+    it('should return empty array when no featured coupons exist', async () => {
+      prismaService.featuredCoupon.findMany.mockResolvedValue([]);
+
+      const result = await service.getFeaturedCoupons('store-123');
+
+      expect(result).toEqual([]);
+      expect(prismaService.featuredCoupon.findMany).toHaveBeenCalledWith({
+        where: {
+          storeId: 'store-123',
+        },
+        include: {
+          coupon: {
+            select: {
+              ...mockCouponSelect,
+              influencer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    });
+
+    it('should throw BadRequestException when prisma fails', async () => {
+      prismaService.featuredCoupon.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.getFeaturedCoupons('store-123')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('addFeaturedCoupon', () => {
+    it('should add a coupon to featured list successfully', async () => {
+      const mockFeaturedCoupon = {
+        id: 'featured-1',
+        storeId: 'store-123',
+        couponId: 'coupon-123',
+        createdAt: new Date('2024-12-20'),
+        coupon: {
+          ...mockCoupon,
+          influencer: {
+            id: 'influencer-123',
+            name: 'João Silva',
+            email: 'joao@exemplo.com',
+          },
+        },
+      };
+
+      prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
+      prismaService.featuredCoupon.findUnique.mockResolvedValue(null);
+      prismaService.featuredCoupon.create.mockResolvedValue(mockFeaturedCoupon);
+
+      const result = await service.addFeaturedCoupon('store-123', 'coupon-123');
+
+      expect(prismaService.coupon.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'coupon-123',
+          storeId: 'store-123',
+          deletedAt: null,
+        },
+      });
+      expect(prismaService.featuredCoupon.findUnique).toHaveBeenCalledWith({
+        where: {
+          storeId_couponId: {
+            storeId: 'store-123',
+            couponId: 'coupon-123',
+          },
+        },
+      });
+      expect(prismaService.featuredCoupon.create).toHaveBeenCalledWith({
+        data: {
+          storeId: 'store-123',
+          couponId: 'coupon-123',
+        },
+        include: {
+          coupon: {
+            select: {
+              ...mockCouponSelect,
+              influencer: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(result).toEqual({
+        ...mockCoupon,
+        influencer: {
+          id: 'influencer-123',
+          name: 'João Silva',
+          email: 'joao@exemplo.com',
+        },
+        featuredAt: mockFeaturedCoupon.createdAt,
+      });
+    });
+
+    it('should throw BadRequestException when coupon not found', async () => {
+      prismaService.coupon.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.addFeaturedCoupon('store-123', 'invalid-coupon-id'),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaService.coupon.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'invalid-coupon-id',
+          storeId: 'store-123',
+          deletedAt: null,
+        },
+      });
+    });
+
+    it('should throw BadRequestException when coupon does not belong to store', async () => {
+      prismaService.coupon.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.addFeaturedCoupon('store-123', 'coupon-123'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when coupon is already in featured list', async () => {
+      const existingFeatured = {
+        id: 'featured-1',
+        storeId: 'store-123',
+        couponId: 'coupon-123',
+      };
+
+      prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
+      prismaService.featuredCoupon.findUnique.mockResolvedValue(
+        existingFeatured,
+      );
+
+      await expect(
+        service.addFeaturedCoupon('store-123', 'coupon-123'),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaService.featuredCoupon.findUnique).toHaveBeenCalledWith({
+        where: {
+          storeId_couponId: {
+            storeId: 'store-123',
+            couponId: 'coupon-123',
+          },
+        },
+      });
+    });
+
+    it('should throw BadRequestException when prisma fails', async () => {
+      prismaService.coupon.findFirst.mockResolvedValue(mockCoupon);
+      prismaService.featuredCoupon.findUnique.mockResolvedValue(null);
+      prismaService.featuredCoupon.create.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(
+        service.addFeaturedCoupon('store-123', 'coupon-123'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('removeFeaturedCoupon', () => {
+    it('should remove a coupon from featured list successfully', async () => {
+      const mockFeaturedCoupon = {
+        id: 'featured-1',
+        storeId: 'store-123',
+        couponId: 'coupon-123',
+      };
+
+      prismaService.featuredCoupon.findUnique.mockResolvedValue(
+        mockFeaturedCoupon,
+      );
+      prismaService.featuredCoupon.delete.mockResolvedValue(
+        mockFeaturedCoupon,
+      );
+
+      const result = await service.removeFeaturedCoupon(
+        'store-123',
+        'coupon-123',
+      );
+
+      expect(prismaService.featuredCoupon.findUnique).toHaveBeenCalledWith({
+        where: {
+          storeId_couponId: {
+            storeId: 'store-123',
+            couponId: 'coupon-123',
+          },
+        },
+      });
+      expect(prismaService.featuredCoupon.delete).toHaveBeenCalledWith({
+        where: {
+          id: 'featured-1',
+        },
+      });
+      expect(result).toEqual({
+        message: 'Coupon removed from featured list successfully',
+      });
+    });
+
+    it('should throw BadRequestException when coupon is not in featured list', async () => {
+      prismaService.featuredCoupon.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.removeFeaturedCoupon('store-123', 'coupon-123'),
+      ).rejects.toThrow(BadRequestException);
+      expect(prismaService.featuredCoupon.findUnique).toHaveBeenCalledWith({
+        where: {
+          storeId_couponId: {
+            storeId: 'store-123',
+            couponId: 'coupon-123',
+          },
+        },
+      });
+    });
+
+    it('should throw BadRequestException when prisma fails', async () => {
+      prismaService.featuredCoupon.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(
+        service.removeFeaturedCoupon('store-123', 'coupon-123'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
