@@ -542,6 +542,9 @@ export class CouponService {
       const featuredCoupons = await this.prisma.featuredCoupon.findMany({
         where: {
           storeId,
+          coupon: {
+            deletedAt: null,
+          },
         },
         include: {
           coupon: {
@@ -562,10 +565,12 @@ export class CouponService {
         },
       });
 
-      return featuredCoupons.map((fc) => ({
-        ...fc.coupon,
-        featuredAt: fc.createdAt,
-      }));
+      return featuredCoupons
+        .filter((fc) => fc.coupon && !fc.coupon.deletedAt)
+        .map((fc) => ({
+          ...fc.coupon,
+          featuredAt: fc.createdAt,
+        }));
     } catch {
       throw new BadRequestException('Failed to fetch featured coupons');
     }

@@ -1135,6 +1135,9 @@ describe('CouponService', () => {
       expect(prismaService.featuredCoupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          coupon: {
+            deletedAt: null,
+          },
         },
         include: {
           coupon: {
@@ -1176,6 +1179,9 @@ describe('CouponService', () => {
       expect(prismaService.featuredCoupon.findMany).toHaveBeenCalledWith({
         where: {
           storeId: 'store-123',
+          coupon: {
+            deletedAt: null,
+          },
         },
         include: {
           coupon: {

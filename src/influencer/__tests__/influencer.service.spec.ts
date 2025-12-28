@@ -380,6 +380,11 @@ describe('InfluencerService', () => {
         },
         select: {
           ...mockInfluencerSelectComplete,
+          coupons: {
+            where: {
+              deletedAt: null,
+            },
+          },
           monthlySales: {
             where: {
               OR: months.map(({ month, year }) => ({ month, year })),
@@ -422,6 +427,11 @@ describe('InfluencerService', () => {
         },
         select: {
           ...mockInfluencerSelectComplete,
+          coupons: {
+            where: {
+              deletedAt: null,
+            },
+          },
           monthlySales: {
             where: {
               OR: months.map(({ month, year }) => ({ month, year })),
@@ -613,7 +623,7 @@ describe('InfluencerService', () => {
       const result = await service.remove('influencer-123', 'store-123');
 
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
-        where: { influencerId: 'influencer-123' },
+        where: { influencerId: 'influencer-123', deletedAt: null },
       });
       expect(prismaService.influencer.delete).toHaveBeenCalledWith({
         where: { id: 'influencer-123' },
@@ -637,7 +647,7 @@ describe('InfluencerService', () => {
         service.remove('influencer-123', 'store-123'),
       ).rejects.toThrow(BadRequestException);
       expect(prismaService.coupon.findMany).toHaveBeenCalledWith({
-        where: { influencerId: 'influencer-123' },
+        where: { influencerId: 'influencer-123', deletedAt: null },
       });
     });
 
