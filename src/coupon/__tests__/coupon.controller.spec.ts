@@ -3,6 +3,7 @@ import { CouponController } from '../coupon.controller';
 import { CouponService } from '../coupon.service';
 import { CreateCouponDto } from '../dto/create-coupon.dto';
 import { UpdateCouponDto } from '../dto/update-coupon.dto';
+import { AddFeaturedCouponDto } from '../dto/add-featured-coupon.dto';
 
 describe('CouponController', () => {
   let controller: CouponController;
@@ -48,6 +49,9 @@ describe('CouponController', () => {
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
+      getFeaturedCoupons: jest.fn(),
+      addFeaturedCoupon: jest.fn(),
+      removeFeaturedCoupon: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -513,6 +517,146 @@ describe('CouponController', () => {
         'Failed to remove coupon',
       );
       expect(couponService.remove).toHaveBeenCalledWith('coupon-123');
+    });
+  });
+
+  describe('getFeaturedCoupons', () => {
+    it('should return featured coupons by store successfully', async () => {
+      const featuredCoupons = [
+        {
+          ...mockCoupon,
+          featuredAt: new Date('2024-12-20'),
+        },
+      ];
+      couponService.getFeaturedCoupons.mockResolvedValue(featuredCoupons);
+
+      const result = await controller.getFeaturedCoupons(mockRequest);
+
+      expect(couponService.getFeaturedCoupons).toHaveBeenCalledWith(
+        'store-123',
+      );
+      expect(result).toEqual(featuredCoupons);
+    });
+
+    it('should return empty array when no featured coupons exist', async () => {
+      couponService.getFeaturedCoupons.mockResolvedValue([]);
+
+      const result = await controller.getFeaturedCoupons(mockRequest);
+
+      expect(couponService.getFeaturedCoupons).toHaveBeenCalledWith(
+        'store-123',
+      );
+      expect(result).toEqual([]);
+    });
+
+    it('should handle errors when fetching featured coupons', async () => {
+      const error = new Error('Failed to fetch featured coupons');
+      couponService.getFeaturedCoupons.mockRejectedValue(error);
+
+      await expect(controller.getFeaturedCoupons(mockRequest)).rejects.toThrow(
+        'Failed to fetch featured coupons',
+      );
+      expect(couponService.getFeaturedCoupons).toHaveBeenCalledWith(
+        'store-123',
+      );
+    });
+  });
+
+  describe('addFeaturedCoupon', () => {
+    const addFeaturedCouponDto = {
+      couponId: 'coupon-123',
+    };
+
+    it('should add a coupon to featured list successfully', async () => {
+      const featuredCoupon = {
+        ...mockCoupon,
+        featuredAt: new Date('2024-12-20'),
+      };
+      couponService.addFeaturedCoupon.mockResolvedValue(featuredCoupon);
+
+      const result = await controller.addFeaturedCoupon(
+        addFeaturedCouponDto,
+        mockRequest,
+      );
+
+      expect(couponService.addFeaturedCoupon).toHaveBeenCalledWith(
+        'store-123',
+        'coupon-123',
+      );
+      expect(result).toEqual(featuredCoupon);
+    });
+
+    it('should handle errors when adding featured coupon', async () => {
+      const error = new Error('Failed to add featured coupon');
+      couponService.addFeaturedCoupon.mockRejectedValue(error);
+
+      await expect(
+        controller.addFeaturedCoupon(addFeaturedCouponDto, mockRequest),
+      ).rejects.toThrow('Failed to add featured coupon');
+      expect(couponService.addFeaturedCoupon).toHaveBeenCalledWith(
+        'store-123',
+        'coupon-123',
+      );
+    });
+
+    it('should throw BadRequestException when coupon not found', async () => {
+      const error = new Error('Coupon not found or does not belong to this store');
+      couponService.addFeaturedCoupon.mockRejectedValue(error);
+
+      await expect(
+        controller.addFeaturedCoupon(addFeaturedCouponDto, mockRequest),
+      ).rejects.toThrow('Coupon not found or does not belong to this store');
+    });
+
+    it('should throw BadRequestException when coupon already in featured list', async () => {
+      const error = new Error('Coupon is already in the featured list');
+      couponService.addFeaturedCoupon.mockRejectedValue(error);
+
+      await expect(
+        controller.addFeaturedCoupon(addFeaturedCouponDto, mockRequest),
+      ).rejects.toThrow('Coupon is already in the featured list');
+    });
+  });
+
+  describe('removeFeaturedCoupon', () => {
+    it('should remove a coupon from featured list successfully', async () => {
+      const successMessage = {
+        message: 'Coupon removed from featured list successfully',
+      };
+      couponService.removeFeaturedCoupon.mockResolvedValue(successMessage);
+
+      const result = await controller.removeFeaturedCoupon(
+        'coupon-123',
+        mockRequest,
+      );
+
+      expect(couponService.removeFeaturedCoupon).toHaveBeenCalledWith(
+        'store-123',
+        'coupon-123',
+      );
+      expect(result).toEqual(successMessage);
+    });
+
+    it('should handle errors when removing featured coupon', async () => {
+      const error = new Error('Failed to remove featured coupon');
+      couponService.removeFeaturedCoupon.mockRejectedValue(error);
+
+      await expect(
+        controller.removeFeaturedCoupon('coupon-123', mockRequest),
+      ).rejects.toThrow('Failed to remove featured coupon');
+      expect(couponService.removeFeaturedCoupon).toHaveBeenCalledWith(
+        'store-123',
+        'coupon-123',
+      );
+    });
+
+    it('should throw BadRequestException when coupon is not in featured list', async () => {
+      const error = new Error('Coupon is not in the featured list');
+      couponService.removeFeaturedCoupon.mockRejectedValue(error);
+
+      await expect(
+        controller.removeFeaturedCoupon('coupon-123', mockRequest),
+      ).rejects.toThrow('Coupon is not in the featured list');
     });
   });
 });

@@ -11,22 +11,27 @@ export class ChangePasswordDto {
   currentPassword: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])[A-Za-z@$!%*?&]/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter and one special character (@$!%*?&)',
+  })
   @ApiProperty({
-    description: 'Nova senha (mínimo 6 caracteres)',
-    example: 'NovaSenha123',
+    description: 'Nova senha (mínimo 6 caracteres, deve conter maiúscula, minúscula e caractere especial)',
+    example: 'NovaSenha!',
   })
   newPassword: string;
 
   @IsString()
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/, {
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])[A-Za-z@$!%*?&]/, {
     message:
-      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character (@$!%*?&)',
+      'Password must contain at least one uppercase letter, one lowercase letter and one special character (@$!%*?&)',
   })
   @ApiProperty({
     description:
-      'Confirmação da nova senha (mín. 8 caracteres, deve conter maiúscula, minúscula, número e caractere especial)',
-    example: 'NovaSenha123!',
+      'Confirmação da nova senha (mín. 6 caracteres, deve conter maiúscula, minúscula e caractere especial)',
+    example: 'NovaSenha!',
   })
   confirmPassword: string;
 }

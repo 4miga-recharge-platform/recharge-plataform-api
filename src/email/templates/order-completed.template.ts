@@ -1,6 +1,7 @@
 export function getOrderCompletedTemplate(
   userName: string,
   orderNumber: string,
+  rechargeId: string,
   packageName: string,
   amountCredits: number,
   orderPrice: number,
@@ -35,13 +36,13 @@ export function getOrderCompletedTemplate(
     <meta name="supported-color-schemes" content="dark" />
     <title>Pedido Concluído</title>
   </head>
-  <body style="margin: 0; padding: 50px; font-family: Arial, sans-serif; background-color: #ffffff;">
+  <body style="margin: 0; padding: 12px; font-family: Arial, sans-serif; background-color: #ffffff;">
     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto;">
       <tr>
         <td align="center">
-          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 30px; border-radius: 12px; color: #ffffff;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 16px; border-radius: 12px; color: #ffffff;">
             <tr>
-              <td align="center" style="color: #00c8ff !important; font-size: 24px; padding-bottom: 20px;">
+              <td align="center" style="color: #00c8ff !important; font-size: 18px; padding-bottom: 20px;">
                 <h2 style="margin: 0;">✅ Pedido Concluído!</h2>
               </td>
             </tr>
@@ -53,12 +54,18 @@ export function getOrderCompletedTemplate(
               </td>
             </tr>
             <tr>
-              <td style="padding: 30px 20px; background-color: #0a1a20 !important; border-radius: 8px; margin: 20px 0;">
+              <td style="padding: 16px 12px; background-color: #0a1a20 !important; border-radius: 8px; margin: 20px 0;">
                 <table cellpadding="0" cellspacing="0" border="0" width="100%">
                   <tr>
                     <td style="padding-bottom: 15px;">
                       <div style="font-size: 14px; color: #888888; margin-bottom: 5px;">Número do Pedido:</div>
                       <div style="font-size: 18px; color: #ffffff !important; font-weight: bold;">${orderNumber}</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-bottom: 15px;">
+                      <div style="font-size: 14px; color: #888888; margin-bottom: 5px;">ID da recarga:</div>
+                      <div style="font-size: 16px; color: #ffffff !important; font-weight: bold;">${rechargeId}</div>
                     </td>
                   </tr>
                   <tr>
@@ -88,6 +95,7 @@ export function getOrderCompletedTemplate(
                 </table>
               </td>
             </tr>
+            <tr style="height: 8px;"></tr>
             <tr>
               <td style="padding: 20px 0; background-color: #0a1a20 !important; border-radius: 8px; text-align: center;">
                 <p style="margin: 0; font-size: 16px; color: #00c8ff !important; font-weight: bold;">
@@ -98,7 +106,10 @@ export function getOrderCompletedTemplate(
             ${fullDomain ? `
             <tr>
               <td align="center" style="padding-top: 30px;">
-                <a href="${fullDomain}" style="color: #00c8ff !important; text-decoration: none; font-size: 14px;">
+                <a href="${fullDomain}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff !important; text-decoration: none; font-size: 14px;">
                   ${storeDomain}
                 </a>
               </td>

@@ -11,3 +11,4 @@ DROP INDEX IF EXISTS "WebhookLog_externalId_idx";
 -- Drop the table
 DROP TABLE IF EXISTS "WebhookLog";
 
+

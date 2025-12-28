@@ -20,13 +20,13 @@ export function getEmailConfirmationTemplate(
     <meta name="supported-color-schemes" content="dark" />
     <title>Confirmação de Cadastro</title>
   </head>
-  <body style="margin: 0; padding: 50px; font-family: Arial, sans-serif; background-color: #ffffff;">
+  <body style="margin: 0; padding: 12px; font-family: Arial, sans-serif; background-color: #ffffff;">
     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto;">
       <tr>
         <td align="center">
           <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 30px; border-radius: 12px; color: #ffffff;">
             <tr>
-              <td align="center" style="color: #00c8ff; font-size: 24px; padding-bottom: 20px;">
+              <td align="center" style="color: #00c8ff; font-size: 18px; padding-bottom: 20px;">
                 <h2 style="margin: 0;">Bem-vindo, ${userName}! 🎉</h2>
               </td>
             </tr>
@@ -47,7 +47,10 @@ export function getEmailConfirmationTemplate(
                 <p style="margin: 0; font-size: 14px; color: #cccccc; margin-bottom: 20px;">
                   ou clique no botão abaixo para confirmar automaticamente:
                 </p>
-                <a href="${confirmationLink}" style="display: inline-block; background-color: #00c8ff !important; color: #000000 !important; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+                <a href="${confirmationLink}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="display: inline-block; background-color: #00c8ff !important; color: #000000 !important; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
                   Confirmar E-mail
                 </a>
               </td>
@@ -59,7 +62,10 @@ export function getEmailConfirmationTemplate(
             </tr>
             <tr>
               <td align="center" style="padding-top: 20px;">
-                <a href="${fullDomain}" style="color: #00c8ff; text-decoration: none; font-size: 14px;">
+                <a href="${fullDomain}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff; text-decoration: none; font-size: 14px;">
                   ${domain}
                 </a>
               </td>

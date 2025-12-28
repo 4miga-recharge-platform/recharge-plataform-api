@@ -63,6 +63,11 @@ export class InfluencerService {
         },
         select: {
           ...this.influencerSelectComplete,
+          coupons: {
+            where: {
+              deletedAt: null,
+            },
+          },
           monthlySales: {
             where: {
               OR: months.map(({ month, year }) => ({ month, year })),
@@ -274,7 +279,10 @@ export class InfluencerService {
 
       // Check if influencer has associated coupons
       const coupons = await this.prisma.coupon.findMany({
-        where: { influencerId: id },
+        where: {
+          influencerId: id,
+          deletedAt: null,
+        },
       });
       if (coupons.length > 0) {
         throw new BadRequestException(

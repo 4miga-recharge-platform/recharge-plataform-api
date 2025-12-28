@@ -14,14 +14,15 @@ import {
   RechargeStatus,
 } from '@prisma/client';
 import { createHash } from 'crypto';
-import { validateRequiredFields } from 'src/utils/validation.util';
 import { getHoursAgoInBrazil } from 'src/utils/date.util';
+import { validateRequiredFields } from 'src/utils/validation.util';
 import { BigoService } from '../bigo/bigo.service';
 import { BraviveService } from '../bravive/bravive.service';
 import {
   CreatePaymentDto,
   PaymentMethod,
 } from '../bravive/dto/create-payment.dto';
+import { env } from '../env';
 import { PrismaService } from '../prisma/prisma.service';
 import { StoreService } from '../store/store.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -30,6 +31,7 @@ import { ValidateCouponDto } from './dto/validate-coupon.dto';
 @Injectable()
 export class OrderService {
   private readonly logger = new Logger(OrderService.name);
+  private readonly orderExpirationHours: number;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -37,7 +39,9 @@ export class OrderService {
     private readonly braviveService: BraviveService,
     private readonly storeService: StoreService,
     private readonly bigoService: BigoService,
-  ) {}
+  ) {
+    this.orderExpirationHours = env.ORDER_EXPIRATION_HOURS;
+  }
 
   async findAll(storeId: string, userId: string, page = 1, limit = 6) {
     try {
@@ -569,8 +573,9 @@ export class OrderService {
         finalOrder = refreshedOrder;
       }
 
-      const [customizedOrder] =
-        await this.applyStoreProductImages([finalOrder]);
+      const [customizedOrder] = await this.applyStoreProductImages([
+        finalOrder,
+      ]);
       return customizedOrder;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -596,8 +601,13 @@ export class OrderService {
       'price',
     ]);
 
-    const { packageId, paymentMethodId, userIdForRecharge, couponTitle, price } =
-      createOrderDto;
+    const {
+      packageId,
+      paymentMethodId,
+      userIdForRecharge,
+      couponTitle,
+      price,
+    } = createOrderDto;
 
     try {
       const user = await this.prisma.user.findFirst({
@@ -820,7 +830,9 @@ export class OrderService {
           payer_name: user.name,
           payer_email: user.email,
           payer_phone: this.sanitizeValuesToGetNumbersOnly(user.phone),
-          payer_document: this.sanitizeValuesToGetNumbersOnly(user.documentValue),
+          payer_document: this.sanitizeValuesToGetNumbersOnly(
+            user.documentValue,
+          ),
           method: PaymentMethod.PIX,
         };
 
@@ -1162,11 +1174,11 @@ export class OrderService {
     try {
       const { couponTitle, orderAmount } = validateCouponDto;
 
-      // Find the coupon by title and store
       const coupon = await this.prisma.coupon.findFirst({
         where: {
           title: couponTitle,
           storeId,
+          deletedAt: null,
         },
         select: {
           id: true,
@@ -1311,7 +1323,8 @@ export class OrderService {
   }
 
   /**
-   * Checks and expires orders that have been unpaid for more than 24 hours
+   * Checks and expires orders that have been unpaid for more than the configured hours
+   * (default: 24 hours, configurable via ORDER_EXPIRATION_HOURS env variable)
    * Only updates order status, does NOT modify metrics
    * @param storeId Optional - filter by specific store
    * @param orderIds Optional - check only specific order IDs
@@ -1324,10 +1337,10 @@ export class OrderService {
     maxDate?: Date,
   ): Promise<number> {
     try {
-      const twentyFourHoursAgo = getHoursAgoInBrazil(24);
+      const expirationTimeAgo = getHoursAgoInBrazil(this.orderExpirationHours);
 
       const createdAtFilter: Prisma.DateTimeFilter = {
-        lt: twentyFourHoursAgo,
+        lt: expirationTimeAgo,
       };
 
       if (maxDate) {

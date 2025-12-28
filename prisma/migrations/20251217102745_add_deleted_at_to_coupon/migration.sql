@@ -1,0 +1,2 @@
+ALTER TABLE "Coupon" ADD COLUMN "deletedAt" TIMESTAMP;
+

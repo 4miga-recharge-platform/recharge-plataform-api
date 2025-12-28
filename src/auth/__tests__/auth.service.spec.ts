@@ -502,6 +502,9 @@ describe('AuthService', () => {
 
       prismaService.user.findFirst.mockResolvedValue(mockUser);
       prismaService.user.updateMany.mockResolvedValue({ count: 1 });
+      prismaService.store.findUnique.mockResolvedValue({
+        domain: 'exemplo.com',
+      });
       emailService.sendEmail.mockResolvedValue({} as any);
 
       const result = await service.forgotPassword(email, storeId);
@@ -518,9 +521,14 @@ describe('AuthService', () => {
         },
       });
 
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+        select: { domain: true },
+      });
+
       expect(emailService.sendEmail).toHaveBeenCalledWith(
         email,
-        'Confirmação de E-mail',
+        'Redefinição de Senha',
         '<html>Password reset template</html>',
       );
 
@@ -960,6 +968,9 @@ describe('AuthService', () => {
         }) // current user
         .mockResolvedValueOnce(null); // no existing new email
       prismaService.user.update.mockResolvedValue({});
+      prismaService.store.findUnique.mockResolvedValue({
+        domain: 'exemplo.com',
+      });
       emailService.sendEmail.mockResolvedValue({} as any);
 
       const result = await service.requestEmailChange(
@@ -982,6 +993,10 @@ describe('AuthService', () => {
           emailConfirmationCode: expect.any(String),
           emailConfirmationExpires: expect.any(Date),
         },
+      });
+      expect(prismaService.store.findUnique).toHaveBeenCalledWith({
+        where: { id: storeId },
+        select: { domain: true },
       });
       expect(emailService.sendEmail).toHaveBeenCalledWith(
         newEmail,

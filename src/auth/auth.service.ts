@@ -17,6 +17,7 @@ import { getEmailChangeConfirmationTemplate } from '../email/templates/email-cha
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { SseConfirmEmailService } from '../sse/sse.confirm-email.service';
 import { OrderService } from '../order/order.service';
+import { normalizeEmail, normalizeEmailRequired } from '../utils/email.util';
 
 @Injectable()
 export class AuthService {
@@ -77,9 +78,10 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const { email, password, storeId } = loginDto;
+    const normalizedEmail = normalizeEmailRequired(email);
     const user = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
       select: this.authUser,
@@ -127,11 +129,12 @@ export class AuthService {
 
   async adminLogin(adminLoginDto: AdminLoginDto) {
     const { email, password } = adminLoginDto;
+    const normalizedEmail = normalizeEmailRequired(email);
 
     // Find admin user by email and role (unique partial index ensures only one admin per email)
     const user = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         role: {
           in: ['RESELLER_ADMIN_4MIGA_USER', 'MASTER_ADMIN_4MIGA_USER'],
         },
@@ -208,8 +211,9 @@ export class AuthService {
         userData.role === 'MASTER_ADMIN_4MIGA_USER'
       ) {
         // Fetch user with store data for admin
+        const normalizedEmail = normalizeEmailRequired(userData.email);
         const adminUser = await this.prisma.user.findFirst({
-          where: { email: userData.email },
+          where: { email: normalizedEmail },
           select: this.adminAuthUser,
         });
 
@@ -273,10 +277,11 @@ export class AuthService {
   }
 
   async forgotPassword(email: string, storeId: string) {
+    const normalizedEmail = normalizeEmailRequired(email);
     // Check if user exists
     const user = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
     });
@@ -291,7 +296,7 @@ export class AuthService {
     // Save code and expiration (10min) in user table
     await this.prisma.user.updateMany({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
       data: {
@@ -299,19 +304,27 @@ export class AuthService {
         resetPasswordExpires: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
-    const html = getPasswordResetTemplate(code);
 
-    await this.emailService.sendEmail(email, 'Confirmação de E-mail', html);
+    // Get store domain
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { domain: true },
+    });
+
+    const html = getPasswordResetTemplate(code, store?.domain);
+
+    await this.emailService.sendEmail(normalizedEmail, 'Redefinição de Senha', html);
     return { message: 'Password reset code sent to email' };
   }
 
   async verifyCode(verifyCodeDto: VerifyCodeDto) {
     const { email, code, storeId } = verifyCodeDto;
+    const normalizedEmail = normalizeEmailRequired(email);
 
     // Check if user exists
     const user = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
     });
@@ -338,6 +351,7 @@ export class AuthService {
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { email, code, password, confirmPassword, storeId } =
       resetPasswordDto;
+    const normalizedEmail = normalizeEmailRequired(email);
 
     // Validate password confirmation
     if (password !== confirmPassword) {
@@ -347,7 +361,7 @@ export class AuthService {
     // Check if user exists
     const user = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
     });
@@ -427,9 +441,10 @@ export class AuthService {
   }
 
   async verifyEmail(email: string, code: string, storeId: string) {
+    const normalizedEmail = normalizeEmailRequired(email);
     const user = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
       select: {
@@ -468,7 +483,7 @@ export class AuthService {
     // Check if code has expired
     const userWithExpiration = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
       select: {
@@ -487,7 +502,7 @@ export class AuthService {
     // Update user to verified
     await this.prisma.user.updateMany({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
       data: {
@@ -545,10 +560,11 @@ export class AuthService {
   }
 
   async resendEmailConfirmation(email: string, storeId: string) {
+    const normalizedEmail = normalizeEmailRequired(email);
     // Check if user exists and is not verified
     const user = await this.prisma.user.findFirst({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
       select: {
@@ -577,7 +593,7 @@ export class AuthService {
     // Update user with new code and expiration
     await this.prisma.user.updateMany({
       where: {
-        email,
+        email: normalizedEmail,
         storeId,
       },
       data: {
@@ -601,11 +617,11 @@ export class AuthService {
       code,
       user.name,
       store.domain,
-      email,
+      normalizedEmail,
       storeId,
     );
     await this.emailService.sendEmail(
-      email,
+      normalizedEmail,
       'Confirme seu cadastro - Novo código',
       html,
     );
@@ -620,9 +636,11 @@ export class AuthService {
     newEmail: string,
     storeId: string,
   ) {
+    const normalizedCurrentEmail = normalizeEmailRequired(currentEmail);
+    const normalizedNewEmail = normalizeEmailRequired(newEmail);
     // Check if current user exists and is verified
     const user = await this.prisma.user.findFirst({
-      where: { email: currentEmail, storeId },
+      where: { email: normalizedCurrentEmail, storeId },
       select: { id: true, name: true, emailVerified: true },
     });
     if (!user) {
@@ -634,7 +652,7 @@ export class AuthService {
 
     // Ensure new email is not already used in the same store
     const existingNewEmail = await this.prisma.user.findFirst({
-      where: { email: newEmail, storeId },
+      where: { email: normalizedNewEmail, storeId },
       select: { id: true },
     });
     if (existingNewEmail) {
@@ -654,10 +672,16 @@ export class AuthService {
       },
     });
 
+    // Get store domain
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { domain: true },
+    });
+
     // Send code to NEW email
-    const html = getEmailChangeConfirmationTemplate(code);
+    const html = getEmailChangeConfirmationTemplate(code, store?.domain);
     await this.emailService.sendEmail(
-      newEmail,
+      normalizedNewEmail,
       'Confirme a alteração de e-mail',
       html,
     );
@@ -671,9 +695,11 @@ export class AuthService {
     code: string,
     storeId: string,
   ) {
+    const normalizedCurrentEmail = normalizeEmailRequired(currentEmail);
+    const normalizedNewEmail = normalizeEmailRequired(newEmail);
     // Find user by current email
     const user = await this.prisma.user.findFirst({
-      where: { email: currentEmail, storeId },
+      where: { email: normalizedCurrentEmail, storeId },
       select: {
         id: true,
         email: true,
@@ -704,7 +730,7 @@ export class AuthService {
 
     // Ensure new email is not already used in the same store at confirmation time
     const existingNewEmail = await this.prisma.user.findFirst({
-      where: { email: newEmail, storeId },
+      where: { email: normalizedNewEmail, storeId },
       select: { id: true },
     });
     if (existingNewEmail) {
@@ -715,7 +741,7 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        email: newEmail,
+        email: normalizedNewEmail,
         emailConfirmationCode: null,
         emailConfirmationExpires: null,
       },

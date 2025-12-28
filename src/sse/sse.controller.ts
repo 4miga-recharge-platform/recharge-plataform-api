@@ -4,6 +4,7 @@ import { Response } from 'express';
 import { Subscription } from 'rxjs';
 import { clearInterval, clearTimeout, setInterval, setTimeout } from 'timers';
 import { SseConfirmEmailService } from './sse.confirm-email.service';
+import { normalizeEmail, normalizeEmailRequired } from '../utils/email.util';
 
 @ApiTags('SSE')
 @Controller('sse')
@@ -22,7 +23,7 @@ export class SseController {
     @Param('email') email: string,
     @Res() res: Response,
   ) {
-    const decodedEmail = decodeURIComponent(email);
+    const decodedEmail = normalizeEmailRequired(decodeURIComponent(email));
     this.logger.log(`SSE email connection established for: ${decodedEmail}`);
 
     this.setupSseHeaders(res);
@@ -33,13 +34,14 @@ export class SseController {
 
     const subscription = this.sseService.getEmailVerifiedEvents().subscribe({
       next: (event) => {
+        const normalizedEventEmail = normalizeEmailRequired(event.email);
         this.logger.debug('SSE Event received:', {
           eventEmail: event.email,
           decodedEmail,
-          match: event.email === decodedEmail,
+          match: normalizedEventEmail === decodedEmail,
         });
 
-        if (event.email === decodedEmail) {
+        if (normalizedEventEmail === decodedEmail) {
           this.logger.log(
             `Sending SSE notification for email: ${decodedEmail}`,
           );

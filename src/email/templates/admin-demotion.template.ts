@@ -24,13 +24,13 @@ export function getAdminDemotionTemplate(
     <meta name="supported-color-schemes" content="dark" />
     <title>Permissão Removida</title>
   </head>
-  <body style="margin: 0; padding: 50px; font-family: Arial, sans-serif; background-color: #ffffff;">
+  <body style="margin: 0; padding: 12px; font-family: Arial, sans-serif; background-color: #ffffff;">
     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto;">
       <tr>
         <td align="center">
-          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 30px; border-radius: 12px; color: #ffffff;">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 20px 12px; border-radius: 12px; color: #ffffff;">
             <tr>
-              <td align="center" style="color: #00c8ff; font-size: 24px; padding-bottom: 20px;">
+              <td align="center" style="color: #00c8ff; font-size: 18px; padding-bottom: 20px;">
                 <h2 style="margin: 0;">Alteração de Permissões</h2>
               </td>
             </tr>
@@ -45,7 +45,7 @@ export function getAdminDemotionTemplate(
               </td>
             </tr>
             <tr>
-              <td style="padding: 30px 20px; background-color: #0a1a20 !important; border-radius: 8px; margin: 20px 0;">
+              <td style="padding: 16px 12px; background-color: #0a1a20 !important; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0; font-size: 16px; color: #ffffff !important; line-height: 1.6; text-align: justify;">
                   Suas permissões administrativas foram removidas. Você continua sendo um usuário da loja, mas não terá mais acesso às funcionalidades de administrador.
                 </p>
@@ -68,7 +68,10 @@ export function getAdminDemotionTemplate(
             </tr>
             <tr>
               <td align="center" style="padding-top: 30px;">
-                <a href="${fullDomain}" style="color: #00c8ff; text-decoration: none; font-size: 14px;">
+                <a href="${fullDomain}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff; text-decoration: none; font-size: 14px;">
                   ${storeDomain}
                 </a>
               </td>

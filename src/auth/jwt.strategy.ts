@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { env } from '../env';
+import { normalizeEmailRequired } from '../utils/email.util';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -15,9 +16,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: { email: string; storeId: string }) {
+    const normalizedEmail = normalizeEmailRequired(payload.email);
     const user = await this.prisma.user.findFirst({
       where: {
-        email: payload.email,
+        email: normalizedEmail,
         storeId: payload.storeId,
       },
     });

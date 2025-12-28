@@ -23,6 +23,7 @@ import { RoleGuard } from '../auth/guards/role.guard';
 import { CouponService } from './coupon.service';
 import { CreateCouponDto } from './dto/create-coupon.dto';
 import { UpdateCouponDto } from './dto/update-coupon.dto';
+import { AddFeaturedCouponDto } from './dto/add-featured-coupon.dto';
 
 @ApiTags('coupon')
 @Controller('coupon')
@@ -110,6 +111,44 @@ export class CouponController {
   @ApiQuery({ name: 'storeId', required: true, description: 'Store ID' })
   findFirstPurchaseByStore(@Query('storeId') storeId: string) {
     return this.couponService.findFirstPurchaseByStore(storeId);
+  }
+
+  @Get('featured')
+  @ApiOperation({ summary: 'Get featured coupons by store' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of featured coupons returned successfully.',
+  })
+  getFeaturedCoupons(@Request() req) {
+    return this.couponService.getFeaturedCoupons(req.user.storeId);
+  }
+
+  @Post('featured')
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiOperation({ summary: 'Add a coupon to featured list' })
+  @ApiResponse({
+    status: 201,
+    description: 'Coupon added to featured list successfully.',
+  })
+  addFeaturedCoupon(
+    @Body() addFeaturedCouponDto: AddFeaturedCouponDto,
+    @Request() req,
+  ) {
+    return this.couponService.addFeaturedCoupon(
+      req.user.storeId,
+      addFeaturedCouponDto.couponId,
+    );
+  }
+
+  @Delete('featured/:couponId')
+  @Roles('RESELLER_ADMIN_4MIGA_USER')
+  @ApiOperation({ summary: 'Remove a coupon from featured list' })
+  @ApiResponse({
+    status: 200,
+    description: 'Coupon removed from featured list successfully.',
+  })
+  removeFeaturedCoupon(@Param('couponId') couponId: string, @Request() req) {
+    return this.couponService.removeFeaturedCoupon(req.user.storeId, couponId);
   }
 
   @Post()

@@ -1349,6 +1349,7 @@ describe('OrderService', () => {
         where: {
           title: 'WELCOME10',
           storeId,
+          deletedAt: null,
         },
         select: {
           id: true,

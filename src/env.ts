@@ -35,6 +35,12 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z
     .string()
     .min(32, 'ENCRYPTION_KEY must be at least 32 characters long'),
+  // Order expiration
+  ORDER_EXPIRATION_HOURS: z.coerce.number().int().positive().default(24),
+  // Bigo exchange rate (USD to BRL)
+  BIGO_USD_TO_BRL_RATE: z.coerce.number().positive().default(5.5),
+  // Bigo diamonds per USD average (range: 25-100, average: 62.5)
+  BIGO_DIAMONDS_PER_USD_AVERAGE: z.coerce.number().positive().default(62.5),
 });
 
 export const env = envSchema.parse(process.env);

@@ -9,6 +9,7 @@ import { OrderStatus, PaymentStatus, RechargeStatus } from '@prisma/client';
 import { BigoService } from '../bigo/bigo.service';
 import { EmailService } from '../email/email.service';
 import { getOrderCompletedTemplate } from '../email/templates/order-completed.template';
+import { env } from '../env';
 import { MetricsService } from '../metrics/metrics.service';
 import { OrderService } from '../order/order.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,6 +21,7 @@ import { BraviveHttpService } from './http/bravive-http.service';
 @Injectable()
 export class BraviveService {
   private readonly logger = new Logger(BraviveService.name);
+  private readonly BIGO_DIAMONDS_PER_USD_AVERAGE = 62.5;
 
   constructor(
     private readonly httpService: BraviveHttpService,
@@ -309,9 +311,8 @@ export class BraviveService {
       return;
     }
 
-    const targetPaymentStatus = this.mapWebhookStatusToPaymentStatus(
-      webhookStatus,
-    );
+    const targetPaymentStatus =
+      this.mapWebhookStatusToPaymentStatus(webhookStatus);
 
     if (targetPaymentStatus && payment.status === targetPaymentStatus) {
       this.logger.log({
@@ -353,11 +354,7 @@ export class BraviveService {
         break;
 
       case WebhookStatus.CHARGEBACK:
-        await this.handleChargebackPayment(
-          payment.id,
-          order.id,
-          recharge?.id,
-        );
+        await this.handleChargebackPayment(payment.id, order.id, recharge?.id);
         break;
 
       case WebhookStatus.IN_DISPUTE:
@@ -442,11 +439,15 @@ export class BraviveService {
     // Trigger Bigo recharge if all required data is available
     if (rechargeId && amountCredits && bigoId) {
       try {
+        const valueInUSD = amountCredits / this.BIGO_DIAMONDS_PER_USD_AVERAGE;
+        const calculatedValueInBRL = valueInUSD * env.BIGO_USD_TO_BRL_RATE;
+        const roundedValue = Math.round(calculatedValueInBRL * 100) / 100;
+
         const bigoRechargeDto = {
           recharge_bigoid: bigoId,
-          bu_orderid: orderNumber, // Use orderNumber as business order ID
+          bu_orderid: orderNumber,
           value: amountCredits,
-          total_cost: Number(orderPrice),
+          total_cost: roundedValue,
           currency: 'BRL',
         };
 
@@ -515,6 +516,7 @@ export class BraviveService {
             const html = getOrderCompletedTemplate(
               completedOrder.user.name,
               completedOrder.orderNumber,
+              completedOrder.orderItem.rechargeId,
               completedOrder.orderItem.package.name,
               completedOrder.orderItem.recharge.amountCredits,
               Number(completedOrder.price),
@@ -620,7 +622,6 @@ export class BraviveService {
           },
         });
       }
-
     });
   }
 

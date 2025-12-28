@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class LoginDto {
+  @Transform(({ value }) => normalizeEmail(value))
   @IsString()
   @IsNotEmpty()
   @IsEmail()

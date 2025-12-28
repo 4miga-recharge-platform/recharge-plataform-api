@@ -1,4 +1,13 @@
-export function getEmailChangeConfirmationTemplate(code: string): string {
+export function getEmailChangeConfirmationTemplate(
+  code: string,
+  storeDomain?: string,
+): string {
+  const fullDomain = storeDomain?.startsWith('http')
+    ? storeDomain
+    : storeDomain
+      ? `https://${storeDomain}`
+      : null;
+
   return `
 <html style="color-scheme: dark;">
   <head>
@@ -7,13 +16,13 @@ export function getEmailChangeConfirmationTemplate(code: string): string {
     <meta name="supported-color-schemes" content="dark" />
     <title>Confirmação de alteração de e-mail</title>
   </head>
-  <body style="margin: 0; padding: 50px; font-family: Arial, sans-serif; background-color: #ffffff;">
+  <body style="margin: 0; padding: 12px; font-family: Arial, sans-serif; background-color: #ffffff;">
     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto;">
       <tr>
         <td align="center">
           <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 20px; border-radius: 8px; color: #ffffff;">
             <tr>
-              <td align="center" style="color: #00c8ff; font-size: 20px;">
+              <td align="center" style="color: #00c8ff; font-size:18px;">
                 <h2 style="margin: 0;">Confirmação de alteração de <span style="white-space: nowrap;">e-mail</span></h2>
               </td>
             </tr>
@@ -34,6 +43,18 @@ export function getEmailChangeConfirmationTemplate(code: string): string {
                 Se você não solicitou esta alteração, ignore este <span style="white-space: nowrap;">e-mail</span>.
               </td>
             </tr>
+            ${fullDomain ? `
+            <tr>
+              <td align="center" style="padding-top: 10px;">
+                <a href="${fullDomain}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff; text-decoration: none; font-size: 14px;">
+                  ${storeDomain}
+                </a>
+              </td>
+            </tr>
+            ` : ''}
           </table>
         </td>
       </tr>

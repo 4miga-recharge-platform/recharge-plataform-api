@@ -176,6 +176,63 @@ describe('UserController', () => {
     });
   });
 
+  describe('name validation', () => {
+    it('should reject user creation with single word name', async () => {
+      const { validate } = require('class-validator');
+      const invalidDto = new CreateUserDto();
+      invalidDto.name = 'João';
+      invalidDto.email = 'joao@example.com';
+      invalidDto.phone = '5511988887777';
+      invalidDto.password = 'Password123!';
+      invalidDto.documentType = 'cpf';
+      invalidDto.documentValue = '123.456.789-00';
+      invalidDto.storeId = 'store-123';
+
+      const errors = await validate(invalidDto);
+      const nameError = errors.find((e) => e.property === 'name');
+
+      expect(nameError).toBeDefined();
+      expect(nameError.constraints).toHaveProperty('matches');
+      expect(nameError.constraints.matches).toContain(
+        'Name must contain at least two words',
+      );
+    });
+
+    it('should accept user creation with two word name', async () => {
+      const { validate } = require('class-validator');
+      const validDto = new CreateUserDto();
+      validDto.name = 'João Pedro';
+      validDto.email = 'joao@example.com';
+      validDto.phone = '5511988887777';
+      validDto.password = 'Password123!';
+      validDto.documentType = 'cpf';
+      validDto.documentValue = '123.456.789-00';
+      validDto.storeId = 'store-123';
+
+      const errors = await validate(validDto);
+      const nameError = errors.find((e) => e.property === 'name');
+
+      expect(nameError).toBeUndefined();
+    });
+
+    it('should accept user creation with multiple word name', async () => {
+      const { validate } = require('class-validator');
+      const validDto = new CreateUserDto();
+      validDto.name = 'João Pedro Silva';
+      validDto.email = 'joao@example.com';
+      validDto.phone = '5511988887777';
+      validDto.password = 'Password123!';
+      validDto.documentType = 'cpf';
+      validDto.documentValue = '123.456.789-00';
+      validDto.storeId = 'store-123';
+
+      const errors = await validate(validDto);
+      const nameError = errors.find((e) => e.property === 'name');
+
+      expect(nameError).toBeUndefined();
+    });
+  });
+
   describe('update', () => {
     it('should update a user', async () => {
       const updatedUser = { ...mockUser, ...updateUserDto };
@@ -228,6 +285,32 @@ describe('UserController', () => {
       );
 
       expect(userService.update).toHaveBeenCalledWith(mockUser.id, updateUserDto);
+    });
+
+    it('should reject user update with single word name', async () => {
+      const { validate } = require('class-validator');
+      const invalidDto = new UpdateUserDto();
+      invalidDto.name = 'João';
+
+      const errors = await validate(invalidDto);
+      const nameError = errors.find((e) => e.property === 'name');
+
+      expect(nameError).toBeDefined();
+      expect(nameError.constraints).toHaveProperty('matches');
+      expect(nameError.constraints.matches).toContain(
+        'Name must contain at least two words',
+      );
+    });
+
+    it('should accept user update with two word name', async () => {
+      const { validate } = require('class-validator');
+      const validDto = new UpdateUserDto();
+      validDto.name = 'João Pedro';
+
+      const errors = await validate(validDto);
+      const nameError = errors.find((e) => e.property === 'name');
+
+      expect(nameError).toBeUndefined();
     });
   });
 

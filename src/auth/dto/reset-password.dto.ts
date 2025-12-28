@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsString,
@@ -7,8 +8,10 @@ import {
   IsUUID,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { normalizeEmail } from '../../utils/email.util';
 
 export class ResetPasswordDto {
+  @Transform(({ value }) => normalizeEmail(value))
   @IsEmail()
   @ApiProperty({
     description: 'User email address',
@@ -25,22 +28,27 @@ export class ResetPasswordDto {
   code: string;
 
   @IsString()
-  @MinLength(8)
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])[A-Za-z@$!%*?&]/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter and one special character (@$!%*?&)',
+  })
   @ApiProperty({
-    description: 'New password (minimum 6 characters)',
-    example: 'NewPassword123',
+    description: 'New password (minimum 6 characters, must contain uppercase, lowercase and special character)',
+    example: 'NewPassword!',
   })
   password: string;
 
   @IsString()
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/, {
+  @MinLength(6, { message: 'Password must be at least 6 characters long' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])[A-Za-z@$!%*?&]/, {
     message:
-      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character (@$!%*?&)',
+      'Password must contain at least one uppercase letter, one lowercase letter and one special character (@$!%*?&)',
   })
   @ApiProperty({
     description:
-      'Password confirmation (must match password; min 8; must contain uppercase, lowercase, number and special character)',
-    example: 'NewPassword123!',
+      'Password confirmation (must match password; min 6; must contain uppercase, lowercase and special character)',
+    example: 'NewPassword!',
   })
   confirmPassword: string;
 

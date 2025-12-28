@@ -1,25 +1,34 @@
-export function getPasswordResetTemplate(code: string): string {
+export function getPasswordResetTemplate(
+  code: string,
+  storeDomain?: string,
+): string {
+  const fullDomain = storeDomain?.startsWith('http')
+    ? storeDomain
+    : storeDomain
+      ? `https://${storeDomain}`
+      : null;
+
   return `
 <html style="color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
     <meta name="color-scheme" content="dark" />
     <meta name="supported-color-schemes" content="dark" />
-    <title>Confirmação de e-mail</title>
+    <title>Redefinição de Senha</title>
   </head>
-  <body style="margin: 0; padding: 50px; font-family: Arial, sans-serif; background-color: #ffffff;">
+  <body style="margin: 0; padding: 12px; font-family: Arial, sans-serif; background-color: #ffffff;">
     <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto;">
       <tr>
         <td align="center">
           <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 20px; border-radius: 8px; color: #ffffff;">
             <tr>
-              <td align="center" style="color: #00c8ff; font-size: 20px;">
-                <h2 style="margin: 0;">Confirmação de <span style="white-space: nowrap;">e-mail</span></h2>
+              <td align="center" style="color: #00c8ff; font-size: 18px;">
+                <h2 style="margin: 0;">Redefinição de Senha</h2>
               </td>
             </tr>
             <tr>
               <td align="center" style="padding: 10px 0;">
-                <p style="margin: 0;">Use o código abaixo para confirmar seu <span style="white-space: nowrap;">e-mail</span>:</p>
+                <p style="margin: 0;">Use o código abaixo para redefinir sua senha:</p>
               </td>
             </tr>
             <tr>
@@ -31,16 +40,21 @@ export function getPasswordResetTemplate(code: string): string {
             </tr>
             <tr>
               <td align="center" style="padding-top: 20px; font-size: 14px; color: #777;">
-                Se você não solicitou este código, ignore este <span style="white-space: nowrap;">e-mail</span>.
+                Este código expira em 10 minutos. Se você não solicitou este código, ignore este <span style="white-space: nowrap;">e-mail</span>.
               </td>
             </tr>
+            ${fullDomain ? `
             <tr>
               <td align="center" style="padding-top: 10px;">
-                <a href="https://www.seusite.com" style="color: #00c8ff; text-decoration: none; font-size: 14px;">
-                  www.plataformadevendas.com
+                <a href="${fullDomain}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff; text-decoration: none; font-size: 14px;">
+                  ${storeDomain}
                 </a>
               </td>
             </tr>
+            ` : ''}
           </table>
         </td>
       </tr>
