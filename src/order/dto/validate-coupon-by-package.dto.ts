@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class ValidateCouponByPackageDto {
   @IsUUID()
@@ -25,4 +25,14 @@ export class ValidateCouponByPackageDto {
     example: 'WELCOME10',
   })
   couponTitle: string;
+
+  @IsString()
+  @IsOptional()
+  @ApiProperty({
+    description:
+      'User ID for recharge (bigoId) - required for isOneTimePerBigoId coupons',
+    example: 'player123456',
+    required: false,
+  })
+  userIdForRecharge?: string;
 }

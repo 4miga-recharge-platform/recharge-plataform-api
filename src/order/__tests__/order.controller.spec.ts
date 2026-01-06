@@ -346,6 +346,7 @@ describe('OrderController', () => {
         validateCouponByPackageDto.couponTitle,
         mockUser.storeId,
         mockUser.id,
+        validateCouponByPackageDto.userIdForRecharge,
       );
       expect(result).toEqual(mockValidationResult);
     });
@@ -366,6 +367,7 @@ describe('OrderController', () => {
         validateCouponByPackageDto.couponTitle,
         mockUser.storeId,
         mockUser.id,
+        validateCouponByPackageDto.userIdForRecharge,
       );
     });
 
@@ -385,6 +387,7 @@ describe('OrderController', () => {
         validateCouponByPackageDto.couponTitle,
         mockUser.storeId,
         mockUser.id,
+        validateCouponByPackageDto.userIdForRecharge,
       );
     });
   });

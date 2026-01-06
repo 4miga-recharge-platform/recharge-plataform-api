@@ -62,6 +62,7 @@ describe('CouponService', () => {
     minOrderAmount: true,
     isActive: true,
     isFirstPurchase: true,
+    isOneTimePerBigoId: true,
     storeId: true,
     createdAt: true,
     updatedAt: true,

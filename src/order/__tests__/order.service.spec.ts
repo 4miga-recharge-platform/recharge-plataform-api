@@ -315,6 +315,7 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               },
             },
@@ -438,6 +439,7 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               },
             },
@@ -558,6 +560,7 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               }),
             }),
@@ -1582,6 +1585,14 @@ describe('OrderService', () => {
             orderItem: {
               recharge: {
                 userIdForRecharge: bigoId,
+              },
+            },
+            orderStatus: {
+              notIn: ['EXPIRED', 'REFOUNDED'],
+            },
+            payment: {
+              status: {
+                in: [PaymentStatus.PAYMENT_PENDING, PaymentStatus.PAYMENT_APPROVED],
               },
             },
           },
