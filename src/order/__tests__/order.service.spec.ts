@@ -100,7 +100,7 @@ describe('OrderService', () => {
     title: 'WELCOME10',
     discountPercentage: 10.0,
     discountAmount: null,
-    expiresAt: new Date('2025-12-31'),
+    expiresAt: new Date('2027-12-31'),
     timesUsed: 5,
     maxUses: 100,
     minOrderAmount: 10.0,
