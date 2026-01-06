@@ -378,6 +378,7 @@ export class CouponService {
         storeId: storeId,
         isActive: dto.isActive ?? true,
         isFirstPurchase: dto.isFirstPurchase ?? false,
+        isOneTimePerBigoId: dto.isOneTimePerBigoId ?? false,
       };
 
       // Only add fields that have valid values
