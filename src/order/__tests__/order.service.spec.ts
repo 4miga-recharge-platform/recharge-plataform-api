@@ -100,12 +100,13 @@ describe('OrderService', () => {
     title: 'WELCOME10',
     discountPercentage: 10.0,
     discountAmount: null,
-    expiresAt: new Date('2025-12-31'),
+    expiresAt: new Date('2027-12-31'),
     timesUsed: 5,
     maxUses: 100,
     minOrderAmount: 10.0,
     isActive: true,
     isFirstPurchase: false,
+    isOneTimePerBigoId: false,
     storeId: 'store-123',
     influencerId: 'influencer-123',
   };
@@ -122,6 +123,7 @@ describe('OrderService', () => {
         create: jest.fn(),
         count: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
       package: {
         findUnique: jest.fn(),
@@ -155,6 +157,7 @@ describe('OrderService', () => {
       couponUsage: {
         create: jest.fn(),
         update: jest.fn(),
+        findFirst: jest.fn(),
       },
       influencerMonthlySales: {
         findFirst: jest.fn(),
@@ -312,6 +315,7 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               },
             },
@@ -435,6 +439,7 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               },
             },
@@ -555,6 +560,7 @@ describe('OrderService', () => {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               }),
             }),
@@ -1362,6 +1368,7 @@ describe('OrderService', () => {
           minOrderAmount: true,
           isActive: true,
           isFirstPurchase: true,
+          isOneTimePerBigoId: true,
           storeId: true,
           influencerId: true,
         },
@@ -1530,6 +1537,128 @@ describe('OrderService', () => {
       expect(result.valid).toBe(true);
       expect(result.discountAmount).toBe(50.0); // Limited to order amount
       expect(result.finalAmount).toBe(0.0);
+    });
+
+    it('should return invalid when isOneTimePerBigoId coupon is used without bigoId', async () => {
+      const oneTimePerBigoIdCoupon = {
+        ...mockCoupon,
+        isOneTimePerBigoId: true,
+      };
+      prismaService.coupon.findFirst.mockResolvedValue(oneTimePerBigoIdCoupon);
+
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('bigoId is required for this coupon validation');
+    });
+
+    it('should return invalid when isOneTimePerBigoId coupon was already used by same bigoId', async () => {
+      const oneTimePerBigoIdCoupon = {
+        ...mockCoupon,
+        isOneTimePerBigoId: true,
+      };
+      const bigoId = 'bigo-123';
+      prismaService.coupon.findFirst.mockResolvedValue(oneTimePerBigoIdCoupon);
+      prismaService.couponUsage.findFirst.mockResolvedValue({
+        id: 'coupon-usage-123',
+        couponId: 'coupon-123',
+        orderId: 'order-123',
+      });
+
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+        bigoId,
+      );
+
+      expect(result.valid).toBe(false);
+      expect(result.message).toBe('This coupon can only be used once per bigoId');
+      expect(prismaService.couponUsage.findFirst).toHaveBeenCalledWith({
+        where: {
+          couponId: 'coupon-123',
+          order: {
+            orderItem: {
+              recharge: {
+                userIdForRecharge: bigoId,
+              },
+            },
+            orderStatus: {
+              notIn: ['EXPIRED', 'REFOUNDED'],
+            },
+            payment: {
+              status: {
+                in: [PaymentStatus.PAYMENT_PENDING, PaymentStatus.PAYMENT_APPROVED],
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('should return valid when isOneTimePerBigoId coupon was not used by same bigoId', async () => {
+      const oneTimePerBigoIdCoupon = {
+        ...mockCoupon,
+        isOneTimePerBigoId: true,
+      };
+      const bigoId = 'bigo-123';
+      prismaService.coupon.findFirst.mockResolvedValue(oneTimePerBigoIdCoupon);
+      prismaService.couponUsage.findFirst.mockResolvedValue(null);
+
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+        bigoId,
+      );
+
+      expect(result.valid).toBe(true);
+      expect(result.discountAmount).toBe(5.0);
+      expect(result.finalAmount).toBe(45.0);
+    });
+
+    it('should return valid when isOneTimePerBigoId coupon was used by different bigoId', async () => {
+      const oneTimePerBigoIdCoupon = {
+        ...mockCoupon,
+        isOneTimePerBigoId: true,
+      };
+      const bigoId = 'bigo-456';
+      prismaService.coupon.findFirst.mockResolvedValue(oneTimePerBigoIdCoupon);
+      prismaService.couponUsage.findFirst.mockResolvedValue(null);
+
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+        bigoId,
+      );
+
+      expect(result.valid).toBe(true);
+      expect(result.discountAmount).toBe(5.0);
+      expect(result.finalAmount).toBe(45.0);
+    });
+
+    it('should return valid when coupon has isOneTimePerBigoId false', async () => {
+      const regularCoupon = {
+        ...mockCoupon,
+        isOneTimePerBigoId: false,
+      };
+      prismaService.coupon.findFirst.mockResolvedValue(regularCoupon);
+
+      const result = await service.validateCoupon(
+        validateCouponDto,
+        storeId,
+        userId,
+        'bigo-123',
+      );
+
+      expect(result.valid).toBe(true);
+      expect(result.discountAmount).toBe(5.0);
+      expect(result.finalAmount).toBe(45.0);
     });
   });
 
@@ -1994,6 +2123,7 @@ describe('OrderService', () => {
         { couponTitle, orderAmount: 19.99 },
         storeId,
         userId,
+        undefined,
       );
       expect(result).toEqual(mockValidation);
     });

@@ -164,6 +164,7 @@ export class OrderController {
       validateCouponByPackageDto.couponTitle,
       req.user.storeId,
       req.user.id,
+      validateCouponByPackageDto.userIdForRecharge,
     );
   }
 

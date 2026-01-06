@@ -80,6 +80,7 @@ export class OrderService {
                     discountPercentage: true,
                     discountAmount: true,
                     isFirstPurchase: true,
+                    isOneTimePerBigoId: true,
                   },
                 },
               },
@@ -139,6 +140,7 @@ export class OrderService {
                     discountPercentage: true,
                     discountAmount: true,
                     isFirstPurchase: true,
+                    isOneTimePerBigoId: true,
                   },
                 },
               },
@@ -254,6 +256,7 @@ export class OrderService {
                     discountPercentage: true,
                     discountAmount: true,
                     isFirstPurchase: true,
+                    isOneTimePerBigoId: true,
                   },
                 },
               },
@@ -304,6 +307,7 @@ export class OrderService {
                     discountPercentage: true,
                     discountAmount: true,
                     isFirstPurchase: true,
+                    isOneTimePerBigoId: true,
                   },
                 },
               },
@@ -507,6 +511,7 @@ export class OrderService {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               },
             },
@@ -552,6 +557,7 @@ export class OrderService {
                     discountPercentage: true,
                     discountAmount: true,
                     isFirstPurchase: true,
+                    isOneTimePerBigoId: true,
                   },
                 },
               },
@@ -667,6 +673,7 @@ export class OrderService {
           { couponTitle, orderAmount: Number(paymentMethod.price) },
           storeId,
           userId,
+          userIdForRecharge,
         );
 
         if (!couponValidation.valid) {
@@ -741,6 +748,7 @@ export class OrderService {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               },
             },
@@ -942,6 +950,7 @@ export class OrderService {
                   discountPercentage: true,
                   discountAmount: true,
                   isFirstPurchase: true,
+                  isOneTimePerBigoId: true,
                 },
               },
             },
@@ -1170,6 +1179,7 @@ export class OrderService {
     validateCouponDto: ValidateCouponDto,
     storeId: string,
     userId: string,
+    bigoId?: string,
   ): Promise<any> {
     try {
       const { couponTitle, orderAmount } = validateCouponDto;
@@ -1191,6 +1201,7 @@ export class OrderService {
           minOrderAmount: true,
           isActive: true,
           isFirstPurchase: true,
+          isOneTimePerBigoId: true,
           storeId: true,
           influencerId: true,
         },
@@ -1246,6 +1257,49 @@ export class OrderService {
         }
       }
 
+      // Check if this coupon can only be used once per bigoId
+      if (coupon.isOneTimePerBigoId) {
+        if (!bigoId) {
+          return {
+            valid: false,
+            message: 'bigoId is required for this coupon validation',
+          };
+        }
+
+        // Check if already exists a CouponUsage for this coupon with the same bigoId
+        // Consider orders that are pending or approved, but exclude expired/rejected orders
+        const existingUsage = await this.prisma.couponUsage.findFirst({
+          where: {
+            couponId: coupon.id,
+            order: {
+              orderItem: {
+                recharge: {
+                  userIdForRecharge: bigoId,
+                },
+              },
+              orderStatus: {
+                notIn: ['EXPIRED', 'REFOUNDED'],
+              },
+              payment: {
+                status: {
+                  in: [
+                    PaymentStatus.PAYMENT_PENDING,
+                    PaymentStatus.PAYMENT_APPROVED,
+                  ],
+                },
+              },
+            },
+          },
+        });
+
+        if (existingUsage) {
+          return {
+            valid: false,
+            message: 'This coupon can only be used once per bigoId',
+          };
+        }
+      }
+
       // Calculate discount
       let discountAmount = 0;
       if (coupon.discountPercentage) {
@@ -1283,6 +1337,7 @@ export class OrderService {
     couponTitle: string,
     storeId: string,
     userId: string,
+    bigoId?: string,
   ): Promise<any> {
     // Fetch package and payment method
     const packageData = await this.prisma.package.findUnique({
@@ -1319,6 +1374,7 @@ export class OrderService {
       { couponTitle, orderAmount },
       storeId,
       userId,
+      bigoId,
     );
   }
 

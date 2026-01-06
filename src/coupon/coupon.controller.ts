@@ -27,12 +27,12 @@ import { AddFeaturedCouponDto } from './dto/add-featured-coupon.dto';
 
 @ApiTags('coupon')
 @Controller('coupon')
-@UseGuards(AuthGuard('jwt'), RoleGuard)
-@ApiBearerAuth()
 export class CouponController {
   constructor(private readonly couponService: CouponService) {}
 
   @Get()
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @ApiBearerAuth()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Get all coupons with pagination and filters' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
@@ -115,15 +115,18 @@ export class CouponController {
 
   @Get('featured')
   @ApiOperation({ summary: 'Get featured coupons by store' })
+  @ApiQuery({ name: 'storeId', required: true, description: 'Store ID' })
   @ApiResponse({
     status: 200,
     description: 'List of featured coupons returned successfully.',
   })
-  getFeaturedCoupons(@Request() req) {
-    return this.couponService.getFeaturedCoupons(req.user.storeId);
+  getFeaturedCoupons(@Query('storeId') storeId: string) {
+    return this.couponService.getFeaturedCoupons(storeId);
   }
 
   @Post('featured')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @ApiBearerAuth()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Add a coupon to featured list' })
   @ApiResponse({
@@ -141,6 +144,8 @@ export class CouponController {
   }
 
   @Delete('featured/:couponId')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @ApiBearerAuth()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Remove a coupon from featured list' })
   @ApiResponse({
@@ -152,6 +157,8 @@ export class CouponController {
   }
 
   @Post()
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @ApiBearerAuth()
   @Roles('RESELLER_ADMIN_4MIGA_USER')
   @ApiOperation({ summary: 'Create a new coupon' })
   create(@Body() createCouponDto: CreateCouponDto, @Request() req) {
@@ -159,18 +166,24 @@ export class CouponController {
   }
 
   @Get(':id')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a coupon by id' })
   findOne(@Param('id') id: string) {
     return this.couponService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a coupon by id' })
   update(@Param('id') id: string, @Body() updateCouponDto: UpdateCouponDto) {
     return this.couponService.update(id, updateCouponDto);
   }
 
   @Delete(':id')
+  @UseGuards(AuthGuard('jwt'), RoleGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a coupon by id' })
   remove(@Param('id') id: string) {
     return this.couponService.remove(id);

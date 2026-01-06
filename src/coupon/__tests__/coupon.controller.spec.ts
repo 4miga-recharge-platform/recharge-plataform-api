@@ -3,7 +3,6 @@ import { CouponController } from '../coupon.controller';
 import { CouponService } from '../coupon.service';
 import { CreateCouponDto } from '../dto/create-coupon.dto';
 import { UpdateCouponDto } from '../dto/update-coupon.dto';
-import { AddFeaturedCouponDto } from '../dto/add-featured-coupon.dto';
 
 describe('CouponController', () => {
   let controller: CouponController;
@@ -530,7 +529,7 @@ describe('CouponController', () => {
       ];
       couponService.getFeaturedCoupons.mockResolvedValue(featuredCoupons);
 
-      const result = await controller.getFeaturedCoupons(mockRequest);
+      const result = await controller.getFeaturedCoupons('store-123');
 
       expect(couponService.getFeaturedCoupons).toHaveBeenCalledWith(
         'store-123',
@@ -541,7 +540,7 @@ describe('CouponController', () => {
     it('should return empty array when no featured coupons exist', async () => {
       couponService.getFeaturedCoupons.mockResolvedValue([]);
 
-      const result = await controller.getFeaturedCoupons(mockRequest);
+      const result = await controller.getFeaturedCoupons('store-123');
 
       expect(couponService.getFeaturedCoupons).toHaveBeenCalledWith(
         'store-123',
@@ -553,7 +552,7 @@ describe('CouponController', () => {
       const error = new Error('Failed to fetch featured coupons');
       couponService.getFeaturedCoupons.mockRejectedValue(error);
 
-      await expect(controller.getFeaturedCoupons(mockRequest)).rejects.toThrow(
+      await expect(controller.getFeaturedCoupons('store-123')).rejects.toThrow(
         'Failed to fetch featured coupons',
       );
       expect(couponService.getFeaturedCoupons).toHaveBeenCalledWith(

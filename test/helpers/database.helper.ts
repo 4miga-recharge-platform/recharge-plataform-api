@@ -175,6 +175,7 @@ export class DatabaseHelper {
     minOrderAmount?: number | null;
     isActive?: boolean;
     isFirstPurchase?: boolean;
+    isOneTimePerBigoId?: boolean;
   }) {
     const uniqueId = Date.now().toString();
     return this.prisma.coupon.create({
@@ -189,6 +190,7 @@ export class DatabaseHelper {
         minOrderAmount: data.minOrderAmount ? data.minOrderAmount : null,
         isActive: data.isActive !== undefined ? data.isActive : true,
         isFirstPurchase: data.isFirstPurchase || false,
+        isOneTimePerBigoId: data.isOneTimePerBigoId || false,
         storeId: data.storeId,
         influencerId: data.influencerId,
       },

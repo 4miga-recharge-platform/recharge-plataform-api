@@ -109,4 +109,14 @@ export class CreateCouponDto {
     default: false,
   })
   isFirstPurchase?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  @ApiProperty({
+    description: 'Whether the coupon can only be used once per bigoId',
+    example: false,
+    required: false,
+    default: false,
+  })
+  isOneTimePerBigoId?: boolean;
 }

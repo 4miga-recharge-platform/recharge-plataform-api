@@ -21,6 +21,7 @@ export class CouponService {
     minOrderAmount: true,
     isActive: true,
     isFirstPurchase: true,
+    isOneTimePerBigoId: true,
     storeId: true,
     createdAt: true,
     updatedAt: true,
@@ -378,6 +379,7 @@ export class CouponService {
         storeId: storeId,
         isActive: dto.isActive ?? true,
         isFirstPurchase: dto.isFirstPurchase ?? false,
+        isOneTimePerBigoId: dto.isOneTimePerBigoId ?? false,
       };
 
       // Only add fields that have valid values

@@ -26,6 +26,7 @@ describe('CouponService', () => {
     minOrderAmount: 50,
     isActive: true,
     isFirstPurchase: false,
+    isOneTimePerBigoId: false,
     storeId: 'store-123',
     influencerId: 'influencer-123',
     influencer: {
@@ -61,6 +62,7 @@ describe('CouponService', () => {
     minOrderAmount: true,
     isActive: true,
     isFirstPurchase: true,
+    isOneTimePerBigoId: true,
     storeId: true,
     createdAt: true,
     updatedAt: true,
@@ -770,6 +772,7 @@ describe('CouponService', () => {
           storeId: 'store-123',
           isActive: true,
           isFirstPurchase: true,
+          isOneTimePerBigoId: false,
           discountPercentage: 10.0,
           expiresAt: new Date('2025-12-31T23:59:59.000Z'),
           maxUses: 100,
@@ -846,6 +849,53 @@ describe('CouponService', () => {
       await expect(service.create(invalidDto, 'store-123')).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it('should create a coupon with isOneTimePerBigoId set to true', async () => {
+      const createCouponDtoWithBigoId: CreateCouponDto = {
+        title: 'ONETIME10',
+        influencerId: 'influencer-123',
+        discountPercentage: 10.0,
+        discountAmount: null,
+        expiresAt: '2025-12-31T23:59:59.000Z',
+        maxUses: 100,
+        minOrderAmount: 20.0,
+        isActive: true,
+        isFirstPurchase: false,
+        isOneTimePerBigoId: true,
+      };
+      const couponWithBigoId = {
+        ...mockCoupon,
+        title: 'ONETIME10',
+        isOneTimePerBigoId: true,
+      };
+
+      prismaService.store.findUnique.mockResolvedValue(mockStore);
+      prismaService.influencer.findFirst.mockResolvedValue(mockInfluencer);
+      prismaService.coupon.findFirst.mockResolvedValue(null);
+      prismaService.coupon.create.mockResolvedValue(couponWithBigoId);
+
+      const result = await service.create(
+        createCouponDtoWithBigoId,
+        'store-123',
+      );
+
+      expect(result).toEqual(couponWithBigoId);
+      expect(prismaService.coupon.create).toHaveBeenCalledWith({
+        data: {
+          title: 'ONETIME10',
+          influencerId: 'influencer-123',
+          storeId: 'store-123',
+          isActive: true,
+          isFirstPurchase: false,
+          isOneTimePerBigoId: true,
+          discountPercentage: 10.0,
+          expiresAt: new Date('2025-12-31T23:59:59.000Z'),
+          maxUses: 100,
+          minOrderAmount: 20.0,
+        },
+        select: expect.any(Object),
+      });
     });
   });
 
