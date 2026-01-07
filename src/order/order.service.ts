@@ -982,7 +982,10 @@ export class OrderService {
             'Order with this number already exists',
           );
         }
-        throw new BadRequestException('Database error while creating order');
+        this.logger.error(`Prisma error: ${error.code} - ${error.message}`);
+        throw new BadRequestException(
+          `Database error while creating order: ${error.message}`,
+        );
       }
 
       throw error;
@@ -1268,7 +1271,7 @@ export class OrderService {
 
         // Check if already exists a CouponUsage for this coupon with the same bigoId
         // Consider orders that are pending or approved, but exclude expired/rejected orders
-        const existingUsage = await this.prisma.couponUsage.findFirst({
+        const existingUsageByBigoId = await this.prisma.couponUsage.findFirst({
           where: {
             couponId: coupon.id,
             order: {
@@ -1292,10 +1295,39 @@ export class OrderService {
           },
         });
 
-        if (existingUsage) {
+        if (existingUsageByBigoId) {
           return {
             valid: false,
             message: 'This coupon can only be used once per bigoId',
+          };
+        }
+
+        // Also check if the user account has already used this coupon
+        // This prevents the same account from using the coupon for different bigoIds
+        const existingUsageByUser = await this.prisma.couponUsage.findFirst({
+          where: {
+            couponId: coupon.id,
+            order: {
+              userId: userId,
+              orderStatus: {
+                notIn: ['EXPIRED', 'REFOUNDED'],
+              },
+              payment: {
+                status: {
+                  in: [
+                    PaymentStatus.PAYMENT_PENDING,
+                    PaymentStatus.PAYMENT_APPROVED,
+                  ],
+                },
+              },
+            },
+          },
+        });
+
+        if (existingUsageByUser) {
+          return {
+            valid: false,
+            message: 'This coupon can only be used once per account',
           };
         }
       }
@@ -1324,6 +1356,7 @@ export class OrderService {
           discountPercentage: coupon.discountPercentage,
           discountAmount: coupon.discountAmount,
           isFirstPurchase: coupon.isFirstPurchase,
+          isOneTimePerBigoId: coupon.isOneTimePerBigoId,
         },
       };
     } catch {
