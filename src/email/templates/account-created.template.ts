@@ -1,0 +1,74 @@
+export function getAccountCreatedTemplate(
+  userName: string,
+  email: string,
+  storeDomain?: string,
+): string {
+  const fullDomain = storeDomain?.startsWith('http')
+    ? storeDomain
+    : storeDomain
+      ? `https://${storeDomain}`
+      : null;
+
+  return `
+<html style="color-scheme: dark;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="supported-color-schemes" content="dark" />
+    <title>Conta Criada</title>
+  </head>
+  <body style="margin: 0; padding: 12px; font-family: Arial, sans-serif; background-color: #ffffff;">
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 0 auto;">
+      <tr>
+        <td align="center">
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%; max-width: 600px; background-color: #071116; padding: 30px; border-radius: 12px; color: #ffffff;">
+            <tr>
+              <td align="center" style="color: #00c8ff; font-size: 18px; padding-bottom: 20px;">
+                <h2 style="margin: 0;">Bem-vindo, ${userName}! 🎉</h2>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding: 20px 0;">
+                <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #ffffff !important;">
+                  Sua conta com e-mail <strong>${email}</strong> foi criada com sucesso.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding: 20px 0;">
+                <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #ffffff !important;">
+                  Você já pode fazer login e começar a usar nossa plataforma!
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 20px; background-color: #1a2a3a !important; border-left: 4px solid #ff9800; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #ffffff !important;">
+                  <strong style="color: #ff9800 !important;">⚠️ Alerta de Segurança:</strong><br />
+                  Se você não reconhece esta ação ou não solicitou a criação desta conta, entre em contato imediatamente com nosso suporte.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-top: 30px;">
+                <a href="${fullDomain || '#'}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color: #00c8ff; text-decoration: none; font-size: 14px;">
+                  ${storeDomain || ''}
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-top: 20px; font-size: 14px; color: #777;">
+                Este é um e-mail automático. Por favor, não responda esta mensagem.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+`;
+}

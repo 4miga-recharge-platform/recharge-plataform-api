@@ -46,6 +46,17 @@ export class UserController {
     return this.userService.create(createUserDto);
   }
 
+  @Post('create-direct')
+  @ApiOperation({
+    summary: 'Create a user directly with email verified (no verification required)',
+    description:
+      'Creates a user account with emailVerified: true and returns authentication tokens immediately. ' +
+      'User can login right away without email verification step. Sends informative email about account creation.',
+  })
+  createDirect(@Body() createUserDto: CreateUserDto) {
+    return this.userService.createDirect(createUserDto);
+  }
+
   @Post('cleanup-unverified')
   @ApiOperation({ summary: 'Manually trigger cleanup of unverified users' })
   async cleanupUnverifiedUsers() {

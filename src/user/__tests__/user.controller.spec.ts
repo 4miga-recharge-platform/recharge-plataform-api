@@ -46,6 +46,7 @@ describe('UserController', () => {
       findAll: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
+      createDirect: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
       findEmailsByStore: jest.fn(),
@@ -173,6 +174,91 @@ describe('UserController', () => {
       );
 
       expect(userService.create).toHaveBeenCalledWith(createUserDto);
+    });
+  });
+
+  describe('createDirect', () => {
+    const mockCreateDirectResponse = {
+      access: {
+        accessToken: 'access-token-123',
+        refreshToken: 'refresh-token-123',
+        expiresIn: 600,
+      },
+      user: {
+        id: 'user-123',
+        storeId: 'store-123',
+        email: 'john@example.com',
+        phone: '5511988887777',
+        rechargeBigoId: null,
+        documentType: 'cpf',
+        documentValue: '123.456.789-00',
+        name: 'John Doe',
+      },
+    };
+
+    it('should create a new user directly and return tokens', async () => {
+      userService.createDirect.mockResolvedValue(mockCreateDirectResponse);
+
+      const result = await controller.createDirect(createUserDto);
+
+      expect(userService.createDirect).toHaveBeenCalledWith(createUserDto);
+      expect(result).toEqual(mockCreateDirectResponse);
+      expect(result).toHaveProperty('access');
+      expect(result).toHaveProperty('user');
+      expect(result.access).toHaveProperty('accessToken');
+      expect(result.access).toHaveProperty('refreshToken');
+      expect(result.access).toHaveProperty('expiresIn');
+    });
+
+    it('should handle creation with minimal data', async () => {
+      const minimalCreateDto: CreateUserDto = {
+        name: 'Minimal User',
+        email: 'minimal@example.com',
+        phone: '5511988887777',
+        password: 'password123',
+        documentType: 'cpf',
+        documentValue: '123.456.789-00',
+        storeId: 'store-123',
+      };
+
+      const createdResponse = {
+        ...mockCreateDirectResponse,
+        user: {
+          ...mockCreateDirectResponse.user,
+          ...minimalCreateDto,
+        },
+      };
+
+      userService.createDirect.mockResolvedValue(createdResponse);
+
+      const result = await controller.createDirect(minimalCreateDto);
+
+      expect(userService.createDirect).toHaveBeenCalledWith(minimalCreateDto);
+      expect(result).toEqual(createdResponse);
+    });
+
+    it('should handle creation error', async () => {
+      userService.createDirect.mockRejectedValue(
+        new Error('Creation failed'),
+      );
+
+      await expect(controller.createDirect(createUserDto)).rejects.toThrow(
+        'Creation failed',
+      );
+
+      expect(userService.createDirect).toHaveBeenCalledWith(createUserDto);
+    });
+
+    it('should return tokens with correct structure', async () => {
+      userService.createDirect.mockResolvedValue(mockCreateDirectResponse);
+
+      const result = await controller.createDirect(createUserDto);
+
+      expect(result.access.accessToken).toBe('access-token-123');
+      expect(result.access.refreshToken).toBe('refresh-token-123');
+      expect(result.access.expiresIn).toBe(600);
+      expect(result.user.id).toBe('user-123');
+      expect(result.user.email).toBe('john@example.com');
     });
   });
 
