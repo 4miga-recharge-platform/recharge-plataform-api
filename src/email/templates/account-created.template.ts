@@ -13,6 +13,10 @@ export function getAccountCreatedTemplate(
 <html style="color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="x-apple-disable-message-reformatting" />
     <meta name="color-scheme" content="dark" />
     <meta name="supported-color-schemes" content="dark" />
     <title>Conta Criada</title>
@@ -49,16 +53,18 @@ export function getAccountCreatedTemplate(
                 </p>
               </td>
             </tr>
+            ${fullDomain ? `
             <tr>
               <td align="center" style="padding-top: 30px;">
-                <a href="${fullDomain || '#'}"
+                <a href="${fullDomain}"
                    target="_blank"
                    rel="noopener noreferrer"
                    style="color: #00c8ff; text-decoration: none; font-size: 14px;">
-                  ${storeDomain || ''}
+                  ${storeDomain}
                 </a>
               </td>
             </tr>
+            ` : ''}
             <tr>
               <td align="center" style="padding-top: 20px; font-size: 14px; color: #777;">
                 Este é um e-mail automático. Por favor, não responda esta mensagem.

@@ -5,17 +5,17 @@ export function getEmailConfirmationTemplate(
   email: string,
   storeId: string,
 ): string {
-  // URL encode the email for the query parameter
-  const encodedEmail = encodeURIComponent(email);
-
   // Create the confirmation link - ensure domain has https://
   const fullDomain = domain.startsWith('http') ? domain : `https://${domain}`;
-  const confirmationLink = `${fullDomain}/confirm-email?email=${encodedEmail}&code=${code}&storeId=${storeId}`;
 
   return `
 <html style="color-scheme: dark;">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="x-apple-disable-message-reformatting" />
     <meta name="color-scheme" content="dark" />
     <meta name="supported-color-schemes" content="dark" />
     <title>Confirmação de Cadastro</title>
@@ -44,15 +44,9 @@ export function getEmailConfirmationTemplate(
             </tr>
             <tr>
               <td align="center" style="padding: 20px 0;">
-                <p style="margin: 0; font-size: 14px; color: #cccccc; margin-bottom: 20px;">
-                  ou clique no botão abaixo para confirmar automaticamente:
+                <p style="margin: 0; font-size: 14px; color: #cccccc;">
+                  Digite este código na plataforma para confirmar seu <span style="white-space: nowrap;">e-mail</span>.
                 </p>
-                <a href="${confirmationLink}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   style="display: inline-block; background-color: #00c8ff !important; color: #000000 !important; text-decoration: none; padding: 12px 25px; border-radius: 8px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
-                  Confirmar E-mail
-                </a>
               </td>
             </tr>
             <tr>
