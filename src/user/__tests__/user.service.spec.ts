@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../email/email.service';
@@ -24,10 +25,18 @@ jest.mock('../../email/templates/email-confirmation.template', () => ({
     .mockReturnValue('<html>Email template</html>'),
 }));
 
+// Mock account created template
+jest.mock('../../email/templates/account-created.template', () => ({
+  getAccountCreatedTemplate: jest
+    .fn()
+    .mockReturnValue('<html>Account created template</html>'),
+}));
+
 describe('UserService', () => {
   let service: UserService;
   let prismaService: any;
   let emailService: any;
+  let jwtService: any;
 
   const mockUser: User = {
     id: 'user-123',
@@ -47,7 +56,7 @@ describe('UserService', () => {
     id: true,
     name: true,
     email: true,
-    role: true,
+    role: false, // Role is private to backend and should not be returned in GET routes
     phone: true,
     documentType: true,
     documentValue: true,
@@ -78,6 +87,10 @@ describe('UserService', () => {
       sendEmail: jest.fn(),
     };
 
+    const mockJwtService = {
+      signAsync: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
@@ -89,12 +102,17 @@ describe('UserService', () => {
           provide: EmailService,
           useValue: mockEmailService,
         },
+        {
+          provide: JwtService,
+          useValue: mockJwtService,
+        },
       ],
     }).compile();
 
     service = module.get<UserService>(UserService);
     prismaService = module.get(PrismaService);
     emailService = module.get(EmailService);
+    jwtService = module.get(JwtService);
 
     // Reset all mocks before each test
     jest.clearAllMocks();
@@ -246,6 +264,216 @@ describe('UserService', () => {
       prismaService.user.create.mockRejectedValue(new Error('Database error'));
 
       await expect(service.create(createUserDto)).rejects.toThrow(
+        new BadRequestException('Failed to create user'),
+      );
+    });
+  });
+
+  describe('createDirect', () => {
+    const createUserDto: CreateUserDto = {
+      name: 'John Doe',
+      email: 'john@example.com',
+      phone: '5511988887777',
+      password: 'password123',
+      documentType: 'cpf',
+      documentValue: '123.456.789-00',
+      storeId: 'store-123',
+    };
+
+    const mockUserWithRechargeBigoId = {
+      ...mockUser,
+      rechargeBigoId: null,
+    };
+
+    it('should create a new user with emailVerified: true and return tokens', async () => {
+      const { validateRequiredFields } = require('../../utils/validation.util');
+      const {
+        getAccountCreatedTemplate,
+      } = require('../../email/templates/account-created.template');
+
+      // Mock findFirst to return null (user doesn't exist)
+      prismaService.user.findFirst.mockResolvedValue(null);
+      prismaService.user.create.mockResolvedValue(mockUserWithRechargeBigoId);
+      prismaService.store.findUnique.mockResolvedValue({
+        domain: 'https://www.example.com',
+      });
+      emailService.sendEmail.mockResolvedValue({} as any);
+      jwtService.signAsync
+        .mockResolvedValueOnce('access-token-123')
+        .mockResolvedValueOnce('refresh-token-123');
+
+      const result = await service.createDirect(createUserDto);
+
+      expect(validateRequiredFields).toHaveBeenCalledWith(createUserDto, [
+        'name',
+        'email',
+        'phone',
+        'password',
+        'documentType',
+        'documentValue',
+        'storeId',
+      ]);
+
+      expect(prismaService.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: createUserDto.name,
+          email: createUserDto.email,
+          phone: createUserDto.phone,
+          password: 'hashedPassword123',
+          documentType: createUserDto.documentType,
+          documentValue: createUserDto.documentValue,
+          role: 'USER',
+          storeId: createUserDto.storeId,
+          emailVerified: true,
+          emailConfirmationCode: null,
+          emailConfirmationExpires: null,
+        }),
+        select: mockUserSelect,
+      });
+
+      expect(getAccountCreatedTemplate).toHaveBeenCalledWith(
+        createUserDto.name,
+        createUserDto.email,
+        'https://www.example.com',
+      );
+
+      // sendEmailWithRetry calls emailService.sendEmail internally
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        createUserDto.email,
+        'Conta criada com sucesso',
+        '<html>Account created template</html>',
+      );
+
+      expect(jwtService.signAsync).toHaveBeenCalledTimes(2);
+      expect(jwtService.signAsync).toHaveBeenNthCalledWith(
+        1,
+        {
+          id: mockUserWithRechargeBigoId.id,
+          storeId: mockUserWithRechargeBigoId.storeId,
+          email: mockUserWithRechargeBigoId.email,
+          phone: mockUserWithRechargeBigoId.phone,
+          rechargeBigoId: null,
+          documentType: mockUserWithRechargeBigoId.documentType,
+          documentValue: mockUserWithRechargeBigoId.documentValue,
+          name: mockUserWithRechargeBigoId.name,
+        },
+        { expiresIn: '10m' },
+      );
+      expect(jwtService.signAsync).toHaveBeenNthCalledWith(
+        2,
+        {
+          id: mockUserWithRechargeBigoId.id,
+          storeId: mockUserWithRechargeBigoId.storeId,
+          email: mockUserWithRechargeBigoId.email,
+          phone: mockUserWithRechargeBigoId.phone,
+          rechargeBigoId: null,
+          documentType: mockUserWithRechargeBigoId.documentType,
+          documentValue: mockUserWithRechargeBigoId.documentValue,
+          name: mockUserWithRechargeBigoId.name,
+        },
+        { expiresIn: '7d' },
+      );
+
+      expect(result).toEqual({
+        access: {
+          accessToken: 'access-token-123',
+          refreshToken: 'refresh-token-123',
+          expiresIn: 600,
+        },
+        user: {
+          id: mockUserWithRechargeBigoId.id,
+          storeId: mockUserWithRechargeBigoId.storeId,
+          email: mockUserWithRechargeBigoId.email,
+          phone: mockUserWithRechargeBigoId.phone,
+          rechargeBigoId: null,
+          documentType: mockUserWithRechargeBigoId.documentType,
+          documentValue: mockUserWithRechargeBigoId.documentValue,
+          name: mockUserWithRechargeBigoId.name,
+        },
+      });
+    });
+
+    it('should throw BadRequestException when email already exists', async () => {
+      prismaService.user.findFirst.mockResolvedValue(mockUser);
+
+      await expect(service.createDirect(createUserDto)).rejects.toThrow(
+        new BadRequestException('User with this email already exists'),
+      );
+
+      expect(prismaService.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when document already exists', async () => {
+      prismaService.user.findFirst
+        .mockResolvedValueOnce(null) // First call for email check
+        .mockResolvedValueOnce(mockUser); // Second call for document check
+
+      await expect(service.createDirect(createUserDto)).rejects.toThrow(
+        new BadRequestException('User with this document already exists'),
+      );
+
+      expect(prismaService.user.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when store not found', async () => {
+      prismaService.user.findFirst.mockResolvedValue(null);
+      prismaService.user.create.mockResolvedValue(mockUserWithRechargeBigoId);
+      prismaService.store.findUnique.mockResolvedValue(null);
+
+      await expect(service.createDirect(createUserDto)).rejects.toThrow(
+        new BadRequestException('Store not found'),
+      );
+    });
+
+    it('should use getAccountCreatedTemplate instead of email confirmation template', async () => {
+      const {
+        getAccountCreatedTemplate,
+      } = require('../../email/templates/account-created.template');
+      const {
+        getEmailConfirmationTemplate,
+      } = require('../../email/templates/email-confirmation.template');
+
+      prismaService.user.findFirst.mockResolvedValue(null);
+      prismaService.user.create.mockResolvedValue(mockUserWithRechargeBigoId);
+      prismaService.store.findUnique.mockResolvedValue({
+        domain: 'https://www.example.com',
+      });
+      emailService.sendEmail.mockResolvedValue({} as any);
+      jwtService.signAsync
+        .mockResolvedValueOnce('access-token-123')
+        .mockResolvedValueOnce('refresh-token-123');
+
+      await service.createDirect(createUserDto);
+
+      expect(getAccountCreatedTemplate).toHaveBeenCalled();
+      expect(getEmailConfirmationTemplate).not.toHaveBeenCalled();
+    });
+
+    it('should send email with correct subject', async () => {
+      prismaService.user.findFirst.mockResolvedValue(null);
+      prismaService.user.create.mockResolvedValue(mockUserWithRechargeBigoId);
+      prismaService.store.findUnique.mockResolvedValue({
+        domain: 'https://www.example.com',
+      });
+      emailService.sendEmail.mockResolvedValue({} as any);
+      jwtService.signAsync
+        .mockResolvedValueOnce('access-token-123')
+        .mockResolvedValueOnce('refresh-token-123');
+
+      await service.createDirect(createUserDto);
+
+      expect(emailService.sendEmail).toHaveBeenCalledWith(
+        createUserDto.email,
+        'Conta criada com sucesso',
+        expect.any(String),
+      );
+    });
+
+    it('should throw BadRequestException when database error occurs', async () => {
+      prismaService.user.findFirst.mockResolvedValue(null);
+      prismaService.user.create.mockRejectedValue(new Error('Database error'));
+
+      await expect(service.createDirect(createUserDto)).rejects.toThrow(
         new BadRequestException('Failed to create user'),
       );
     });

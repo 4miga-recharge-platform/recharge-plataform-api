@@ -13,14 +13,16 @@ export class EmailService {
 
   private initializeResend() {
     const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@4miga.games';
+    const fromEmailEnv = process.env.RESEND_FROM_EMAIL || 'noreply@4miga.games';
+    const fromName = process.env.RESEND_FROM_NAME || '4miga.games';
 
     if (!apiKey) {
       throw new Error('RESEND_API_KEY is required');
     }
 
     this.resend = new Resend(apiKey);
-    this.fromEmail = fromEmail;
+    // Format: "Nome <email@domain.com>" or just "email@domain.com" if no name
+    this.fromEmail = fromName ? `${fromName} <${fromEmailEnv}>` : fromEmailEnv;
   }
 
   async sendEmail(to: string, subject: string, html: string) {

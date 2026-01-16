@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { validateRequiredFields } from 'src/utils/validation.util';
@@ -7,6 +8,7 @@ import { EmailService } from '../email/email.service';
 import { getAdminDemotionTemplate } from '../email/templates/admin-demotion.template';
 import { getAdminPromotionTemplate } from '../email/templates/admin-promotion.template';
 import { getEmailConfirmationTemplate } from '../email/templates/email-confirmation.template';
+import { getAccountCreatedTemplate } from '../email/templates/account-created.template';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
@@ -18,13 +20,14 @@ export class UserService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly jwtService: JwtService,
   ) {}
 
   private userSelect = {
     id: true,
     name: true,
     email: true,
-    role: true,
+    role: false, // Role is private to backend
     phone: true,
     documentType: true,
     documentValue: true,
@@ -152,6 +155,145 @@ export class UserService {
         2000,
       );
       return user;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('Failed to create user');
+    }
+  }
+
+  /**
+   * Create user directly with emailVerified: true (no email verification required)
+   * Returns tokens immediately so user can login right away
+   * This is an alternative to the standard create() method which requires email verification
+   */
+  async createDirect(dto: CreateUserDto): Promise<{
+    access: {
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+    };
+    user: {
+      id: string;
+      storeId: string;
+      email: string;
+      phone: string;
+      rechargeBigoId: string | null;
+      documentType: string;
+      documentValue: string;
+      name: string;
+    };
+  }> {
+    try {
+      const { ...rest } = dto;
+      validateRequiredFields(rest, [
+        'name',
+        'email',
+        'phone',
+        'password',
+        'documentType',
+        'documentValue',
+        'storeId',
+      ]);
+
+      // Check if user already exists with same email in the same store
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          email: dto.email,
+          storeId: dto.storeId,
+        },
+      });
+
+      if (existingUser) {
+        throw new BadRequestException('User with this email already exists');
+      }
+
+      // Check if user already exists with same document in the same store
+      const existingUserByDocument = await this.prisma.user.findFirst({
+        where: {
+          documentValue: dto.documentValue,
+          storeId: dto.storeId,
+        },
+      });
+
+      if (existingUserByDocument) {
+        throw new BadRequestException('User with this document already exists');
+      }
+
+      // Create user directly with emailVerified: true (no verification code needed)
+      const data = {
+        ...rest,
+        password: await bcrypt.hash(dto.password, 10),
+        role: 'USER' as const,
+        emailVerified: true,
+        emailConfirmationCode: null,
+        emailConfirmationExpires: null,
+      };
+
+      const user = await this.prisma.user.create({
+        data,
+        select: this.userSelect,
+      });
+
+      if (!user) {
+        throw new BadRequestException('Failed to create user');
+      }
+
+      // Get store domain for email template
+      const store = await this.prisma.store.findUnique({
+        where: { id: dto.storeId },
+        select: { domain: true },
+      });
+
+      if (!store) {
+        throw new BadRequestException('Store not found');
+      }
+
+      // Send account created email (informative, no verification required)
+      const html = getAccountCreatedTemplate(
+        dto.name,
+        dto.email,
+        store.domain,
+      );
+      await this.sendEmailWithRetry(
+        dto.email,
+        'Conta criada com sucesso',
+        html,
+        3,
+        2000,
+      );
+
+      // Generate tokens (same structure as verifyEmail endpoint)
+      const userData = {
+        id: user.id,
+        storeId: user.storeId,
+        email: user.email,
+        phone: user.phone,
+        rechargeBigoId: user.rechargeBigoId,
+        documentType: user.documentType,
+        documentValue: user.documentValue,
+        name: user.name,
+      };
+
+      const accessToken = await this.jwtService.signAsync(userData, {
+        expiresIn: '10m',
+      });
+      const refreshToken = await this.jwtService.signAsync(userData, {
+        expiresIn: '7d',
+      });
+
+      const expiresIn = 10 * 60;
+
+      // Return same structure as verifyEmail endpoint
+      return {
+        access: {
+          accessToken,
+          refreshToken,
+          expiresIn,
+        },
+        user: userData,
+      };
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;

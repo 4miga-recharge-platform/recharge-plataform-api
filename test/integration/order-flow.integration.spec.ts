@@ -230,12 +230,106 @@ describe('Order Flow Integration', () => {
         baseTest.orderService.create(createOrderDto2, store.id, user.id),
       ).rejects.toThrow('This coupon can only be used once per bigoId');
 
-      // Create order with same coupon but different bigoId - should succeed
+      // Create order with same coupon but different bigoId - should fail
+      // because the same account (userId) has already used the coupon
       const createOrderDto3: CreateOrderDto = {
         packageId: pkg.id,
         paymentMethodId: pkg.paymentMethods[0].id,
-        userIdForRecharge: 'player789012', // Different bigoId
+        userIdForRecharge: 'player789012', // Different bigoId, but same account
         couponTitle: 'ONETIME10',
+        price: 45.0,
+      };
+
+      await expect(
+        baseTest.orderService.create(createOrderDto3, store.id, user.id),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        baseTest.orderService.create(createOrderDto3, store.id, user.id),
+      ).rejects.toThrow('This coupon can only be used once per account');
+    });
+
+    it('should allow using regular coupon multiple times with same or different bigoIds', async () => {
+      const {
+        store,
+        user,
+        package: pkg,
+        influencer,
+      } = await dbHelper.createCompleteTestScenario({
+        packagePrice: 50.0,
+        packageAmountCredits: 200,
+      });
+
+      const coupon = await dbHelper.createCoupon({
+        storeId: store.id,
+        influencerId: influencer.id,
+        title: 'REGULAR10',
+        discountPercentage: 10,
+        isActive: true,
+        isOneTimePerBigoId: false,
+      });
+
+      await baseTest.prismaService.store.update({
+        where: { id: store.id },
+        data: { braviveApiToken: 'test-bravive-token' },
+      });
+
+      const paymentResponse = BraviveMock.createPaymentResponse();
+      const httpService = baseTest.moduleFixture.get(BraviveHttpService);
+      (httpService.post as jest.Mock).mockResolvedValue(paymentResponse);
+
+      const bigoId1 = 'player111111';
+      const bigoId2 = 'player222222';
+
+      const createOrderDto1: CreateOrderDto = {
+        packageId: pkg.id,
+        paymentMethodId: pkg.paymentMethods[0].id,
+        userIdForRecharge: bigoId1,
+        couponTitle: 'REGULAR10',
+        price: 45.0,
+      };
+
+      const order1 = await baseTest.orderService.create(
+        createOrderDto1,
+        store.id,
+        user.id,
+      );
+      expect(order1).toBeDefined();
+      expect(Number(order1.price)).toBe(45.0);
+
+      const couponUsage1 = await baseTest.prismaService.couponUsage.findFirst({
+        where: { orderId: order1.id },
+      });
+      expect(couponUsage1).toBeDefined();
+      expect(couponUsage1!.couponId).toBe(coupon.id);
+
+      const createOrderDto2: CreateOrderDto = {
+        packageId: pkg.id,
+        paymentMethodId: pkg.paymentMethods[0].id,
+        userIdForRecharge: bigoId1,
+        couponTitle: 'REGULAR10',
+        price: 45.0,
+      };
+
+      const order2 = await baseTest.orderService.create(
+        createOrderDto2,
+        store.id,
+        user.id,
+      );
+      expect(order2).toBeDefined();
+      expect(Number(order2.price)).toBe(45.0);
+
+      const couponUsage2 = await baseTest.prismaService.couponUsage.findFirst({
+        where: { orderId: order2.id },
+      });
+      expect(couponUsage2).toBeDefined();
+      expect(couponUsage2!.couponId).toBe(coupon.id);
+
+      const createOrderDto3: CreateOrderDto = {
+        packageId: pkg.id,
+        paymentMethodId: pkg.paymentMethods[0].id,
+        userIdForRecharge: bigoId2,
+        couponTitle: 'REGULAR10',
         price: 45.0,
       };
 
@@ -247,7 +341,6 @@ describe('Order Flow Integration', () => {
       expect(order3).toBeDefined();
       expect(Number(order3.price)).toBe(45.0);
 
-      // Verify coupon usage was created for second bigoId
       const couponUsage3 = await baseTest.prismaService.couponUsage.findFirst({
         where: { orderId: order3.id },
       });
